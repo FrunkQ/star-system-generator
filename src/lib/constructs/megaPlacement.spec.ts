@@ -66,6 +66,17 @@ describe('hard clauses — relevance greys, with a sentence a GM can read', () =
     expect(megaHardCheck(ds.requires, mk({ name: 'Kuiper', roleHint: 'belt' })).ok).toBe(false);
   });
 
+  it('a Birch planet is offered round a black hole and greyed round anything else, by name', () => {
+    const birch = megaTypeDef('birch-planet')!;
+    const hole = { id: 'bh', name: 'Gargantua', kind: 'body', roleHint: 'star', parentId: null, tags: [], classes: ['star/BH'], massKg: 2e37 } as unknown as CelestialBody;
+    const sun = { id: 's', name: 'Sol', kind: 'body', roleHint: 'star', parentId: null, tags: [], classes: ['star/G2V'], massKg: 1.989e30 } as unknown as CelestialBody;
+    expect(megaHardCheck(birch.requires, hole, birch.explain).ok).toBe(true);
+    const refused = megaHardCheck(birch.requires, sun, birch.explain);
+    expect(refused.ok).toBe(false);
+    expect(refused.reason).toContain('Sol');
+    expect(megaHardCheck(birch.requires, { ...hole, classes: ['star/BH_active'] } as CelestialBody).ok).toBe(true);
+  });
+
   it('an unknown hard clause PASSES — greying on a rule this build cannot state refuses for an unreadable reason', () => {
     const r = megaHardCheck({ hard: { minTechLevel: 9 } as never }, earth());
     expect(r.ok).toBe(true);
@@ -146,7 +157,7 @@ describe('allowed placements - the same narrowing wherever a placement is offere
     }
     expect(megaIsSurfaceOnly(def('space-elevator'))).toBe(true);
   });
-  it('the two vocabularies fold onto the record: Medium is Mid, and a named gap about a star is an AU distance', () => {
+  it("the vocabularies fold onto the record: an old save's Mid reads as Medium, and a named gap about a star is an AU distance", () => {
     const torus = def('planetary-torus');
     expect(megaPlacementAllowed(torus, 'Medium Orbit')).toBe(true);
     expect(megaPlacementAllowed(torus, 'Mid Orbit')).toBe(true);

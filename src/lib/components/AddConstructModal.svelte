@@ -8,6 +8,7 @@
   import { megaTypeDef } from '$lib/constructs/megaTypes';
   import { effectiveMegaRequires, megaHardCheck, megaSteerNotes, hostHasSurface, filterMegaPlacements } from '$lib/constructs/megaPlacement';
   import { calculateGoldilocksZone } from '$lib/physics/zones';
+  import { hostOrbitBands, PLACEMENT_MEDIUM_ORBIT } from '$lib/constructs/placements';
   // UI-C6: this dialog now yields the phone screen like every other one (A84).
   import { foreground } from '$lib/ui/foreground';
 
@@ -72,19 +73,10 @@
       if (hostHasSurface(hostBody)) {
         placements.push('Surface');
       }
-      placements.push('Low Orbit');
-      
-      if (orbitalBoundaries) {
-          if (orbitalBoundaries.leoMoeBoundaryKm < orbitalBoundaries.meoHeoBoundaryKm) {
-             placements.push('Mid Orbit');
-          }
-          if (orbitalBoundaries.meoHeoBoundaryKm < orbitalBoundaries.heoUpperBoundaryKm) {
-             placements.push('High Orbit');
-          }
-          if (orbitalBoundaries.geoStationaryKm && !orbitalBoundaries.isGeoFallback) {
-            placements.push('Geostationary Orbit');
-          }
-      }
+      // ONE list rule and ONE spelling, shared with the Orbit tab (constructs/placements.ts): this
+      // dialog used to spell the middle band differently from the tab, so a station made here
+      // opened there on an empty Zone select.
+      placements.push(...hostOrbitBands(orbitalBoundaries));
     }
 
     // Any body with a parent has all five Lagrange points in its orbit (G43 P3 — was L4/L5 only,
@@ -194,7 +186,7 @@
           altitudeKm = ((orbitalBoundaries?.minLeoKm ?? 200) + (orbitalBoundaries?.leoMoeBoundaryKm ?? 2000)) / 2;
           newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
           break;
-        case 'Mid Orbit':
+        case PLACEMENT_MEDIUM_ORBIT:
           altitudeKm = (orbitalBoundaries!.leoMoeBoundaryKm + orbitalBoundaries!.meoHeoBoundaryKm) / 2;
           newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
           break;

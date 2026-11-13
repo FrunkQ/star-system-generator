@@ -19,6 +19,7 @@ import type { CelestialBody } from '$lib/types';
 import type { MegaTypeDef, MegaDerived } from './megaTypes';
 import { defaultMegaParams } from './megaTypes';
 import { luminosityWattsFromRT } from '$lib/physics/luminosity';
+import { C_MS } from '$lib/constants';
 
 export const PREVIEW_BOX = 64;
 
@@ -73,7 +74,7 @@ export function megaPreviewPrimitives(def: MegaTypeDef, host: CelestialBody): Pr
   }
 
   // sphere-section: shell / ringworld / torus / swarm — all one family (§5b.4).
-  const hostIsStar = def.requires.hard?.hostIsStar === true;
+  const hostIsStar = def.requires.hard?.hostIsStar === true || def.requires.hard?.hostIsBlackHole === true;
   const hostDot: PreviewPrim = hostIsStar
     ? { kind: 'disc', cx: c, cy: c, r: 4, role: 'host' }       // a star: small and bright
     : { kind: 'disc', cx: c, cy: c, r: 9, role: 'host' };      // a world: the ring hugs it
@@ -92,6 +93,16 @@ export function megaPreviewPrimitives(def: MegaTypeDef, host: CelestialBody): Pr
   }
 
   const fullPhi = spec.phiLengthRad >= 2 * Math.PI - 1e-9;
+  if (fullPhi && spec.thetaStartRad === 0 && spec.thetaLengthRad < Math.PI - 1e-9) {
+    // A polar CAP (a mirror held over its star): an arc on one side spanning twice its half-angle,
+    // the open sky dashed - the lopsidedness is the whole point of the thing.
+    const half = clamp(spec.thetaLengthRad, 0.12, Math.PI);
+    return [
+      hostDot,
+      { kind: 'circle', cx: c, cy: c, r: R, width: 1, role: 'faint', dashed: true },
+      { kind: 'arc', cx: c, cy: c, r: R, startRad: -Math.PI / 2 - half, sweepRad: 2 * half, width: 4, role: 'structure' }
+    ];
+  }
   if (!fullPhi) {
     // A growing shell: the built arc spans the coverage; the remainder is a dashed promise.
     return [
@@ -106,6 +117,15 @@ export function megaPreviewPrimitives(def: MegaTypeDef, host: CelestialBody): Pr
   const bandFrac = clamp(spec.thetaLengthRad / Math.PI, 0, 1);
   const width = clamp(1.5 + bandFrac * 9, 1.5, 10);
   return [hostDot, { kind: 'circle', cx: c, cy: c, r: R, width, role: 'structure' }];
+}
+
+/** How far a steady push carries a star in a million years, in words a GM can picture. */
+function starDriftWords(accMs2: number): string {
+  const metres = 0.5 * accMs2 * Math.pow(3.156e13, 2);
+  const ly = metres / 9.4607e15;
+  if (ly >= 0.1) return `${ly.toPrecision(2)} light-years`;
+  const au = metres / 1.495978707e11;
+  return au >= 10 ? `${shortNum(au)} AU` : `${au.toPrecision(2)} AU`;
 }
 
 const shortNum = (v: number): string => {
@@ -132,6 +152,11 @@ export function megaSummaryLine(derived: MegaDerived, host?: CelestialBody): str
   } else if (derived.geoAltitudeKm === null) {
     parts.push('no real geostationary here');
   }
+  // Before the shadow line, so a shell that has BOTH (a Birch planet) leads with its ground and
+  // its gravity; the Death Star, the only other type with this figure, has nothing else to say.
+  if (derived.surfaceGravityMs2 !== undefined) {
+    parts.push(`surface pull ~${(derived.surfaceGravityMs2 / 9.80665).toPrecision(2)} g`);
+  }
   if (derived.starOcclusion !== undefined && derived.starOcclusion > 0) {
     // A band's shadow is directional (G53 phase 4): "dims the star 100%" would be true only for
     // worlds in its own plane, so say the directional thing instead of the misleading number.
@@ -152,8 +177,32 @@ export function megaSummaryLine(derived: MegaDerived, host?: CelestialBody): str
       ? `harvests ~${watts.toExponential(1)} W (${pctS}% of the star)`
       : `harvests ~${pctS}% of the star's output`);
   }
-  if (derived.surfaceGravityMs2 !== undefined) {
-    parts.push(`surface pull ~${(derived.surfaceGravityMs2 / 9.80665).toPrecision(2)} g`);
+  // PHASE 6. A mirror's added light, in the host's own terms; and the stellar engines' push on
+  // their star - the headline figure for those, so it LEADS the line. The Shkadov fraction is
+  // multiplied into newtons HERE through the one luminosity function (B110), exactly as the harvest
+  // is; without a luminous host the honest fraction is shown instead of an invented force.
+  if (derived.starAmplification !== undefined && derived.starAmplification > 0) {
+    parts.unshift(`adds ${(derived.starAmplification * 100).toPrecision(2)}% to ${host?.name ?? 'its world'}'s starlight`);
   }
-  return parts.slice(0, 2).join(' · ');
+  const thrustN = derived.starThrustN
+    ?? (derived.starThrustPhotonFrac !== undefined && host?.radiusKm && host?.temperatureK
+      ? (derived.starThrustPhotonFrac * luminosityWattsFromRT(host.radiusKm, host.temperatureK)) / C_MS
+      : undefined);
+  const lead: string[] = [];
+  if (thrustN !== undefined && thrustN > 0) {
+    const acc = host?.massKg ? thrustN / host.massKg : undefined;
+    // "In a million years" is human framing on the OUTPUT: the figure a GM can actually picture.
+    lead.push(acc
+      ? `pushes the star ~${acc.toExponential(1)} m/s² (${starDriftWords(acc)} in a million years)`
+      : `pushes the star with ~${thrustN.toExponential(1)} N`);
+  } else if (derived.starThrustPhotonFrac !== undefined) {
+    lead.push(`pushes the star with ${(derived.starThrustPhotonFrac * 100).toPrecision(2)}% of its own light pressure`);
+  }
+  if (derived.starMassLossKgPerS !== undefined && derived.starMassLossKgPerS > 0) {
+    const years = host?.massKg ? host.massKg / derived.starMassLossKgPerS / 3.156e7 : undefined;
+    lead.push(years
+      ? `eats the star in ~${shortNum(years / 1e6)} million years`
+      : `takes ${derived.starMassLossKgPerS.toExponential(1)} kg/s from the star`);
+  }
+  return [...lead, ...parts].slice(0, 2).join(' · ');
 }

@@ -102,3 +102,71 @@ describe('a space elevator is offered what an elevator can take, here as in the 
     expect((container.querySelector('#anomaly') as HTMLInputElement).disabled).toBe(false);
   });
 });
+
+// INCLINED MEGASTRUCTURES (a user's ask; the owner: "next update"). The physics honoured an
+// inclined orbit all along - the propagator, the docking maths, the shadow chain - and no control
+// authored one. The plane is offered to a megastructure whose placement IS an orbit, by the record
+// (megaPlacement.megaOrbitPlaneAuthorable), and to nothing else. Seen RED first with the template
+// block and the handler removed: no inputs, and the ring's i_deg stayed 0.
+describe('a megastructure that orbits can be tilted, and only one that orbits', () => {
+  const RING = { megaType: 'ringworld', parentId: 'sol', placement: 'AU Distance',
+    orbit: { hostId: 'sol', hostMu: 1.327e20, t0: 0, elements: { a_AU: 1.4, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } } };
+  const plane = (container: HTMLElement) => ({
+    inc: container.querySelector('#inclination-value') as HTMLInputElement | null,
+    node: container.querySelector('#ascendingNode-value') as HTMLInputElement | null
+  });
+  const type = async (el: HTMLInputElement, value: string) => { await fireEvent.input(el, { target: { value } }); await tick(); };
+
+  it('a ringworld gets inclination and ascending node, and typing them writes the orbit the physics reads', async () => {
+    const { container, node } = await mount(RING);
+    const { inc, node: asc } = plane(container);
+    expect(inc).not.toBeNull();
+    expect(asc).not.toBeNull();
+    await type(inc!, '30');
+    expect(node.orbit.elements.i_deg).toBe(30);
+    await type(plane(container).node!, '70');
+    expect(node.orbit.elements.Omega_deg).toBe(70);
+    expect(container.textContent).toContain('measured from the system plane');
+  });
+  it('an authored tilt survives a zone re-pick: the new distance keeps the plane', async () => {
+    const { node, zone, pick, offered } = await mount({ ...RING, orbit: { ...RING.orbit, elements: { ...RING.orbit.elements, i_deg: 25, Omega_deg: 40 } } });
+    await pick(zone, offered()[0]);
+    expect(node.orbit.elements.i_deg).toBe(25);
+    expect(node.orbit.elements.Omega_deg).toBe(40);
+  });
+  it('a torus round a world is told its tilt is measured from that world\'s equator', async () => {
+    const { container } = await mount({ megaType: 'planetary-torus', placement: 'Low Orbit',
+      orbit: { hostId: 'earth', hostMu: 3.986e14, t0: 0, elements: { a_AU: 12742 / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } } });
+    expect(plane(container).inc).not.toBeNull();
+    expect(container.textContent).toContain("world's equator");
+  });
+  it('a space elevator has no plane to set, and neither has an ordinary station', async () => {
+    expect(plane((await mount({ megaType: 'space-elevator' })).container).inc).toBeNull();
+    expect(plane((await mount({ placement: 'Low Orbit' })).container).inc).toBeNull();
+  });
+  it('a battle station at a Lagrange point has none either: that orbit is derived from its world', async () => {
+    const { container, zone, pick } = await mount({ megaType: 'death-star', placement: 'Low Orbit' });
+    expect(plane(container).inc).not.toBeNull();
+    await pick(zone, 'L4');
+    expect(plane(container).inc).toBeNull();
+  });
+});
+
+// THE EMPTY ZONE SELECT (found in the bug run). A station made through the create dialog was stored
+// as 'Mid Orbit'; this tab offers 'Medium Orbit'; nothing in the list matched, so the select showed
+// blank. One spelling now, and a save written with the old one is READ as the new - the stored
+// string is left alone until the GM actually changes the zone. Seen RED first: `zone.value` ''.
+describe("a station stored with the old 'Mid Orbit' spelling opens on its own zone", () => {
+  const MID = { placement: 'Mid Orbit', orbit: { hostId: 'earth', hostMu: 3.986e14, t0: 0, elements: { a_AU: (6371 + 26000) / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } } };
+  it('the Zone select shows Medium Orbit, with the altitude slider, and the file is not rewritten by looking', async () => {
+    const { zone, node, container } = await mount(MID);
+    expect(zone.value).toBe('Medium Orbit');
+    expect(container.querySelector('.slider-svg')).not.toBeNull();
+    expect(node.placement).toBe('Mid Orbit');
+  });
+  it('and a torus stored that way keeps its zone and its tilt control', async () => {
+    const { zone, container } = await mount({ ...MID, megaType: 'planetary-torus' });
+    expect(zone.value).toBe('Medium Orbit');
+    expect(container.querySelector('#inclination-value')).not.toBeNull();
+  });
+});

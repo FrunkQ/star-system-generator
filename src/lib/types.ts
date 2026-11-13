@@ -66,6 +66,8 @@ export interface MegaHardClauses {
   hostIsStar?: true;
   /** A REAL geostationary altitude — not OrbitalBoundaries' fallback. */
   needsGeostationary?: true;
+  /** The object is built round a black hole (a Birch shell); any other host has none to enclose. */
+  hostIsBlackHole?: true;
 }
 
 /** PLAUSIBILITY — tags and explains, never refuses. Published numbers, not walls. */
@@ -939,6 +941,16 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
        *  not an event. */
       eclipse?: { permanent: true } | { crossingsPerOrbit: 2; hoursEach: number } }[];
   }[];
+  /** Phase 6 (the soletta): the EXTRA starlight orbital mirrors turn onto this body - DERIVED every
+   *  pass by `physics/starlightOcclusion.ts starlightBoost`, commit-or-delete exactly as
+   *  `starlightDimming` (absent when no mirror lights the body). `gain` multiplies the received
+   *  light from every luminous source (1.2 = a fifth more than inverse-square); `mirrors` says
+   *  who added what, each as a fraction of the light the body's own disc intercepts. The trace
+   *  and the `mega/lit-by` tag read it; nothing else may re-derive who lights whom. */
+  starlightBoost?: {
+    gain: number;
+    mirrors: { name: string; addedFrac: number }[];
+  };
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)

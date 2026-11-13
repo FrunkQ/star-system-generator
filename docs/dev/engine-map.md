@@ -5899,6 +5899,10 @@ host - PHY-42 is what that cost. Both surfaces now ask `megaPlacement.filterMega
 The function folds the two surfaces' vocabularies onto the record's words ('Medium Orbit' is 'Mid
 Orbit'; 'Inner System', 'A - B' and 'Outer System' are 'AU Distance'); the spellings themselves are
 NOT unified. Gated at the DOM by `ConstructGeneralTab.spec.ts`.
+CORRECTION (2026-11, RENDER-S62): the orbit-band spellings ARE unified now - one word each, from
+`constructs/placements.ts`, with 'Medium Orbit' the survivor and an old save's 'Mid Orbit' read
+through `canonicalPlacement`. The star-distance fold ('Inner System', 'A - B', 'Outer System'
+onto 'AU Distance') is unchanged and still lives in `megaPlacementWord`.
 BLAST: A HANDLER MUST READ THE PICK, NEVER A `$:` MIRROR OF IT. The Orbit tab read
 `selectedLagrangePoint` (a reactive statement) inside the select's change handler, where it still
 described the PREVIOUS pick: every L-point choice, for ANY construct, was applied one pick late and
@@ -5921,8 +5925,10 @@ around it. The centring was identified while measuring phase 2's extent question
 into phase 3 - the two halves of one fact, landed a version apart.
 BLAST: a TETHER is the opposite case and must NOT be centred - it is stood up on its anchor by
 `updateSurfaceConstructs` and is exempt from the surface-construct model suppression, because a
-beanstalk's whole point is that it leaves the ground. Inclined orbits are NOT yet oriented: a ring
-currently lies in the ground plane whatever its inclination.
+beanstalk's whole point is that it leaves the ground.
+CORRECTION (2026-11, RENDER-S61): this entry used to end "inclined orbits are NOT yet oriented: a
+ring lies in the ground plane whatever its inclination". They are now - the structure's axis is its
+orbit normal - and a control authors the tilt. See RENDER-S61.
 
 ### RENDER-S45 `bodyById` IS EMPTY WHILE THE BODIES ARE BEING BUILT
 BUCKET: IMPLEMENTATION - a lookup map rebuilt AFTER the loop that fills it answers every question
@@ -5983,6 +5989,9 @@ collapsed the drawn HZ while the worlds stayed warm - the two halves of one fact
 Isotropic occluders still apply in full regardless of tilt.
 Companion flux stays undimmed through the solver. A swarm inside the kill zone is honestly a
 radiation shield (both hazard halves are linear in L, so the radius scales as sqrt f).
+ADDENDUM (2026-11, PHY-46): the received form now takes a SECOND factor - a mirror's gain - and
+"multiplies by `starlightTransmission`, never its own factor" extends to it: the gain comes from
+`starlightBoost` in the same module and from nowhere else.
 
 ### TAG-25 THE DISCLOSURE LADDER HAS THREE RUNGS AND EXACTLY ONE WRITER
 BUCKET: ARCHITECTURE - durable: a redaction that REPLACES rather than removes must build its
@@ -8322,3 +8331,135 @@ sentence listing what the age drives is PROSE, not measured (unlike the body Age
 UI-C20); it names the system-wide consumers of PHY-44 and must be kept true by hand when one moves.
 The `system` prop here is the STORE'S OWN OBJECT (`BodyDetailsPane` is given `$systemStore`), which
 is the only reason mutating it works; a caller that hands this tab a copy would see edits vanish.
+### RENDER-S61 A STRUCTURE ROUND ITS HOST LIES IN ITS OWN ORBIT'S PLANE, AND lookAt CANNOT PUT IT THERE
+BUCKET: ARCHITECTURE - one orbit, one plane: the node, its orbit line, its shadow, its docking
+ports and the drawn structure must all be told the same tilt.
+WHERE: `constructs/megaGeometry.ts` (`hostCentredAxisScene`, `hostCentredQuaternion` - pure,
+THREE-free); `holo/scene.ts` `attachMegaVolume` (stamps `megaAxis` and the paused pose) and the
+orientation line at the foot of `updateConstructs`; the control is `ConstructGeneralTab.svelte`
+(inclination + ascending node), gated by `megaPlacement.megaOrbitPlaneAuthorable`. Gates:
+`megaGeometry.spec.ts` ("oriented to its orbit normal"), `ConstructGeneralTab.spec.ts`.
+RULE: a host-centred structure (record anchor 'host-centred') is built about its own +Y, and that
+axis is the NORMAL OF ITS ORBIT, taken through the pipeline its orbit line is drawn with: the
+elements' W vector (sin O sin i, -cos O sin i, cos i) -> `toParentEquator` with the caller's
+`satelliteTiltRad(node, host)` -> the scene swap (x, z, y). The per-frame heading may only turn
+it ABOUT that axis. The generic ship `lookAt` cannot do this: it keeps "up" on the scene's +Y, so
+it can yaw a ring and never tilt it. For an uninclined ring the new pose equals what lookAt gave
+(the gate pins the dot product at 1), so nothing flat moved.
+WHY: a user asked for inclined megastructures and the bug run measured the two missing halves.
+The propagator (`propagateState3D`), docking's `toPlane` and `starlightOcclusion` had honoured
+inclination since they were written; every construct create path wrote `i_deg: 0` and no control
+changed it, and the drawn ring would not have followed if one had. Both halves landed together
+on purpose - a control whose shadow moved and whose ring did not would have been a third fault.
+BLAST: (1) THE lookAt TARGET FOR A HOST-CENTRED STRUCTURE WAS NEVER ITS MOTION. `shipModel` sits
+at the HOST, and lookAt was handed `node position + motion`, so its +Z has always pointed from
+the host at the NODE (radial), not along the velocity. The new code keeps exactly that heading;
+"fixing" it to the velocity would turn every part-built shell a quarter turn. (2) A torus round a
+tilted world now lies in that world's EQUATOR at i 0 - the satellite frame, where its orbit line
+always was. It used to draw in the scene's ground plane whatever the host's tilt, so on a tilted
+host this is a visible correction, not a regression.
+(3) The Orbit tab's star branch used to rebuild the orbit with i 0 / node 0 on every zone
+re-pick; it now keeps the plane. (4) The 2D orrery draws every orbit untilted, megastructures
+included - deliberate, and the control's own note says so. (5) A Lagrange-point structure has a
+DERIVED orbit and is not offered the control; `megaOrbitPlaneAuthorable` is the one predicate.
+### PHY-46 A MIRROR'S GAIN IS A SECOND, TYPED ARGUMENT - NEVER A LOOSER CLAMP, AND NEVER A STAR-WIDE FACT
+BUCKET: ARCHITECTURE (the amplify convention) + DOMAIN (what a soletta's added share is).
+WHERE: `physics/starlightOcclusion.ts` (`starlightBoost` - the ONE who-lights-whom site;
+`deriveStarlightBoost`, `commitStarlightBoost`, `STARLIGHT_BOOST_TAG`); `physics/luminosity.ts`
+`receivedLuminosityWatts(radius, temp, transmission, mirrorGain = 1)`; `physics/temperature.ts`
+(both equilibrium functions ask once per body; `calculateSurfaceTemperature` stamps the field);
+`core/SystemProcessor.ts` (one call, beside the dimming commit); the record is `soletta` in
+`constructs/megaTypes.ts` (`flux.amplifies: 'target'`, `starAmplification`). Gates:
+`starlightOcclusion.spec.ts` ("a soletta lights its world", absolute 266.86 K anchor, seen red
+with the gain forced to 1), `exoticsParity.spec.ts`, `megaDerive.spec.ts`.
+RULE: light that arrives is `intrinsic x transmission x gain`. Transmission stays clamped to
+[0, 1] - a malformed shading factor can still only darken - and the gain is its own argument
+that can only brighten (below 1, or not a number, reads as 1; no ceiling). The gain belongs to
+ONE BODY: the world the mirror is stationed at, `coOrbital.hostId ?? parentId` (a mirror at L1 is
+gravitationally the star's child and still lights the planet). It is derived fresh every ask
+from authored data - megaType, the instance's knobs, where it is stationed, the target's radius
+- and the added share is reflectivity x mirror area / (pi x target radius squared), a FRACTION
+(no luminosity is computed in the registry, B110). Mirrors add; light and shadow multiply.
+WHY: the header of `luminosity.ts` said "nothing between a star and a world manufactures light"
+and clamped accordingly. True of every occluder and false of the first new catalogue member -
+the design named this in August (nonstandard-objects §3). Widening the clamp would have let a
+bad transmission amplify; a second argument keeps both guards.
+BLAST: (1) THE ZONES DO NOT MOVE, DELIBERATELY. `zones.ts` describes the STAR's light; a lit world
+outside the drawn habitable zone is warm and reads warm, and the physics page says so. Feeding
+the gain into `occludedZoneDistance` would brighten the star for everyone. (2) The target's
+MOONS are not lit, and `heliocentricEdgeElements`-style inheritance must not be added: a mirror
+is aimed. (3) Every reflected photon is ASSUMED to land - which is why the record's
+`allowedPlacements` stop at L1/L2. Offering L4/L5 without tracing the beam's spread would be the
+A33 lie. (4) `radiation.ts` does not take the gain: a soletta reflects the star's light, and
+whether it reflects its hard radiation is unmodelled, so the dose is left at the bare figure
+rather than guessed up. AND `surfaceSpectrum.ts` (ground light, vegetation, pigments) is handed
+the INTRINSIC luminosity by its caller - it sees neither this gain nor phase 4's shadow. That gap
+predates the mirror (PHY-36 wired temperature and zones only) and is reported, not fixed here. (5) `commitStarlightBoost` returns early when there is no mirror and no
+old tag, so a system without one never grows a `tags` array or the field - idempotence and the
+Sol baseline depend on that. (6) The gain multiplies EVERY luminous source's light at the body,
+a stated approximation that is right for a single star and a close binary.
+### PHY-47 A FIGURE ABOUT THE STAR'S MOTION OR MASS IS PUBLISHED, NEVER PERFORMED - AND A HEMISPHERE MIRROR IS L/2c
+BUCKET: ARCHITECTURE (what the stellar engines may and may not do) + DOMAIN (the thrust law).
+WHERE: `constructs/megaTypes.ts` records `shkadov-thruster` and `caplan-thruster`; `MegaDerived`
+`starThrustPhotonFrac`, `starThrustN`, `starMassLossKgPerS`; shown by
+`constructs/megaPreview.ts megaSummaryLine` (the multiply into newtons is THERE, through the
+one luminosity function). Gates: `megaDerive.spec.ts`, `megaPreview.spec.ts`, and the
+"a figure about the STAR" row of `exoticsParity.spec.ts`.
+RULE: a stellar engine's thrust and mass loss are numbers derive() publishes and a panel prints.
+Nothing may integrate them: no node's orbit, position or `massKg` is ever written from them, and
+no capability axis declares them, because an axis nothing consumes is a claim (DATA-R33). The
+consumer is the event driver board row G41 describes - V4 design, not in this tree - and the
+axis arrives with it. The Shkadov law is momentum conservation: all of L leaves through the
+open sky, so the push is (L / 2c)(1 - cos psi) for a cap of half-angle psi; published as the
+dimensionless (1 - cos psi) / 2 of L/c. The Caplan law is a rocket: jet mass flow x jet speed
+(relativistic momentum), in newtons directly, and that flow is the star's mass loss.
+WHY: the owner asked for both engines (2026-11) with the instruction to ship what can be shown
+truthfully and not fake motion. A star crawling across the map on a clock that drives nothing
+else would be the renderer inventing a fact - and would silently invalidate every orbit, zone
+and transit computed about it.
+BLAST: (1) THE COMMONLY QUOTED SHKADOV FIGURE FOR THE SUN, 1.28e18 N, IS L/c - it turns every
+photon of half the output straight back. Integrating the cosine over a hemispherical cap gives
+L/2c = 6.4e17 N, and the open-sky derivation agrees. Do not "correct" the engine to the larger
+number. (2) Untilted, the cap stands over the pole of the system plane (the structure's axis
+is its orbit normal, RENDER-S61) and shades nothing near that plane, so the record publishes
+NO occlusion. A TILTED cap does shadow worlds for part of their orbit and that cone is not
+traced: it is a third occlusion geometry beside 'isotropic' and 'band', with four consumers
+(temperature, zones, observedStar, eclipses). (3) The Caplan record's collector swarm DOES
+occlude (isotropic, its density knob) - that half is real physics on the existing chain.
+(4) The mirror also returns light to the star and would raise its temperature; unmodelled.
+### RENDER-S62 A PLACEMENT IS A STORED WORD WITH ONE SPELLING, AND THE BOUNDARIES HAVE SIX FIELDS - NO MORE
+BUCKET: IMPLEMENTATION - a stored string compared in a dozen files, and a derived record read
+for fields it never had.
+WHERE: `constructs/placements.ts` (the words; `canonicalPlacement`, `hostOrbitBands`,
+`orbitBandAtAltitude`, `hasRealGeostationary`); consumers `AddConstructModal.svelte`,
+`ConstructGeneralTab.svelte`, `SystemView.svelte` (the drop-on-the-map path),
+`construct-logic.ts` (the orbit string), `constructs/megaTypes.ts` + `megaPlacement.ts`,
+`transit/scheduler.ts` (the arrival stamp). The producer of the boundaries is
+`physics/orbits.ts calculateOrbitalBoundaries`. Gates: `placements.spec.ts` (including a source
+scan for a second literal), `construct-logic.spec.ts`, the two DOM specs.
+RULE: an orbit band's name is written in ONE file and imported everywhere else; a stored
+placement is read through `canonicalPlacement` wherever it is compared or shown, and never
+rewritten just by being looked at. `OrbitalBoundaries` is exactly `minLeoKm`,
+`leoMoeBoundaryKm`, `meoHeoBoundaryKm`, `heoUpperBoundaryKm`, `geoStationaryKm`,
+`isGeoFallback`. "Which band is this altitude in" has one answer (`orbitBandAtAltitude`) and it
+never says Surface or Geostationary: those are stated by the GM, not inferred.
+WHY: the create dialog and the mega registry wrote 'Mid Orbit'; the Orbit tab, the map-drop
+path, the planner and every bundled map said 'Medium Orbit' - so a station made in the dialog
+opened its Orbit tab on an EMPTY Zone select. Beside it, three files read `hasSurface`,
+`surface`, `geosynchronousOrbit`, `lowOrbit`, `mediumOrbit` and `highOrbit` off the boundaries.
+Nothing has ever produced any of the six, so: the Orbit tab's slider never had its Surface zone,
+a dragged or dropped construct was never called geostationary, and `construct-logic` called
+every construct with a generic placement "Far Orbit" on every real host.
+BLAST: (1) A FIXTURE THAT INVENTS THE SHAPE KEEPS DEAD CODE GREEN. `construct-logic.spec.ts`
+built its Earth with the six nonexistent fields, so the dead chain passed its own gate for
+months (the PHY-34 lesson in another coat). The fixture is now pinned to the producer's keys.
+(2) The dead geostationary branches each carried their own 1,000 km tolerance and their own
+spelling ('Geosynchronous', 'Geosynchronous Orbit' - a word no Zone select offers). They were
+removed, not revived: turning a radius into a band needs a tolerance somebody chooses. (3)
+`physics/orbits.ts` still names its planner option 'Medium Orbit' as a literal - it cannot import
+from `constructs/` without a cycle of intent, it is a label not a stored value, and the stored
+stamp goes through `scheduler.ts`, which does import the word. (4) `placement === 'Surface'` is
+still compared by name in about ten files (scene.ts, reports, derived specs, topology); that
+word has one spelling and was left alone - it is the reason an in-atmosphere placement for an
+aerostat is not a small job. (5) The Traveller importer writes `${type} Orbit` from its own
+table; none of its words is the middle band.

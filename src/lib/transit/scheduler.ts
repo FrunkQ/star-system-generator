@@ -131,10 +131,11 @@ export function coastPathUnderGravity(
 // arrivalPlacement code -> human label and parking-altitude factor (radii above surface),
 // matching samplePostJourneyState's visual parking orbit.
 import { dockingOf, nearestAttachment, attachedOffsetAu, ladderLevelRadiusKm, LADDER_LABELS, type Attachment } from '../constructs/docking';
+import { PLACEMENT_MEDIUM_ORBIT } from '../constructs/placements';
 
 const PLACEMENT_LABELS: Record<string, string> = {
   lo: 'Low Orbit',
-  mo: 'Medium Orbit',
+  mo: PLACEMENT_MEDIUM_ORBIT,
   ho: 'High Orbit',
   geo: 'Geostationary Orbit',
   surface: 'Surface',

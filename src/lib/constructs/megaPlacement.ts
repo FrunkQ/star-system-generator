@@ -24,6 +24,8 @@ import type { Barycenter, CelestialBody, MegaRequires, MegaHardClauses, MegaStee
 export type MegaHost = CelestialBody | Barycenter;
 import type { MegaTypeDef } from './megaTypes';
 import { lagrangePlacementId } from '$lib/physics/lagrange';
+import { isBlackHoleNode } from '$lib/holo/bodyFeatures';
+import { ORBIT_BAND_PLACEMENTS, PLACEMENT_SURFACE, canonicalPlacement } from './placements';
 
 export interface MegaHardResult {
   ok: boolean;
@@ -71,15 +73,16 @@ export function effectiveMegaRequires(
 // an elevator is Surface or nothing. The create dialog honoured it and the Orbit tab did not, so an
 // elevator already standing could be sent to L2 from the editor; these are the one answer both ask.
 //
-// TWO VOCABULARIES MEET HERE, which is why this is a function and not `includes`: the create dialog
-// says 'Mid Orbit' and offers one 'AU Distance' about a star; the Orbit tab says 'Medium Orbit' and
-// names the same about-a-star distance by its neighbours ('Inner System', 'Earth - Mars', 'Outer
-// System'). Each is folded onto the record's own word before it is compared.
-const BAND_WORDS: ReadonlySet<string> = new Set(['Surface', 'Low Orbit', 'Mid Orbit', 'High Orbit', 'Geostationary Orbit']);
+// TWO VOCABULARIES STILL MEET HERE, which is why this is a function and not `includes`: the create
+// dialog offers one 'AU Distance' about a star, and the Orbit tab names the same about-a-star
+// distance by its neighbours ('Inner System', 'Earth - Mars', 'Outer System'). The orbit BANDS
+// are one vocabulary now (`constructs/placements.ts`); an old save's spelling is read through
+// `canonicalPlacement` before it is compared.
+const BAND_WORDS: ReadonlySet<string> = new Set([PLACEMENT_SURFACE, ...ORBIT_BAND_PLACEMENTS]);
 
 /** The record's word for a placement either surface offers. */
 export function megaPlacementWord(placement: string): string {
-  if (placement === 'Medium Orbit') return 'Mid Orbit';
+  placement = canonicalPlacement(placement);
   if (BAND_WORDS.has(placement) || lagrangePlacementId(placement)) return placement;
   return 'AU Distance';   // every remaining option is a distance from a star or barycentre
 }
@@ -104,6 +107,23 @@ export function megaIsSurfaceOnly(def: Pick<MegaTypeDef, 'allowedPlacements'> | 
   return !!allowed && allowed.length > 0 && allowed.every((p) => p === 'Surface');
 }
 
+/**
+ * MAY A GM TILT THIS STRUCTURE'S ORBIT? Yes for a megastructure whose placement IS an orbit - a
+ * ring, shell or swarm round its host, a battle station in an orbit band - because the propagator,
+ * the docking maths, the shadow chain and (RENDER-S61) the drawn structure all follow the plane.
+ * No for one that stands on a surface (its place is its anchor) and no at a Lagrange point (that
+ * orbit is DERIVED from the world it rides with, every pass). Ordinary constructs are not asked:
+ * this is the megastructure control the record owns, and it reads the record, never a type key.
+ */
+export function megaOrbitPlaneAuthorable(
+  def: Pick<MegaTypeDef, 'allowedPlacements'> | undefined,
+  placement: string | null | undefined
+): boolean {
+  if (!def || megaIsSurfaceOnly(def)) return false;
+  if (!placement || placement === 'Surface' || lagrangePlacementId(placement)) return false;
+  return true;
+}
+
 const warned = new Set<string>();
 function warnOnce(key: string, message: string): void {
   if (warned.has(key)) return;
@@ -111,7 +131,7 @@ function warnOnce(key: string, message: string): void {
   console.warn(`[mega-placement] ${message}`);
 }
 
-const KNOWN_HARD: ReadonlySet<string> = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary']);
+const KNOWN_HARD: ReadonlySet<string> = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary', 'hostIsBlackHole']);
 
 /** What the host IS, for sentences: 'barycentre' for a barycentre node, else its roleHint. */
 function hostKindWord(host: MegaHost): string {
@@ -160,6 +180,10 @@ export function megaHardCheck(
   }
   if (hard.hostIsStar && (host as CelestialBody).roleHint !== 'star') {
     return say(`This circles a star, and {host} is a ${hostKindWord(host)} — there is nothing here to circle.`);
+  }
+  // The horizon predicate the renderers already share (holo/bodyFeatures) - not a third spelling.
+  if (hard.hostIsBlackHole && !isBlackHoleNode(host)) {
+    return say(`This is built round a black hole, and {host} is a ${hostKindWord(host)} - there is no hole here to enclose.`);
   }
   if (hard.hasSurface && !hostHasSurface(host)) {
     return say(`This anchors to a surface, and {host} has none to anchor to.`);
