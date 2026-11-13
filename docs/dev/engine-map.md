@@ -2131,6 +2131,39 @@ sessionStorage guard cannot be stored. The comment at
 `scripts/shipped-manifest/build-shipped-manifest.mjs:157` ("prompt fires on every release") is now
 true only of tabs that were already open.
 
+### UI-L10 AN AUTOMATIC RE-OPEN IS A ONE-SHOT: DISARM BEFORE THE ATTEMPT, RE-ARM ONLY ONCE IT HAS STAYED UP
+BUCKET: ARCHITECTURE (product contract) - anything start-up does BY ITSELF with what the last visit
+left behind can turn one crash into a crash loop, and removes the reload as the way out. UI-L2 is
+the same law for the campaign load; this is it for the VIEW. + PLATFORM (SvelteKit: `page.state` is
+empty on every reload by design; sessionStorage is per tab and survives a reload and a discarded tab).
+WHERE: `lib/viewRestore.ts` (`createViewRestore`, `decideStartupView`) +
+`routes/+page.svelte` (`restoreViewAfterStartup`, `noteSystemOpen`, `enterSystem`, and the
+`viewRestore.forget()` in the reactive block that watches `currentSystemId`). Pinned by
+`lib/viewRestore.spec.ts` and the "after a reload" block in `routes/page.spec.ts`.
+RULE: the tab remembers the campaign id, the system's map-node id and whether that open SETTLED -
+nothing else. Every open is written UNSETTLED, the GM's own click included. It settles after
+`VIEW_SETTLE_MS` of VISIBLE time counted from the first timer after the open, with the system view
+actually bound and no `webglcontextlost` seen; the GM using a system they opened themselves settles
+it sooner, but an open the APP made is never settled by a tap. Start-up re-opens a settled record
+only, rewrites it as unsettled BEFORE the attempt, and forgets it on every other path. An unsettled
+record found at start-up means the last open did not survive: starmap, one line, forgotten.
+Nothing is restored behind the safe-mode screen or a stopped load, for a `?hub=` / `?open=` link,
+for a record from another campaign, or for a system that is gone (those last two silently).
+WHY: owner's yes, 2026-11, to the item the v3.1.78 bug run left for him. A phone that reloaded
+mid-edit kept its edit (DATA-R54, UI-L9) and lost its place every time. The guard is why it needed
+his word: a huge system on a phone, a lost graphics context or a save that throws would otherwise
+be re-entered on every start, and the app's own advice for a lost context is "reload".
+BLAST: sessionStorage, NOT localStorage - two tabs share one stored campaign and one must not drag
+the other into a system. The restore enters with `replaceState`, because the reload left the page
+ON the system's history entry; `pushState` there stacks a second one and Back needs two presses.
+The restore names a load-guard stage (`re-opening <name>`) because the guard is still armed when it
+runs (UI-L1): a hang in the open shows on the safe-mode screen under its own name. Any new exit
+from a system that does not go through `$page.state` must call `forget()`; `handleDeleteSystem`
+set `currentSystemId` alone and left the id in the state until this entry. KNOWN LIMIT: a system
+that kills the tab LATER than the dwell is indistinguishable from an ordinary reload and is
+re-entered; the GM has those seconds to press "<- Starmap", which forgets it. A reload inside the
+dwell of the GM's own open lands on the starmap with the line - quiet, and the price of the rule.
+
 ### UI-L7 A loop sized in MAP units is unbounded, because zoom is fitted to the map's own extent
 BUCKET: ARCHITECTURE - durable and general: a loop that steps in WORLD units under a FITTED zoom is
 bounded by the DATA's extent, not by anything on screen. And a GATE and a CAP are two different
