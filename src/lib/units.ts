@@ -5,7 +5,7 @@
 //
 // NOTE: the interstellar STARMAP unit (ly / pc / diagrammatic, `starmap.distanceUnit`) is a SEPARATE
 // concept and is not touched here — this is only in-system km/miles.
-import { AU_KM, EARTH_MASS_KG, JUPITER_MASS_KG, SOLAR_MASS_KG, LY_M, PC_M } from './constants';
+import { AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, JUPITER_MASS_KG, LUNA_MASS_KG, LUNA_RADIUS_KM, SOLAR_MASS_KG, LY_M, PC_M } from './constants';
 // The power ladder's L☉ stop. B110 left the engine with ONE luminosity function; this is a display
 // ladder reading its constant, never a fourth hardcoded 3.8e26.
 import { SOLAR_LUMINOSITY_W } from './physics/luminosity';
@@ -147,7 +147,7 @@ export type UnitBodyType = 'star' | 'planet' | 'moon' | 'construct';
 export type UnitId =
   | 'K' | 'C' | 'F'                              // temperature (SI base: kelvin)
   | 't' | 'kt' | 'Mt' | 'Gt'                     // mass, tonnage ladder (SI base: kg)
-  | 'M-Earth' | 'M-Jup' | 'M-Sol'                // mass, relative to a reference body
+  | 'M-Luna' | 'M-Earth' | 'M-Jup' | 'M-Sol'     // mass, relative to a reference body
   | 'm' | 'km' | 'mi' | 'AU' | 'ly' | 'pc'       // distance (SI base: km)
   | 'm3' | 'km3'                                 // volume (SI base: m³)
   | 'MW' | 'GW' | 'TW' | 'L-Sol'                 // power (SI base: W)
@@ -189,7 +189,7 @@ export interface UnitQuantitySpec {
 //               is a stellar-scale figure; see the note on POWER_W_PER before wiring G53 to it.
 export const UNIT_QUANTITIES = {
   temperature: { dimension: 'temperature', stops: ['K', 'C', 'F'] },
-  mass: { dimension: 'mass', stops: ['auto', 't', 'kt', 'Mt', 'Gt', 'M-Earth', 'M-Jup', 'M-Sol'], autoRule: 'ladder' },
+  mass: { dimension: 'mass', stops: ['auto', 't', 'kt', 'Mt', 'Gt', 'M-Luna', 'M-Earth', 'M-Jup', 'M-Sol'], autoRule: 'ladder' },
   radius: { dimension: 'distance', stops: ['km', 'mi'] },
   dimensions: { dimension: 'distance', stops: ['auto', 'm', 'km', 'mi', 'AU'], autoRule: 'ladder' },
   orbit: { dimension: 'distance', stops: ['auto', 'km', 'mi', 'AU'], autoRule: 'orbit-threshold' },
@@ -220,6 +220,7 @@ const MASS_KG_PER: Record<string, number> = {
   'kt': 1e6,
   'Mt': 1e9,
   'Gt': 1e12,
+  'M-Luna': LUNA_MASS_KG,
   'M-Earth': EARTH_MASS_KG,
   'M-Jup': JUPITER_MASS_KG,
   'M-Sol': SOLAR_MASS_KG
@@ -279,6 +280,14 @@ export function dimensionsKmFromM(dimsM: readonly number[] | null | undefined): 
 // already recorded on the G34 row.
 const IMPERIAL_STOPS: ReadonlySet<string> = new Set(['mi', 'mi/s']);
 
+// Stops a reader CHOOSES and a magnitude walk never lands on. The lunar mass is one (asked for by a
+// GM building moon systems, "there should definitely be moon masses in the mass scales"): it sits
+// in the twelve-decade gap between Gt and M⊕, so as an auto stop it would capture every reading
+// from a fiftieth of a lunar mass to a thousand of them - and a mega-construct's shell, which A80
+// deliberately reads against the EARTH ("0.01674 M⊕", pinned in units.spec.ts), would start
+// reading in Moons instead. Offering a unit and defaulting to it are two decisions; this is the first.
+const CHOSEN_ONLY_STOPS: ReadonlySet<string> = new Set(['M-Luna']);
+
 // A LADDER auto stop: the stop that puts the reading at human scale — a number between 1 and 1,000.
 // Walk the quantity's own metric stops and take the one nearest that window, preferring the SMALLER
 // stop when two tie, so a value stays in the unit it was authored in until it actually overflows
@@ -293,7 +302,7 @@ const AUTO_WINDOW_TOP = 3; // log10(1000)
 
 function ladderAutoStop(q: UnitQuantity, si: number): UnitId {
   const stops = (UNIT_QUANTITIES[q].stops as readonly UnitId[]).filter(
-    (u) => u !== 'auto' && !IMPERIAL_STOPS.has(u)
+    (u) => u !== 'auto' && !IMPERIAL_STOPS.has(u) && !CHOSEN_ONLY_STOPS.has(u)
   );
   const a = Math.abs(si);
   if (!Number.isFinite(a) || a === 0) return stops[0]; // zero has no magnitude: the ladder's base
@@ -345,6 +354,7 @@ export function unitFromSI(unit: UnitId, si: number): number {
 export function unitIdLabel(unit: UnitId): string {
   switch (unit) {
     case 'K': case 'C': case 'F': return tempUnitLabel(unit);
+    case 'M-Luna': return 'M☾';
     case 'M-Earth': return 'M⊕';
     case 'M-Jup': return 'M♃';
     case 'M-Sol': return 'M☉';
@@ -354,6 +364,32 @@ export function unitIdLabel(unit: UnitId): string {
     default: return unit; // t, kt, Mt, Gt, m, km, mi, AU, ly, pc, MW, GW, TW, km/s, mi/s read as themselves
   }
 }
+
+// What a unit is CALLED, for a tooltip ("Earth masses (M⊕)"). Only the stops whose label is a
+// symbol or an abbreviation need a name; anything else is already its own name. UK English.
+const UNIT_NAMES: Partial<Record<UnitId, string>> = {
+  t: 'tonnes', kt: 'kilotonnes', Mt: 'megatonnes', Gt: 'gigatonnes',
+  'M-Luna': 'lunar masses', 'M-Earth': 'Earth masses', 'M-Jup': 'Jupiter masses', 'M-Sol': 'solar masses',
+  km: 'kilometres', mi: 'miles'
+};
+export function unitIdName(unit: UnitId): string {
+  return UNIT_NAMES[unit] ?? unitIdLabel(unit);
+}
+
+// ——— the Size editor's RATIO radius stops ———
+// Radius has NO relative stops on the ladder above, on purpose: the `radius` quantity is the km/mi
+// flavour of a dozen different lengths (a scale height, a low-orbit altitude, a ring's edge), and
+// none of them wants to be read in lunar radii. The one place a radius IS read against a reference
+// body is the Size & Composition number field, and these are its stops, smallest first. `re` is the
+// reference's radius in EARTH radii, which is the unit that editor holds its state in.
+// (Jupiter's 11.209 is the equatorial ratio the editor has always used, moved here unchanged; the
+// mean-radius constant in constants.ts gives 10.97. Changing which one is meant is a separate edit.)
+export const RADIUS_RATIO_STOPS = [
+  { id: 'luna', symbol: 'R☾', name: 'lunar radii', re: LUNA_RADIUS_KM / EARTH_RADIUS_KM },
+  { id: 'earth', symbol: 'R⊕', name: 'Earth radii', re: 1 },
+  { id: 'jupiter', symbol: 'R♃', name: 'Jupiter radii', re: 11.209 }
+] as const;
+export type RadiusRatioId = (typeof RADIUS_RATIO_STOPS)[number]['id'];
 
 // SIGNIFICANT FIGURES, IN ONE PLACE. Three rules, and every caller gets all three:
 //
@@ -378,7 +414,7 @@ export const SIG_FIGS = 4;
 // has arrived at the same honest-digits ceiling. This promotes the existing answer.
 const FIXED_NOTATION_MAX = 1e15;
 const SIG_FIG_STOPS: ReadonlySet<string> = new Set([
-  'M-Earth', 'M-Jup', 'M-Sol', 'L-Sol', 'kt', 'Mt', 'Gt', 'km3', 'MW', 'GW', 'TW'
+  'M-Luna', 'M-Earth', 'M-Jup', 'M-Sol', 'L-Sol', 'kt', 'Mt', 'Gt', 'km3', 'MW', 'GW', 'TW'
 ]);
 
 // ONE spelling of "too big or too small for fixed notation" — 3 significant figures, the exponential

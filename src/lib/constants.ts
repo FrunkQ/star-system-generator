@@ -36,6 +36,8 @@ export const EARTH_RADIUS_KM = 6371;
 // SOLAR_RADIUS_KM (695,700 against this file's 696,340) — the app reads this one; the duplicate is
 // recorded on the board, not folded in from here.
 export const LUNA_RADIUS_KM = 1737.4;
+// Its mass, for the lunar-mass unit stop (`units.ts`): the IAU/JPL figure, 7.342e22 kg.
+export const LUNA_MASS_KG = 7.342e22;
 // THE REST OF THE SIZE-COMPARISON RULER'S LADDER. Owner, 2026-09-06: *"add more common sizes -
 // jupiter sun... and a few bigger/smaller - to make the ruler at the bottom more useful and
 // interesting"*. Every one is a body a reader already has a feel for, and they are spaced roughly a

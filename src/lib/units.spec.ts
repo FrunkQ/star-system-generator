@@ -7,11 +7,12 @@ import {
   UNIT_QUANTITIES, UNIT_BODY_TYPES, unitToSI, unitFromSI, unitIdLabel, formatUnitNum,
   formatSIInUnit, resolveAutoUnit, cycleUnit, defaultUnitFor, resolveUnitPref, unitPrefKey,
   migrateUnitPrefs, formatPref, formatPrefValues, groupRefValue,
+  unitIdName, RADIUS_RATIO_STOPS,
   type UnitId, type UnitQuantity
 } from './units';
 import {
   AU_KM, EARTH_MASS_KG, JUPITER_MASS_KG, SOLAR_MASS_KG, LY_M, PC_M,
-  EARTH_RADIUS_KM, SOLAR_RADIUS_KM
+  EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_MASS_KG, LUNA_RADIUS_KM
 } from './constants';
 import { SOLAR_LUMINOSITY_W } from './physics/luminosity';
 
@@ -425,5 +426,72 @@ describe('A80 — several readings that are one reading', () => {
   it('a group of rubbish is dashed rather than guessed at', () => {
     expect(formatPrefValues({}, 'dimensions', 'construct', [1, NaN, 3])).toBe('—');
     expect(formatPrefValues({}, 'dimensions', 'construct', [])).toBe('—');
+  });
+});
+
+// LUNAR UNITS (Discord: "there should definitely be moon masses in the mass scales", and moon radii
+// beside them; owner: "Easy. Tiny tweak."). Added as DATA on the ladder A80 built, so every panel
+// that cycles a mass picks the stop up without knowing it exists.
+describe('units — the lunar mass is a stop on the mass ladder', () => {
+  it('sits between the tonnage rungs and the Earth mass, in size order', () => {
+    const stops = [...UNIT_QUANTITIES.mass.stops];
+    expect(stops).toEqual(['auto', 't', 'kt', 'Mt', 'Gt', 'M-Luna', 'M-Earth', 'M-Jup', 'M-Sol']);
+    const concrete = stops.filter((u) => u !== 'auto') as UnitId[];
+    for (let i = 1; i < concrete.length; i++) {
+      expect(unitToSI(concrete[i], 1), `${concrete[i]} is bigger than ${concrete[i - 1]}`).toBeGreaterThan(unitToSI(concrete[i - 1], 1));
+    }
+  });
+
+  it('reads Luna as 1.000 and Earth as 81.34 of them', () => {
+    expect(unitIdLabel('M-Luna')).toBe('M☾');
+    expect(unitIdName('M-Luna')).toBe('lunar masses');
+    expect(formatUnitNum('M-Luna', unitFromSI('M-Luna', LUNA_MASS_KG))).toBe('1.000');
+    expect(formatUnitNum('M-Luna', unitFromSI('M-Luna', EARTH_MASS_KG))).toBe('81.34');
+    expect(formatPref({ 'mass:moon': 'M-Luna' }, 'mass', 'moon', LUNA_MASS_KG)).toBe('1.000 M☾');
+    // A small moon stays readable rather than rounding to nothing: Phobos is 1.45e-7 of a Moon.
+    expect(formatPref({ 'mass:moon': 'M-Luna' }, 'mass', 'moon', 1.066e16)).toBe('1.45e-7 M☾');
+    expect(unitToSI('M-Luna', unitFromSI('M-Luna', 3.3e23))).toBeCloseTo(3.3e23, -10);
+  });
+
+  it('is CHOSEN, never landed on: no magnitude makes the auto stop lunar', () => {
+    // It sits in the twelve-decade gap between Gt and M-Earth, so as an auto stop it would capture
+    // everything from a fiftieth of a Moon to a thousand of them - including the mega-construct
+    // shell A80 reads against the Earth on purpose.
+    for (let e = 0; e <= 32; e += 0.25) {
+      expect(resolveAutoUnit('auto', Math.pow(10, e), 'mass'), `1e${e} kg`).not.toBe('M-Luna');
+    }
+    expect(resolveAutoUnit('auto', LUNA_MASS_KG, 'mass')).toBe('M-Earth');
+    expect(resolveAutoUnit('auto', 1e23, 'mass')).toBe('M-Earth');   // A80's pin, restated beside its threat
+  });
+
+  it('is reachable by clicking, from every body type, and the defaults have not moved', () => {
+    let u: UnitId = 'Gt';
+    u = cycleUnit('mass', u);
+    expect(u).toBe('M-Luna');
+    expect(cycleUnit('mass', u)).toBe('M-Earth');
+    for (const b of UNIT_BODY_TYPES) expect(resolveUnitPref({ [unitPrefKey('mass', b)]: 'M-Luna' }, 'mass', b)).toBe('M-Luna');
+    expect(defaultUnitFor('mass', 'moon')).toBe('M-Earth');
+    expect(defaultUnitFor('mass', 'planet')).toBe('M-Earth');
+  });
+});
+
+describe('units — the Size editor reads a radius against Luna, Earth or Jupiter', () => {
+  it('lists the reference bodies smallest first, with Luna as the smallest', () => {
+    expect(RADIUS_RATIO_STOPS.map((s) => s.id)).toEqual(['luna', 'earth', 'jupiter']);
+    for (let i = 1; i < RADIUS_RATIO_STOPS.length; i++) expect(RADIUS_RATIO_STOPS[i].re).toBeGreaterThan(RADIUS_RATIO_STOPS[i - 1].re);
+    expect(RADIUS_RATIO_STOPS.map((s) => s.symbol)).toEqual(['R☾', 'R⊕', 'R♃']);
+  });
+
+  it('holds each one in Earth radii: Luna is 0.2727, Earth is 1, and Jupiter is unchanged', () => {
+    const by = Object.fromEntries(RADIUS_RATIO_STOPS.map((s) => [s.id, s.re]));
+    expect(by.luna).toBeCloseTo(LUNA_RADIUS_KM / EARTH_RADIUS_KM, 12);
+    expect(by.luna).toBeCloseTo(0.2727, 4);
+    expect(by.earth).toBe(1);
+    expect(by.jupiter).toBe(11.209); // the editor's old inline constant, moved not changed
+  });
+
+  it('did not put a ratio stop on the shared radius ladder', () => {
+    // That ladder is the km/mi flavour of a scale height, an orbit altitude and a ring's edge.
+    expect([...UNIT_QUANTITIES.radius.stops]).toEqual(['km', 'mi']);
   });
 });
