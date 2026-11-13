@@ -121,6 +121,53 @@ describe('+page.svelte', () => {
     expect(await findByText('My Starmap')).toBeInTheDocument();
   });
 
+  // B4: "I can't delete the randomly generated solar system that spawns in after you delete all your
+  // data." The owner: "I will kill that initial star spawn. It's legacy." Three things follow from
+  // that and all three are pinned: an empty start IS empty, an empty map says how to begin, and the
+  // last system on a map can be deleted and stays deleted (which is what a reload reads back).
+  it('"Start empty" starts empty: no system is generated, and the map says how to add the first (B4)', async () => {
+    const { generateSystem } = await import('$lib/api');
+    vi.mocked(generateSystem).mockClear();
+    localStorage.setItem('sse_welcome_v3_1_seen', '1'); // the hint waits for the first-run welcome to go
+    const { findByText, getByText, container } = renderPage();
+    await findByText('Start empty');
+    await fireEvent.click(getByText('Create Vast Nothingness'));
+    await findByText('My Starmap');
+    expect(get(starmapStore)?.systems).toEqual([]);
+    expect(container.querySelectorAll('g[role="button"]'), 'no star on the map').toHaveLength(0);
+    expect(generateSystem).not.toHaveBeenCalled();
+    expect(await findByText(/This map is empty\. Right-click \(or press and hold\) anywhere on it and choose "Add System Here"/)).toBeInTheDocument();
+    // What the browser keeps is the empty map, so a reload does not conjure a system either.
+    await waitFor(() => expect((vi.mocked(saveStarmap).mock.calls.at(-1)?.[0] as Starmap)?.systems).toEqual([]));
+  });
+
+  it('the last system on a map can be deleted, stays deleted, and the map then says how to add one (B4)', async () => {
+    const mockStarmap = {
+      id: 'test-starmap', name: 'Test Starmap', routes: [],
+      systems: [{ id: 'only', name: 'The Only System', position: { x: 100, y: 100 }, system: { id: 'only', name: 'The Only System', seed: 's', nodes: [] } as any }],
+    } as unknown as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    localStorage.setItem('sse_welcome_v3_1_seen', '1');
+    try {
+      const { container, findByText, queryByText } = renderPage();
+      await findByText('Test Starmap', {}, { timeout: 8000 });
+      expect(queryByText(/This map is empty/), 'a map with a system in it needs no hint').toBeNull();
+
+      await fireEvent.contextMenu(container.querySelector('g[role="button"]') as SVGGElement);
+      await fireEvent.click(await findByText('Delete System'));
+
+      await waitFor(() => expect(get(starmapStore)?.systems).toEqual([]));
+      await waitFor(() => expect(container.querySelectorAll('g[role="button"]')).toHaveLength(0));
+      expect(await findByText(/This map is empty/)).toBeInTheDocument();
+      // And it is the EMPTY map that was written, so it does not come back on a reload.
+      await waitFor(() => expect((vi.mocked(saveStarmap).mock.calls.at(-1)?.[0] as Starmap)?.systems).toEqual([]));
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
   it('loads and renders a saved starmap on mount', async () => {
     const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
     vi.mocked(hasSavedStarmap).mockResolvedValue(true);

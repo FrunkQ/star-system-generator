@@ -9,7 +9,7 @@
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route, ContentCredit } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
+  import { renameNode, computePlayerSnapshot } from '$lib/api';
   import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
   import { openSystemReport } from '$lib/reports/openReport';
   import { validateStarmap, generateId } from '$lib/utils';
@@ -75,7 +75,7 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
   import WelcomeModal from '$lib/components/WelcomeModal.svelte';
-  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds, temporalForExport } from '$lib/temporal/defaults';
+  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, temporalForExport } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
   import { buildFlightUpdate } from '$lib/constructs/flightState';
@@ -1768,9 +1768,11 @@
     const { name, rulepack, distanceUnit, unitIsPrefix, mapMode } = event.detail;
     selectedRulepack = rulepack;
 
-    const seed = `seed-${Date.now()}`;
-    const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
-    const anchoredTimeSec = defaultCampaignStartSeconds().toString();
+    // B4: "START EMPTY" STARTS EMPTY. This used to generate one random system at the centre of
+    // every new map - a leftover from before the map had a wizard of its own - which is not what
+    // the button ("Create Vast Nothingness") says, and which a GM then had to find out how to
+    // delete before they could begin. The first system is now placed by the GM, through the same
+    // "Add System Here" every later one uses; `emptyMapHint` below says how while the map is bare.
     const newStarmap: StarmapType = {
       id: `starmap-${Date.now()}`,
       name,
@@ -1783,23 +1785,23 @@
         pixelsPerUnit: 25,
         showScaleBar: true
       },
-      systems: [
-        {
-          id: newSystem.id,
-          name: newSystem.name,
-          position: { x: 0, y: 0 },
-          system: newSystem,
-          time: {
-            displayTimeSec: anchoredTimeSec
-          }
-        },
-      ],
+      systems: [],
       routes: [],
       temporal: createAnchoredTemporalState()
     };
     starmapStore.set(newStarmap);
     showNewStarmapModal = false;
   }
+
+  // B4: a bare map says how to put the first system on it, because the only way to add one is a
+  // menu that is invisible until asked for. Shown whenever the open map has no systems - a new one,
+  // or one whose last system was just deleted - and dismissible, coming back only if the map empties
+  // again.
+  let emptyMapHintDismissed = false;
+  $: mapIsEmpty = !!$starmapStore && ($starmapStore.systems?.length ?? 0) === 0;
+  $: if (!mapIsEmpty) emptyMapHintDismissed = false;
+  $: emptyMapHint = mapIsEmpty && !emptyMapHintDismissed && !currentSystemId && !showNewStarmapModal
+    && !showGenerationWizard && !pendingHubSystem && !showWelcome;
 
   function handleSystemClick(event: CustomEvent<string>) {
     const sysId = event.detail; // Local var to ensure immediate availability
@@ -2712,6 +2714,14 @@
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept={FILE_ACCEPT.campaign} />
 
+  <!-- B4: first in the list on purpose - every banner sits in the same place, and a real notice
+       must cover this standing hint rather than the other way round. -->
+  {#if emptyMapHint}
+    <div class="mem-banner" role="status">
+      <span>This map is empty. Right-click (or press and hold) anywhere on it and choose "Add System Here" to place your first star system.</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (emptyMapHintDismissed = true)}>×</button>
+    </div>
+  {/if}
   {#if remoteNotice}
     <div class="mem-banner" role="status">
       <span>{remoteNotice}</span>
