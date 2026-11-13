@@ -3994,8 +3994,12 @@ BLAST: **opening on the stored override is the trap** — a delta has no `.lengt
 `overrides.x?.length ? overrides.x : base` idiom silently falls back to the base and the next save
 wipes everything the GM had not re-typed. `applyListDelta` still accepts a whole list, because
 campaigns saved before this carry one. A key absent from `order` is a DELETION; a field stored as
-`undefined` is a field the GM removed. **`liquids` and `gasPhysics` still store whole lists** — same
-fault, not yet converted, and they are the next users of this module.
+`undefined` is a field the GM removed. **CORRECTED 3.1.1 - this used to say `liquids` and `gasPhysics`
+still store whole lists, and neither does.** `liquids` is a delta (the reader since D25, its editor
+since R-19). `gasPhysics` is a keyed record of only the gases that DIFFER - a new shipped gas still
+arrives, but a tweaked shipped gas is stored as a whole record, so its other fields are frozen.
+**`atmosphereCompositions` is the one section that still stores the whole list** (the effective pack
+REPLACES the distribution's entries with it) - same fault, not yet converted.
 
 ### UI-C2 The picture chain is model > photo > glyph, on every surface
 BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: a capability is not keyed on a ROLE. The subject of
@@ -7378,23 +7382,41 @@ renames a GM's definition. Get it wrong in the "different" direction and one qui
 becomes a quietly wrong campaign.
 
 ### DATA-R47 AN EDITOR THAT STORES A DELTA MUST BE HANDED THE SHIPPED PACK, NEVER THE EFFECTIVE ONE
-BUCKET: ARCHITECTURE - the companion to DATA-R46, and it cost two data-losing bugs (B147).
-WHERE: `src/routes/+page.svelte` where the pack editors are mounted; `EditBiospheresModal.svelte`
-(shipped pack - stores a delta), `EditAtmospheresModal.svelte` (effective pack - needs the merged
-liquid list for a dropdown, B132). Pinned by `EditBiospheresModal.base.spec.ts` and the corrected
-gate in `customLiquidsForGases.spec.ts`.
-RULE: **the pack prop is doing two different jobs and only one of them tolerates the effective pack.**
-An editor that stores a DELTA uses its pack twice - as the base a saved delta is laid OVER on the way
-in, and as the base the edited list is diffed AGAINST on the way out - and both of those must be the
-pack WITHOUT this campaign's overrides. Hand it the effective pack and base and edited list become
-one list: `makeListDelta` correctly finds no difference, returns `undefined`, and
-`applyStarmapOverrides` reads `undefined` as "no override at all" and DELETES the key. Opening the
-biosphere editor and pressing Save with no edits wiped morphologies, pigments and pigmentModel
-together, in silence. An editor that only POPULATES CONTROLS from the pack wants the effective one,
-which is why the two mounts differ and why "as the other editor does" is not a reason.
-BLAST: silent loss of every customisation in the affected sections, on a gesture a GM has no reason
-to think is destructive. The tell is a save handler that diffs against the same prop its loader
-applied an override to.
+BUCKET: ARCHITECTURE - the companion to DATA-R46, and it has now cost three data-losing bugs (B147
+twice, and the 3.1.1 "it only saves one custom gas").
+WHERE: `src/routes/+page.svelte` where the pack editors are mounted - ALL FIVE on `selectedRulepack`
+(Fuel & Drives, Sensors, Atmospheres, Liquids, Biospheres); `EditAtmospheresModal.svelte`
+(`effectivePack`, a second READ-ONLY prop for its liquid dropdown, B132); the fold every editor's
+save goes through is `rulepack/effectivePack.ts applyEditorOverrides`. Pinned by
+`customDefinitionsSurviveEditors.spec.ts` (reads each mount out of the page's own markup and drives
+it over several visits), `EditBiospheresModal.base.spec.ts` and the gate in
+`customLiquidsForGases.spec.ts`.
+RULE: **every editor that hands a section back is mounted on the SHIPPED pack.** Such an editor uses
+its pack twice - as the base the stored override is laid OVER on the way in, and as the base the
+edited list is diffed AGAINST on the way out - and both must be the pack WITHOUT this campaign's
+overrides. Hand it the effective pack and base and edited list become one list: the diff finds
+nothing, and the page's fold (a shallow, section-level replace) writes the section back without
+whatever was already stored. **A control that needs the effective list takes it as a SEPARATE
+read-only prop**, and nothing is ever diffed against that prop.
+**CORRECTED 3.1.1 - THIS ENTRY WAS WRONG ABOUT ONE EDITOR, AND THAT EDITOR WAS THE BUG.** It listed the
+atmospheres editor as one that "only populates controls" and so rightly took the effective pack
+(B132's fix, v3.0.321). But "stores a delta" includes A KEYED RECORD OF WHAT DIFFERS: that editor
+writes back only the gases that differ from its pack. On the effective pack a custom gas saved on the
+last visit compared equal to "the default", was left out of the next save, and the section was
+replaced without it - make a second custom gas and the first was gone, with every tweak to a shipped
+gas. Two side effects of the same mistake: a saved custom gas or mix showed "revert" instead of
+Delete, and had no Copy button, because it looked shipped.
+AND ITS COMPANION RULE: an editor hands back `undefined` for a section with nothing custom left (the
+fold removes the key). Leaving the key OUT means "keep what was stored", so deleting the last custom
+gas, mix, fuel, engine or sensor never stuck. **`undefined` is safe ONLY on the shipped pack** - on the
+effective pack an unchanged visit says "nothing custom" and wipes the section. The two travel together.
+WHY: B147 (opening the biosphere editor and pressing Save wiped morphologies, pigments and
+pigmentModel in silence), and the 3.1.1 report in three GMs' words - "when I create a new one, the
+older one deletes itself".
+BLAST: silent loss of every customisation in the affected section, on a gesture a GM has no reason to
+think is destructive. The tell is a save handler that diffs against the same prop its loader applied
+an override to. A NEW editor, or a new control inside one that wants the campaign's own list, must
+not reach for the pack prop - add a read-only prop and a row to the spec.
 
 ### RENDER-S59 A CACHED CANVAS IS NOT A CACHED TEXTURE - THE UPLOAD IS THE BILL, AND IT IS PAID PER BUILD
 BUCKET: PLATFORM (what a GPU upload costs, and what it costs when there is no GPU) plus
@@ -7520,3 +7542,61 @@ part of the new copy paste scope from explorers site".
 BLAST: a NEW field by which one definition names another must be added to `DEFINITION_REFERENCES` (both halves) or
 a copy of it pastes half-attached. A new override section with an identity needs a `<CopyDefinitionButton section>`
 in its editor - the spec compares the editors' sections against `SECTIONS` absolutely.
+
+### DATA-R52 A DOCUMENT THAT LEAVES A CAMPAIGN CARRIES THE CAMPAIGN'S RULES, AND ONE THAT ENTERS HANDS THEM TO THE CAMPAIGN
+BUCKET: ARCHITECTURE (file format) - R-19 with a file where the clipboard was. Added 3.1.1.
+WHERE: `src/lib/io/systemRules.ts` (`withCampaignRules`, `takeCarriedRules`, `takeRulesOffDocument`,
+`landCarriedRules`). OUT: `SystemView.svelte handleSaveSystem` (GM branch), `ConstructSidePanel.svelte
+handleExport`. IN: `SystemView.svelte openSystemBytes`, `io/systemFromSave.ts` (the wizard's file and
+Explorers doors, the "Add System" link) into `+page.svelte landSystem`, and `ConstructSidePanel.svelte
+handleImport`. Pinned by `io/customDefinitionsRoundTrip.spec.ts`, nine roads with TWO custom
+definitions in every section, counted absolutely.
+RULE: custom definitions live on the STARMAP (`rulePackOverrides`), never on a node, so anything saved
+WITHOUT its campaign must take them along. **OUT:** a system file and a construct file carry the
+campaign's `rulePackOverrides` WHOLE (DATA-R50) - the key and shape a campaign file and a clip already
+use, through `readClipOverrides`, so a save cannot write what a load would drop. **IN:** the key comes
+OFF the document (left on, a system inside a campaign would hold a second, stale copy), is merged per
+DEFINITION by `mergeClipOverrides` - added, dropped when identical, renamed and the arriving nodes
+repointed on a clash, never overwritten (DATA-R48) - BEFORE `process()`, and the result is SAID ALOUD
+through `describeMerge`. **NEVER ON A PLAYER SAVE:** that file goes to players and the bag names every
+drive and sensor in the campaign, hidden ships' included.
+WHY: the 3.1.1 reports - "every single custom thing we created from engines to biospheres gets
+deleted", and custom engines, atmospheres and liquids gone from a system file while "the planets'
+atmospheres with custom molecules were unchanged". Save System wrote the nodes alone. So did a
+construct Export (a drive shown by its id, "Unknown Fuel", no thrust), and the wizard took a CAMPAIGN
+file's first system and left the rules at the top of that file behind. Nothing failed or warned.
+BLAST: any NEW standalone file kind and any NEW door a system or construct enters by needs both
+halves, or it is this bug again. The merge needs the SHIPPED pack (delta sections are written back
+against it): `SystemView` and `ConstructSidePanel` take it as `shippedRulePack`, and the editor is
+reached two ways (`ConstructDetailsPane`, `ShipPanel`) - an import where that prop is absent takes the
+key off and merges nothing. A file from before 3.1.1 has no key and loads as it did; a 3.1.1 file
+opened by an OLDER build leaves a harmless stray key on the system or construct. Whether a construct
+file should carry only what the construct names is an OPEN OWNER DECISION - it carries the whole bag,
+as a copied ship does, so importing a ship can add another campaign's gases and pigments.
+
+### DATA-R53 A CAMPAIGN IS DERIVED AGAINST ITS OWN RULES FROM THE FIRST PASS
+BUCKET: ARCHITECTURE - DATA-R48's third point ("the merge runs before `process()`, never after") at the
+campaign's own door. Added 3.1.1.
+WHERE: `src/lib/rulepack/effectivePack.ts campaignRulePack`; `src/routes/+page.svelte
+recalcAllSystems` (a refresh from browser storage, a base-map upgrade or its undo, an example or
+real-sky starmap) and `openStarmapPayload` (a campaign opened from a file or a link). Pinned by
+`rulepack/campaignRulePack.spec.ts`, which reads out of the page which pack each load derives
+against and derives the test world with that.
+RULE: every campaign load strips each system's derived data and re-derives it, and that re-derive
+uses the campaign's EFFECTIVE pack - shipped plus its own `rulePackOverrides` - not the shipped pack
+alone. **IT FALLS BACK RATHER THAN FAILING:** overrides in a shape the merge cannot walk give the
+shipped pack and a console warning, because a damaged file opened before this and must still open.
+WHY: both loads derived against `selectedRulepack`, so a world breathing a custom gas over an ocean
+of a custom liquid came back coloured, heated and tagged as though neither existed - 49 derived
+fields different on the test world, among them `apparentColorHex`, the ocean and haze colours, the
+greenhouse temperature and two vegetation layers. The definitions were never lost; the worlds did
+not show them on the starmap, in All Bodies or to players until the GM opened that system, where
+the system view derives against the effective pack and converges (0 differences, measured). "Liquid
+colours do not save" was this.
+BLAST: authored data is untouched - this changes only what is DERIVED on load. NOT YET COVERED, each
+read in the code and not measured, and each heals when its system is opened: `attachStarmapUndo(() =>
+selectedRulepack)` (a deleted system restored by undo), the generation wizard's first pass and
+`placePendingHubSystem` when the file brings no rules of its own, and the real-sky import's
+`completeImportedStars` / `fillOutAll`. The wizard is also MOUNTED on the shipped pack, so a custom
+atmosphere mix's spawn weight does not apply to what it generates. Any new load path must ask
+`campaignRulePack` before its first `process()`.
