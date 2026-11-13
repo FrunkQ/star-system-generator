@@ -14,6 +14,7 @@ import { describeTag } from '$lib/tags/tagPresentation';
 import { activeOverrides, formatOverrideValue } from './overrides';
 import { tagOrigin } from '$lib/tags/tagLifecycle';
 import { auroraEmitter } from './aurora';
+import { lacksMagnetosphere, formatGauss } from './magnetism';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { gascheauMargin } from './lagrange';
 
@@ -784,7 +785,11 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
           value: `${f.value} — ideal ${f.ideal}`
         })),
         { label: 'Geology regime', value: body.geoActivity?.regime ?? '—' },
-        { label: 'Magnetosphere', value: body.magnetism ? (body.magnetism.intrinsic ? 'intrinsic' : body.magnetism.source) : '—' }
+        // B-3: a pinned field decides the habitability term, so the working has to say so - the
+        // interior model alone would print "none" beside a score that did not deduct for it.
+        { label: 'Magnetosphere', value: typeof body.overrides?.magneticFieldGauss === 'number'
+            ? `${lacksMagnetosphere(body) ? 'none' : 'present'} — field pinned by the GM at ${formatGauss(body.overrides.magneticFieldGauss)} G`
+            : body.magnetism ? (body.magnetism.intrinsic ? 'intrinsic' : body.magnetism.source) : '—' }
       ],
       outputs: [
         ...(hb?.factors ?? []).map((f) => ({

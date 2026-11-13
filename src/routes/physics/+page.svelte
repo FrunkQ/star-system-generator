@@ -1703,7 +1703,9 @@
           −25 (runaway-greenhouse risk); <strong>tidal-volcanic</strong> −20 (resurfaced too fast); <strong>inactive</strong>
           −10 (no outgassing / nutrient recycling); <strong>plutonic</strong> −10 (intrusive only, so the same
           loss with a different cause).</li>
-        <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).</li>
+        <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).
+          A field you pin with the magnetosphere override is the field: pinned above zero it counts as a
+          magnetosphere here even on a world with no dynamo, and pinned to zero it counts as none.</li>
         <li>A <strong>subsurface ocean</strong> (cryovolcanic or under-ice) floors the score at 35 with a
           <code>habitability/subsurface</code> tier — sub-ice life is a separate axis from the surface Goldilocks zone.</li>
       </ul>
