@@ -149,6 +149,25 @@ export const SUPERMASSIVE_AMBER_NOTE =
 	'collapses into stars faster than the hole can swallow it, so nothing is known to grow this ' +
 	'heavy. Kept as typed.';
 
+/**
+ * WHERE "SUPERMASSIVE" BEGINS, for the word a black hole is called by (ideas B22).
+ *
+ * Black holes come in three populations by how they are made: stellar-mass ones from a collapsing
+ * star (the pack's `star/BH` band, 3 to about 100 solar masses), supermassive ones in the hearts of
+ * galaxies, and the INTERMEDIATE-MASS holes in between. The lower edge of "intermediate" is read
+ * from the pack - whatever the stellar band tops out at - so it is not repeated here.
+ *
+ * The upper edge is a convention with real spread: 1e5 solar masses is the figure most often
+ * quoted, and reviews of the observations run it to 1e6 (Mezcua 2017), because the few-1e5 holes
+ * actually found in dwarf-galaxy nuclei are called intermediate by the people who find them. The
+ * wider reading is used: the report that asked for the word was a 120,000 solar-mass hole "between
+ * a stellar and a supermassive black hole". Sagittarius A*, at 4 million, is supermassive either way.
+ *
+ * A WORD, NOT A CLASS. Nothing is classified, gated or generated off this; the body is `star/BH`
+ * throughout, and its physics is its mass.
+ */
+export const SUPERMASSIVE_BH_FROM_SOLAR = 1e6;
+
 /** The travel this slider spans right now: the supermassive range when the switch is on. */
 export function massSoftRange(supermassive: boolean): readonly [number, number] {
 	return supermassive ? SUPERMASSIVE_MASS : STAR_BOUNDS.mass.soft;

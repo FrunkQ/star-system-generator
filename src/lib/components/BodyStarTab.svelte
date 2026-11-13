@@ -44,7 +44,9 @@
       // star, and for a black hole the band cannot stand in - its radius IS its mass.
       explainStarClass(rulePack, currentClass, { ...{
           activity: activityBucket,
-          radiusSolar: body?.radiusKm ? body.radiusKm / SOLAR_RADIUS_KM : undefined
+          radiusSolar: body?.radiusKm ? body.radiusKm / SOLAR_RADIUS_KM : undefined,
+          // B22: its own mass, so a black hole is named for the kind it is (stellar, intermediate, supermassive).
+          massSolar: body?.massKg ? body.massKg / SOLAR_MASS_KG : undefined
       }, stellarType: body?.stellarType })
   );
   // G54: WHAT AN OBSERVER MEASURES, beside what the star IS. Built by the ONE designation builder,

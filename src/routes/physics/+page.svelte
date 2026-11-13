@@ -499,6 +499,14 @@
         editor shows the warning in amber and <strong>keeps whatever you typed</strong>: alien engineering,
         a reality breakdown and a plot device are all legitimate reasons, and the engine cannot tell one of
         those from a typo.</p>
+      <p>A hole is <strong>named for its mass</strong>, because that is the only thing that says which kind
+        it is: a plain <em>black hole</em> up to the top of the stellar-mass band (what a collapsing star
+        leaves, about 100 solar masses), an <em>intermediate-mass black hole</em> above that, and a
+        <em>supermassive black hole</em> from a million solar masses up. The upper line is a convention
+        with real spread &mdash; 100,000 is often quoted, and the few-hundred-thousand holes found in dwarf
+        galaxies are called intermediate by the people who find them &mdash; so the wider reading is used.
+        It is a word and not a class: the body is the same kind of object throughout, and a heavy hole is
+        never marked implausible for being heavier than the stellar band.</p>
       <p>Finally, a catalogue designation sometimes carries <strong>annotations after the class</strong>
         &mdash; <code>m</code> for metallic-line, <code>e</code> for emission, <code>n</code> for broad
         lines, <code>p</code> for peculiar, and so on. These are read and kept rather than treated as part
