@@ -9,7 +9,7 @@
   // refuses to invent or overwrite, and this dialogue is where that shows.
   import { createEventDispatcher } from 'svelte';
   import { REGION_PRESETS } from '$lib/import/realsky/presets.mjs';
-  import { loadArchiveRows, loadStarRows, loadStarSizes, loadContainerComponents } from '$lib/import/realsky/catalogue.mjs';
+  import { loadArchiveRows, loadStarRows, loadStarSizes, loadContainerComponents, fillOutCaution } from '$lib/import/realsky/catalogue.mjs';
   import { convertRegion } from '$lib/import/realsky/convert.mjs';
   import { runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT } from '$lib/import/realsky/query.mjs';
   import { toAsciiQuery, displayStarName, designationFor, toCatalogueTerm } from '$lib/import/realsky/starNames.mjs';
@@ -400,6 +400,9 @@
   // Both recompute off `preview`, which changes on every radius/centre move.
   $: cost = preview ? estimateCost(preview.systems) : null;
   $: suggestion = preview && band !== 'green' ? suggestRadius(radiusLy, countAt) : null;
+  // Said beside the box, when ticking it would invent worlds round stars whose real planets could
+  // not be checked (the archive was down and this region is beyond the bundled copy).
+  $: fillCaution = fillOut ? fillOutCaution(source, { centre, radiusLy }) : null;
 </script>
 
 <div class="modal-background" class:docked-wrap={mode === 'append'} role="presentation" on:click|self={() => mode === 'new' && close()} use:foreground>
@@ -537,6 +540,7 @@
             adds <code>origin/generated</code>. Deterministic: one person's import is everyone's.
           </span>
         </label>
+        {#if fillCaution}<p class="warning">{fillCaution}</p>{/if}
 
         {#if fillOut}
           <!-- G33: whoever calls infillSystem from a UI mounts the dials. The SAME panel the file

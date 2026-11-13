@@ -32,7 +32,7 @@
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import RealSkyImportModal from './RealSkyImportModal.svelte';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
-  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { fillOutImported } from '$lib/import/realsky/fillout';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
@@ -1103,13 +1103,13 @@
   }
 
   function handleRealSkyAppend(event: CustomEvent<any>) {
-    const { systems, fillOut, infillKnobs } = event.detail;
+    const { systems } = event.detail;
     // Same completion + processing every imported system gets on load:
     // pack-band star field/tilt, then the full physics pass (the Traveller
     // importer processes before dispatching for the same reason).
     completeImportedStars(systems, rulePack);
     // G33: the dials the GM set in the modal, not the defaults.
-    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), rulePack, { knobs: infillKnobs });
+    fillOutImported(event.detail, systems, rulePack);
     for (const entry of systems) {
       entry.system = systemProcessor.process(fixUpImportedSystem(entry.system, rulePack), rulePack);
     }

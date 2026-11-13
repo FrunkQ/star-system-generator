@@ -44,7 +44,7 @@
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
   import RealSkyImportModal from '$lib/components/RealSkyImportModal.svelte';
-  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { fillOutImported } from '$lib/import/realsky/fillout';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
   import { PIXELS_PER_LY } from '$lib/import/realsky/constants.mjs';
   import GenerationWizard from '$lib/components/GenerationWizard.svelte';
@@ -2119,14 +2119,15 @@
   // (deterministic per star, tagged origin/generated), and runs the same
   // physics recalc every loaded map gets.
   async function handleRealSkyImport(event: CustomEvent<any>) {
-    const { systems, fillOut, name, description } = event.detail;
+    const { systems, name, description } = event.detail;
     if (!selectedRulepack && rulePacks.length) selectedRulepack = rulePacks[0];
     if (!selectedRulepack) return;
     // The catalogues carry no stellar magnetic field or spin tilt; complete
     // them from the rule pack's bands, deterministically per star, exactly as
     // the generator does for its own stars.
     completeImportedStars(systems, selectedRulepack);
-    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), selectedRulepack);
+    // The dials the GM set in the dialogue go with it - one call shared with the append door.
+    fillOutImported(event.detail, systems, selectedRulepack);
     const newStarmap: StarmapType = {
       id: `starmap-realsky-${Date.now()}`,
       name,

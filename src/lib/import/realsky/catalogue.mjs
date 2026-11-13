@@ -17,6 +17,28 @@ export const BUNDLED_CACHE_URL = '/realsky/pscomppars.json';
 export const BUNDLED_STARS_URL = '/realsky/stars.json';
 export const BUNDLED_CACHE_MAX_LY = 12.7 * LY_PER_PC; // ~41.4 — the snapshot's own query bound
 
+// WHAT TO SAY BESIDE THE FILL-OUT BOX WHEN THE CONFIRMED PLANETS COULD NOT ALL BE CHECKED.
+//
+// The star census and the planet archive are two services and fail separately. When the archive is
+// down the stars still arrive live, from any distance - but the planets come from the bundled
+// snapshot, which stops ~41 light years from Sol. A star beyond that (47 Ursae Majoris is at 45)
+// then imports BARE, and ticking "fill out" surrounds it with invented worlds where its real ones
+// belong: the report was "it didnt add any of the existing planets and just made the generated
+// ones instead". The source line above the box already says "bundled snapshot"; this says what
+// that MEANS for the box being ticked, at the moment it is ticked. A steer, never a stop - the GM
+// may want exactly that map.
+//
+// `region` is the region being IMPORTED, not the wider one fetched.
+export function fillOutCaution(source, region) {
+  if (source !== 'bundled') return null;
+  const reachLy = (region?.centre?.distLy ?? 0) + (region?.radiusLy ?? 0);
+  if (!(reachLy > BUNDLED_CACHE_MAX_LY)) return null;
+  return `The exoplanet archive could not be reached, and the bundled copy only knows the planets within `
+    + `${Math.round(BUNDLED_CACHE_MAX_LY)} light years of Sol. Stars beyond that arrive here with NO confirmed planets, `
+    + `so filling out would put generated worlds where their real ones belong. Try again when the archive answers, `
+    + `or import without filling out.`;
+}
+
 // THE STELLAR CENSUS — the importer's PRIMARY query since D18.
 //
 // Unlike the archive, SIMBAD sends `Access-Control-Allow-Origin: *` and answers a browser

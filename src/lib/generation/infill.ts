@@ -218,12 +218,20 @@ export function infillSystem(system: System, pack: RulePack, opts: InfillOptions
     if (p.orbit) p.orbit.hostId = host.id;
     // A lone star's worlds are "<System> b, c ..." exactly as the real-sky importer named them; in a
     // multi-star system each star's worlds take the star's own name so "b" is not ambiguous.
+    // ITS MOONS WERE NAMED BEFORE IT WAS RE-LETTERED, so they follow it. The generator calls its
+    // second world "<System> c" and that world's moon "<System> c I"; if the catalogue already has
+    // a c, the world becomes f here - and its moon went on calling itself "c I", which names a
+    // CONFIRMED planet as the parent of an invented moon.
+    const nameBefore = p.name;
     if (letter) p.name = `${stars.length === 1 ? system.name : host.name} ${letter}`;
     markGenerated(p);
     p.description = `A plausible world generated around this star to fill out the system. Not part of the import.${p.description ? '\n\n' + p.description : ''}`;
     system.nodes.push(p);
     result.addedPlanets++;
     for (const child of childrenOf(p.id)) {
+      if (nameBefore && p.name !== nameBefore && child.name?.startsWith(`${nameBefore} `)) {
+        child.name = p.name + child.name.slice(nameBefore.length);
+      }
       markGenerated(child);
       system.nodes.push(child);
       if ((child as CelestialBody).roleHint === 'moon') result.addedMoons++;
