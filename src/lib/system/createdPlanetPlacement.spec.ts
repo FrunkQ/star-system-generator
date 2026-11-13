@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { addPlanetaryBody } from './modifiers';
+import { addPlanetaryBody, preferredOrbitBandAU } from './modifiers';
 import { systemProcessor } from '../core/SystemProcessor';
-import { calculateAllStellarZones, calculateRocheLimit } from '../physics/zones';
+import { calculateAllStellarZones, calculateRocheLimit, getDistanceForTemperature } from '../physics/zones';
 import type { RulePack, CelestialBody, System } from '../types';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 
@@ -150,6 +150,27 @@ describe('the type is honoured where the pack says what it wants', () => {
     const t = Array.from({ length: 8 }, (_, i) => created(100 + i, 'planet/ice-giant'))
       .map((p) => p.equilibriumTempK ?? 0);
     for (const teq of t) expect(teq).toBeLessThan(260);
+  });
+
+  it('and it is the BIRTH band that places it, not the wider band the classifier matches on', () => {
+    // An ice giant's `match` and `range` run to 700 K now, because one that already sits on a warm
+    // orbit is still an ice giant (engine map CLASS-2). Where a NEW one appears is a birth question
+    // and reads `formation.Teq_K`, still 0-200 K.
+    //
+    // ASKED OF THE BAND ITSELF, because the draws above cannot see the difference: a type with
+    // "giant" in its name is sent beyond the CO2 line (15.9 AU for a Sun) whenever there is room
+    // there, which is colder than either band asks. The band only binds when the outer system is
+    // full and the giant falls back to an inner gap - and that is exactly the case in which reading
+    // the 700 K band would put a new ice giant at 0.16 AU.
+    const band = preferredOrbitBandAU('planet/ice-giant', freshStar(), P)!;
+    const coldEdgeAU = getDistanceForTemperature(freshStar(), 200);
+    expect(band[0]).toBe(coldEdgeAU);
+    expect(band[0]).toBeGreaterThan(1.9);        // absolute: ~1.94 AU is where a Sun gives 200 K,
+    expect(band[0]).toBeLessThan(2.0);
+    expect(getDistanceForTemperature(freshStar(), 700)).toBeLessThan(0.2);   // and 700 K is ~0.16 AU
+    // A type with no formation band still reads its editor range, as it always has.
+    const hot = preferredOrbitBandAU('planet/hot-neptune', freshStar(), P)!;
+    expect(hot[1]).toBe(getDistanceForTemperature(freshStar(), 700));
   });
 
   it('a GAS GIANT is placed beyond the ice line unless it was MIGRATED there', () => {

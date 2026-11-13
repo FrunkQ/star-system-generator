@@ -1068,7 +1068,9 @@ export interface Fingerprint {
   // generator), NEVER by the classifier. The classifier works on what it sees: a hand-authored
   // chthonian in a million-year-old system still classifies as a chthonian, however implausible its
   // presence, and the tags say so. `formation` is the one-way half of that bargain — it decides
-  // what a slot may be GIVEN, not what a body IS. Bands: age_Gyr (early / late formers).
+  // what a slot may be GIVEN, not what a body IS. Bands: age_Gyr (early / late formers) and Teq_K
+  // (a type that forms cold but is still itself once moved somewhere warm — the ice giant; where
+  // it is declared the temperature gate reads it INSTEAD of the match band, engine map CLASS-2).
   formation?: Record<string, FingerprintBand>;
   weight?: number;                       // optional score multiplier (default 1)
   note?: string;                         // human note on the type's defining traits

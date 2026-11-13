@@ -151,6 +151,12 @@
         makeup is read as fluid whatever its density, and changing its density changes its <em>size</em>, never its
         makeup. One squeezed past what hydrogen manages on its own is tagged <code>structure/overdense</code> and
         left as you made it. A makeup you set yourself always stands.</p>
+      <p><strong>The density control's ceiling follows the mass for the same reason.</strong> For anything up to
+        about six Jupiter masses the box and its slider stop at 30 g/cc, which is twice as dense as solid iron gets
+        in this model. Above that the stop is twice the densest a hydrogen body of that mass packs down to: about
+        54 g/cc at ten Jupiter masses, 72 at thirteen (the lightest brown dwarf), 116 at twenty and about 400 at
+        sixty. It is a limit of that one control and not of the engine: a body saved or imported with a higher
+        density keeps it, and the Overrides tab pins any density at all.</p>
       <p>The composition classes (iron, silicate, coreless, carbon) key on these fractions, and makeup feeds the
         fluid layers, magnetism and geology below.</p>
     </section>
