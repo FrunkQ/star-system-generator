@@ -15,6 +15,7 @@
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
   import { classifySaveFile } from '$lib/io/classify';
   import { systemFromSave } from '$lib/io/systemFromSave';
+  import type { CarriedRules } from '$lib/io/systemRules';
   import { fetchHubMapFromUrl } from '$lib/hub/hubClient';
   import { creditDownloadedSystem } from '$lib/io/hubClip';
   import type { HubMapSummary } from '$lib/hub/hubMapList';
@@ -221,10 +222,12 @@
    * file from disk, a system from Explorers). The answer is `systemFromSave`, which the "Add System to
    * SSE" link's placement uses too (R-18); this only classifies and says what went wrong.
    */
-  async function systemFromBytes(raw: Uint8Array): Promise<System | null> {
+  async function systemFromBytes(raw: Uint8Array): Promise<{ system: System; rules?: CarriedRules } | null> {
     const got = await systemFromSave(classifySaveFile(raw), rulePack);
     if (!got.ok) { alert(got.problem); return null; }
-    return got.system;
+    // 3.1.1: the custom gases, liquids, drives and the rest that the save's campaign made travel WITH
+    // the system to the page, which folds them into this campaign as it places it (`landSystem`).
+    return { system: got.system, rules: got.rules };
   }
 
   // Load a previously-SAVED system file (what the in-system "Load System" does) and drop it in at the
@@ -245,10 +248,10 @@
     }
     busy = true;
     try {
-      const fixed = await systemFromBytes(new Uint8Array(await file.arrayBuffer()));
-      if (!fixed) return;
-      const system = systemProcessor.process(fixed, rulePack);
-      dispatch('generate', { system });
+      const got = await systemFromBytes(new Uint8Array(await file.arrayBuffer()));
+      if (!got) return;
+      const system = systemProcessor.process(got.system, rulePack);
+      dispatch('generate', { system, rules: got.rules });
     } catch (err) {
       console.error('Failed to load system file', err);
       alert(`The file loaded but could not be opened: ${(err as Error)?.message ?? err}`);
@@ -276,11 +279,11 @@
     try {
       const fetched = await fetchHubMapFromUrl(map.downloadUrl);
       if (!fetched.ok) { alert(fetched.problem); return; }
-      const fixed = await systemFromBytes(fetched.bytes);
-      if (!fixed) return;
-      const credit = creditDownloadedSystem(fixed, { url: map.url ?? undefined, title: map.title, creator: map.creator?.name });
-      const system = systemProcessor.process(fixed, rulePack);
-      dispatch('generate', { system, credit });
+      const got = await systemFromBytes(fetched.bytes);
+      if (!got) return;
+      const credit = creditDownloadedSystem(got.system, { url: map.url ?? undefined, title: map.title, creator: map.creator?.name });
+      const system = systemProcessor.process(got.system, rulePack);
+      dispatch('generate', { system, credit, rules: got.rules });
     } catch (err) {
       console.error('Failed to load a system from Explorers', err);
       alert(`That system arrived but could not be opened: ${(err as Error)?.message ?? err}`);

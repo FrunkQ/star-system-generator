@@ -88,6 +88,7 @@
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { classifySaveFile, type ClassifiedSaveFile } from '$lib/io/classify';
   import { systemFromSave } from '$lib/io/systemFromSave';
+  import { landCarriedRules, type CarriedRules } from '$lib/io/systemRules';
   import { fetchHubMapCredit } from '$lib/hub/hubMapList';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
@@ -1198,7 +1199,7 @@
     });
     const system = systemProcessor.process(got.system, selectedRulepack);
     pendingHubSystem = null;
-    landSystem(system, at, credit);
+    landSystem(system, at, credit, got.rules);
   }
 
   /** Acknowledge a failed hub open. Clears the param so a refresh is a fresh start, not a replay. */
@@ -2173,22 +2174,36 @@
   // spelling at the door. R-18 (Stream AA job 3): a system picked from the wizard's Explorers list
   // arrives with a `credit` naming its cartographer, and it lands on the campaign exactly as a pasted
   // system's does, through the same function.
-  function placeGeneratedSystem(event: CustomEvent<{ system: System; credit?: ContentCredit }>) {
+  function placeGeneratedSystem(event: CustomEvent<{ system: System; credit?: ContentCredit; rules?: CarriedRules }>) {
     showGenerationWizard = false;
     const pos = pendingWizardPosition; pendingWizardPosition = null;
     if (!$starmapStore || !pos) return;
-    landSystem(event.detail.system, pos, event.detail.credit);
+    landSystem(event.detail.system, pos, event.detail.credit, event.detail.rules);
   }
 
   /**
    * A PROCESSED SYSTEM ONTO THE MAP, and when it came from Explorers, a sentence saying whose it is.
    * The wizard's door and the "Add System to SSE" link's placement both end here (R-18).
    */
-  function landSystem(system: System, pos: { x: number; y: number; z?: number }, credit?: ContentCredit) {
-    starmapStore.update((m) => (m ? placeSystemOnMap(m, system, pos, [credit]).map : m));
-    if (credit) {
-      const who = credit.creator ? ` (credited to ${credit.creator})` : '';
-      clipNotice = `Added ${system.name} from Explorers${who}.`;
+  function landSystem(system: System, pos: { x: number; y: number; z?: number }, credit?: ContentCredit, rules?: CarriedRules) {
+    // 3.1.1: A SAVED SYSTEM BRINGS THE RULES ITS CAMPAIGN MADE (`io/systemRules.ts`). They are folded
+    // into THIS campaign per definition - added, discarded when identical, renamed when this campaign
+    // already uses the name differently, never overwritten - and the system is then re-derived against
+    // the pack that knows them, by the same strip-then-process every reload uses (a processed body
+    // keeps its class, so processing again without the strip would keep the first pass's answer).
+    const map = $starmapStore;
+    const landed = map && rules && selectedRulepack
+      ? landCarriedRules(rules, map.rulePackOverrides, selectedRulepack, system.nodes)
+      : null;
+    const placed = landed ? systemProcessor.process(fixUpImportedSystem(system, landed.pack), landed.pack) : system;
+    const rulesNote = landed?.note ?? '';
+    starmapStore.update((m) => (m
+      ? placeSystemOnMap(landed ? { ...m, rulePackOverrides: landed.overrides } : m, placed, pos, [credit]).map
+      : m));
+    if (credit || rulesNote) {
+      const who = credit?.creator ? ` (credited to ${credit.creator})` : '';
+      const arrived = credit ? `Added ${system.name} from Explorers${who}.` : `Placed ${system.name}.`;
+      clipNotice = `${arrived}${rulesNote ? ' ' + rulesNote : ''}`;
       if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
       clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
     }
@@ -2834,7 +2849,8 @@
     {#if $systemStore && effectiveRulePack}
       <SystemView
         on:pasteClip={(e) => pasteClipInto(e.detail)}
-        system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
+        system={$systemStore} rulePack={effectiveRulePack} shippedRulePack={selectedRulepack} {exampleSystems}
+        on:notice={(e) => { clipNotice = e.detail; if (clipNoticeTimer) clearTimeout(clipNoticeTimer); clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000); }}
         {broadcastSessionId}
         routesAttention={routesData.worstAttention}
         on:new={handleRequestNewStarmap}
