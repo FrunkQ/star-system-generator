@@ -3807,6 +3807,36 @@ BLAST: OTHER CODE CITES "the Day Length control" AS THE HOUSE SLIDER IDIOM (grad
 the runnable track, a notch ON the track): `BodyOverridesTab.svelte` in three comments. They point
 at `BodySpinEditor` now; anything new that cites the idiom should too.
 
+### UI-C23 A FILTER WITH NO CONTROL OF ITS OWN MUST SAY IT IS ON, AND MOST OF ALL WHEN IT MATCHES NOTHING
+BUCKET: ARCHITECTURE - an emphasis driven by state set somewhere else, and persisted, is invisible
+at exactly the moment it is most total.
+WHERE: `components/Starmap.svelte` (the `.hl-key` box in its `hl-note` form: `highlightNames`,
+`fadedSystemCount`, `clearHighlights`, `highlightNoteDismissedFor`); `tags/mapHighlights.ts`
+(`describeHighlightRef`, `presentTagKey`). Gates: `components/Starmap.highlightNote.spec.ts`,
+`tags/mapHighlights.spec.ts` (`describeHighlightRef`).
+RULE: while a tag highlight is fading systems the key says so: "Highlighting: <the selection>",
+how many systems that has faded, a Clear (which empties `liveOverrides.mapHighlights`, the one
+selection every map shares - the GM's and the players'), and an X that hides the NOTE and never the
+highlight. The count is taken with `systemMatches`, the same call `class:hl-dim` makes, so the
+number in the note and the number of dimmed systems cannot differ. GM starmap only: the players'
+starmap (`starmap/Starmap2DView`, `starmapScene`) draws the badges and does not fade.
+WHY: a user: *"why are stars faded in the starmap?"* The selection lives in `localStorage`
+(`liveOverrides`), is chosen in Find by tag or the Player Views panel, and survives a reload. The
+key used to render only when `highlightKey.length` - that is, when something MATCHED - so a
+selection nothing on the map carried dimmed EVERY system to 22% and drew nothing at all.
+BLAST: THE BOX IS `pointer-events: none` so it never eats a map drag; its two buttons opt back in.
+A new control inside it is dead until it does the same.
+BLAST: THE DISMISSAL IS KEYED TO THE SELECTION (`highlightSelectionKey`), in memory only. A
+different selection is a different question and brings the note back; so does a reload, on purpose -
+a persisted fade with a persisted "do not tell me" is the original fault again.
+BLAST: WHAT A SELECTION ENTRY IS CALLED HAS ONE ANSWER NOW, `describeHighlightRef`. It was spelled
+twice and the two disagreed: `PlayerViewModal.hlStyle` asked only the GM's categories (an engine tag
+such as `biodiversity/land-cover` was a grey chip named from its raw key) and `TagFinder.hlChip`
+asked only the presentation layer (a faction the GM had recoloured kept the category colour). Both
+call the one function, and a tag entry resolves exactly as its MARKER does (`presentTagKey`, which
+`markersFor` uses too) - so the two chips in those panels may have changed colour or wording for
+some tags. Not seen in a browser.
+
 ### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
 BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
 clean console, no error, no warning and a hit test that measures perfectly.
