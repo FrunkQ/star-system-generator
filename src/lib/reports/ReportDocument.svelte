@@ -738,6 +738,61 @@
   <title>System Report - {system ? system.name : 'Loading...'}</title>
 </svelte:head>
 
+<!-- ONE ROW OF THE SYSTEM CHART: a body on the line, whatever is stacked with it, the slanted name
+     and the AU figure. It was written out three times - the main star's row, each further star's
+     row and the circumbinary strip - differing only in where the line sits (`baseY`), which list
+     the label-clash test reads (`entries`), and a 2-unit lift on the name and AU figure that the
+     further-star rows have always had (`nameLift`). Pinned element for element against the
+     three-copy version by reportChart.spec.ts. Declared at the top level, so its elements rely on
+     Svelte inferring the SVG namespace from the snippet's own content; the spec asserts that too. -->
+{#snippet chartRow(entry: { body: CelestialBody | Barycenter; idx: number; orbitRadius: number; aAU: number }, entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>, markerX: number, baseY: number, nameLift: number)}
+    {#each getBodyStackItems(entry.body) as item, stackIdx}
+        {@const itemY = baseY + stackIdx * 14}
+        {#if item.type === 'divider'}
+            <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
+        {:else if item.type === 'body' || item.type === 'moon'}
+            {@const body = item.body!}
+            {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
+            {#if body.roleHint === 'belt'}
+                {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
+                <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
+            {:else}
+                <ellipse cx={markerX} cy={itemY} rx={bodyRadius} ry={bodyRadius * oblatePolarFactor(body.oblateness)} fill={item.type === 'moon' ? "#333" : "#111"} />
+            {/if}
+            {#if isPlanetLike(body) && hasRingSystem(body)}
+                <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
+            {/if}
+            {#if item.type === 'body' && stackIdx === 0}
+                {#if !shouldSuppressDiagramBodyLabel(entry, entries)}
+                    <text
+                        x={markerX + bodyRadius + 2}
+                        y={itemY - bodyRadius - nameLift}
+                        class="orbit-label"
+                        transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius - nameLift})`}
+                    >
+                        {getDiagramBodyLabel(entry.body)}
+                    </text>
+                {/if}
+                {#if shouldShowOrbitAuLabel(entry.body)}
+                    {@const auLabel = getOrbitDistanceAuLabel(entry.body as any)}
+                    {#if auLabel}
+                        <text x={markerX} y={itemY - bodyRadius - (2 + nameLift)} text-anchor="end" class="au-label">{auLabel}</text>
+                    {/if}
+                {/if}
+            {:else}
+                <text
+                    x={markerX + bodyRadius + 2}
+                    y={itemY - bodyRadius}
+                    class="orbit-label"
+                    transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
+                >
+                    {body.name}
+                </text>
+            {/if}
+        {/if}
+    {/each}
+{/snippet}
+
 {#if system}
   <div class="report-container theme-{theme}">
 
@@ -796,51 +851,7 @@
                 <text x="28" y="80" class="label">{overviewHostLabel}</text>
                 {#each overviewDiagramEntries as entry}
                     {@const markerX = 118 + ((entry.orbitRadius - 28) / (185 - 28)) * 550}
-                    {#each getBodyStackItems(entry.body) as item, stackIdx}
-                        {@const itemY = 76 + stackIdx * 14}
-                        {#if item.type === 'divider'}
-                            <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
-                        {:else if item.type === 'body' || item.type === 'moon'}
-                            {@const body = item.body!}
-                            {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
-                            {#if body.roleHint === 'belt'}
-                                {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
-                                <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
-                            {:else}
-                                <ellipse cx={markerX} cy={itemY} rx={bodyRadius} ry={bodyRadius * oblatePolarFactor(body.oblateness)} fill={item.type === 'moon' ? "#333" : "#111"} />
-                            {/if}
-                            {#if isPlanetLike(body) && hasRingSystem(body)}
-                                <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
-                            {/if}
-                            {#if item.type === 'body' && stackIdx === 0}
-                                {#if !shouldSuppressDiagramBodyLabel(entry, overviewDiagramEntries)}
-                                    <text
-                                        x={markerX + bodyRadius + 2}
-                                        y={itemY - bodyRadius}
-                                        class="orbit-label"
-                                        transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
-                                    >
-                                        {getDiagramBodyLabel(entry.body)}
-                                    </text>
-                                {/if}
-                                {#if shouldShowOrbitAuLabel(entry.body)}
-                                    {@const auLabel = getOrbitDistanceAuLabel(entry.body as any)}
-                                    {#if auLabel}
-                                        <text x={markerX} y={itemY - bodyRadius - 2} text-anchor="end" class="au-label">{auLabel}</text>
-                                    {/if}
-                                {/if}
-                            {:else}
-                                <text
-                                    x={markerX + bodyRadius + 2}
-                                    y={itemY - bodyRadius}
-                                    class="orbit-label"
-                                    transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
-                                >
-                                    {body.name}
-                                </text>
-                            {/if}
-                        {/if}
-                    {/each}
+                    {@render chartRow(entry, overviewDiagramEntries, markerX, 76, 0)}
                 {/each}
                 {#each additionalStarSets as set, row}
                     {@const rowY = getAdditionalRowYAfterOverview(overviewDiagramEntries, additionalStarSets, row)}
@@ -848,51 +859,7 @@
                     <text x="28" y={rowY + 4} class="label">{set.star.name}</text>
                     {#each set.entries as entry}
                         {@const markerX = 118 + ((entry.orbitRadius - 28) / (185 - 28)) * 550}
-                        {#each getBodyStackItems(entry.body) as item, stackIdx}
-                            {@const itemY = rowY + stackIdx * 14}
-                            {#if item.type === 'divider'}
-                                <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
-                            {:else if item.type === 'body' || item.type === 'moon'}
-                                {@const body = item.body!}
-                                {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
-                                {#if body.roleHint === 'belt'}
-                                    {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
-                                    <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
-                                {:else}
-                                    <ellipse cx={markerX} cy={itemY} rx={bodyRadius} ry={bodyRadius * oblatePolarFactor(body.oblateness)} fill={item.type === 'moon' ? "#333" : "#111"} />
-                                {/if}
-                                {#if isPlanetLike(body) && hasRingSystem(body)}
-                                    <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
-                                {/if}
-                                {#if item.type === 'body' && stackIdx === 0}
-                                    {#if !shouldSuppressDiagramBodyLabel(entry, set.entries)}
-                                        <text
-                                            x={markerX + bodyRadius + 2}
-                                            y={itemY - bodyRadius - 2}
-                                            class="orbit-label"
-                                            transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius - 2})`}
-                                        >
-                                            {getDiagramBodyLabel(entry.body)}
-                                        </text>
-                                    {/if}
-                                    {#if shouldShowOrbitAuLabel(entry.body)}
-                                        {@const auLabel = getOrbitDistanceAuLabel(entry.body as any)}
-                                        {#if auLabel}
-                                            <text x={markerX} y={itemY - bodyRadius - 4} text-anchor="end" class="au-label">{auLabel}</text>
-                                        {/if}
-                                    {/if}
-                                {:else}
-                                    <text
-                                        x={markerX + bodyRadius + 2}
-                                        y={itemY - bodyRadius}
-                                        class="orbit-label"
-                                        transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
-                                    >
-                                        {body.name}
-                                    </text>
-                                {/if}
-                            {/if}
-                        {/each}
+                        {@render chartRow(entry, set.entries, markerX, rowY, 2)}
                     {/each}
                 {/each}
                 {#if additionalStarSets.length === 0 && rootStars.length > 1}
@@ -917,51 +884,7 @@
                     <text x="74" y="92" text-anchor="middle" class="label">Barycentre</text>
                     {#each set.orbitEntries as entry}
                         {@const markerX = 152 + ((entry.orbitRadius - 28) / (185 - 28)) * 500}
-                        {#each getBodyStackItems(entry.body) as item, stackIdx}
-                            {@const itemY = 68 + stackIdx * 14}
-                            {#if item.type === 'divider'}
-                                <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
-                            {:else if item.type === 'body' || item.type === 'moon'}
-                                {@const body = item.body!}
-                                {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
-                                {#if body.roleHint === 'belt'}
-                                    {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
-                                    <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
-                                {:else}
-                                    <ellipse cx={markerX} cy={itemY} rx={bodyRadius} ry={bodyRadius * oblatePolarFactor(body.oblateness)} fill={item.type === 'moon' ? "#333" : "#111"} />
-                                {/if}
-                                {#if isPlanetLike(body) && hasRingSystem(body)}
-                                    <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
-                                {/if}
-                                {#if item.type === 'body' && stackIdx === 0}
-                                    {#if !shouldSuppressDiagramBodyLabel(entry, set.orbitEntries)}
-                                        <text
-                                            x={markerX + bodyRadius + 2}
-                                            y={itemY - bodyRadius}
-                                            class="orbit-label"
-                                            transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
-                                        >
-                                            {getDiagramBodyLabel(entry.body)}
-                                        </text>
-                                    {/if}
-                                    {#if shouldShowOrbitAuLabel(entry.body)}
-                                        {@const auLabel = getOrbitDistanceAuLabel(entry.body as any)}
-                                        {#if auLabel}
-                                            <text x={markerX} y={itemY - bodyRadius - 2} text-anchor="end" class="au-label">{auLabel}</text>
-                                        {/if}
-                                    {/if}
-                                {:else}
-                                    <text
-                                        x={markerX + bodyRadius + 2}
-                                        y={itemY - bodyRadius}
-                                        class="orbit-label"
-                                        transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
-                                    >
-                                        {body.name}
-                                    </text>
-                                {/if}
-                            {/if}
-                        {/each}
+                        {@render chartRow(entry, set.orbitEntries, markerX, 68, 0)}
                     {/each}
                 </svg>
             </div>
