@@ -32,8 +32,9 @@ const planetF = {
 };
 const region = { centre: { raDeg: host.ra, decDeg: host.dec, distLy: host.sy_dist * LY_PER_PC }, radiusLy: 10 };
 
-const importOne = (row: any) => {
-  const out = convertArchiveRows([row], { region, generated: 'mass-limit-test' });
+// The converter is plain untyped ESM (DATA-R5), so its results are read as `any` here.
+const importOne = (row: any): any => {
+  const out: any = (convertArchiveRows as any)([row], { region, generated: 'mass-limit-test' });
   return out.systems[0].system.nodes.find((n: any) => n.roleHint === 'planet');
 };
 
@@ -73,7 +74,7 @@ describe('an upper limit is never imported as the mass', () => {
 
   it('the stars-first path (the one the dialogue uses) agrees', () => {
     const star = { main_id: 'Kepler-32', ra: host.ra, dec: host.dec, plx_value: 1000 / host.sy_dist, sp_type: 'M1V', otype: 'PM*' };
-    const out = convertRegion(
+    const out: any = (convertRegion as any)(
       { starRows: [star], planetRows: [planetF], solPreset: null, statTemplates: null },
       { region, generated: 'mass-limit-test' }
     );
