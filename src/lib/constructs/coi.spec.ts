@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { tagCategories, updateTagDef, addTagToCategory, type TagCategory } from '../tags/tagCategories';
+import { coiForStarmap } from './coi';
 import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, constructReadiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag, normalizeCoIs, derivedStatusKey, addCoITag, type CoICategory } from './coi';
 import { get } from 'svelte/store';
 import type { CelestialBody } from '../types';
@@ -186,6 +188,46 @@ describe('constructTardiness', () => {
     expect(constructTardiness(s)).toBeUndefined();
     toggleCoI(s, owner, 'owner/pirate');
     expect(constructTardiness(s)).toBe(0.75);
+  });
+});
+
+// OPENING YOUR OWN SAVED STARMAP WIPED EVERY PER-TAG COLOUR. A save carries the construct-side
+// categories in the old CoI shape, which has no field for a tag's own colour, hover description or
+// hidden-by-default flag; the merge then replaced the store's tag list with the file's, so all three
+// were gone for every category the file carried. "One Faction category, a different colour per
+// faction" is the feature the Tags editor advertises - and it did not survive a save and a load.
+describe('opening a saved starmap keeps what the file cannot carry about a tag', () => {
+  const owner = () => get(tagCategories).find((c) => c.id === 'owner')!;
+  const restore = (cat: TagCategory) => tagCategories.update((cs) => cs.map((c) => (c.id === cat.id ? cat : c)));
+
+  it('a per-tag colour, description and hidden-by-default survive the round trip', () => {
+    const original = owner();
+    // What a GM actually does: add a faction to Owner, and give it its own flag colour.
+    const key = addTagToCategory('owner', 'Zz House Atreides')!;
+    updateTagDef('owner', key, { color: '#c0ffee', textColor: '#101010', description: 'Flies the green ensign.', secretDefault: true });
+    // The save, exactly as `registriesForStarmap` writes it, through the file.
+    const saved = JSON.parse(JSON.stringify(coiForStarmap()));
+    const inFile = saved.find((c: any) => c.id === 'owner')?.tags.find((t: any) => t.key === key);
+    expect(inFile, 'the new faction is in the save').toBeTruthy();
+    expect(inFile.color, 'and the file has no field for its colour').toBeUndefined();
+    mergeStarmapCoIs(saved);
+    const after = owner().tags.find((t) => t.key === key)!;
+    restore(original);
+    expect(after.color).toBe('#c0ffee');
+    expect(after.textColor).toBe('#101010');
+    expect(after.description).toBe('Flies the green ensign.');
+    expect(after.secretDefault).toBe(true);
+  });
+
+  it('a value the file DOES state still wins', () => {
+    const original = owner();
+    const key = original.tags[0].key;
+    updateTagDef('owner', key, { color: '#c0ffee' });
+    mergeStarmapCoIs([{ id: 'owner', label: 'Owner', tags: [{ key, label: 'Renamed in the file', color: '#000001' } as any] }]);
+    const after = owner().tags.find((t) => t.key === key)!;
+    restore(original);
+    expect(after.label).toBe('Renamed in the file');
+    expect(after.color).toBe('#000001');
   });
 });
 
