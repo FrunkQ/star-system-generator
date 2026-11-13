@@ -94,6 +94,28 @@ export function buildEffectiveRulePack(
 }
 
 /**
+ * THE PACK A CAMPAIGN IS DERIVED AGAINST WHEN IT IS LOADED - its own rules, not just the shipped ones.
+ *
+ * Every campaign load (a file, the browser's autosave, a base-map upgrade) strips each system's
+ * derived data and re-derives it. Until 3.1.1 that re-derive ran against the SHIPPED pack, so a world
+ * breathing a custom gas over an ocean of a custom liquid came back coloured, heated and tagged as
+ * though neither existed - 49 derived fields different on the test world, the ocean and sky colours
+ * among them - and stayed that way on the starmap, in All Bodies and for players until the GM
+ * happened to open that system (the system view derives against the effective pack and converges).
+ * The definitions were never lost; the worlds just did not look like it. Same rule as DATA-R48's
+ * third point, at the campaign's own door: the rules are known BEFORE the first pass, never after.
+ *
+ * Falls back to the shipped pack, so a caller always has something to process against.
+ */
+export function campaignRulePack<P extends RulePack | null | undefined>(
+  shippedPack: P,
+  campaign: { rulePackOverrides?: RulePackOverrides | null } | null | undefined
+): RulePack | P {
+  if (!shippedPack || !campaign?.rulePackOverrides) return shippedPack;
+  return buildEffectiveRulePack(shippedPack, campaign.rulePackOverrides) ?? shippedPack;
+}
+
+/**
  * WHAT A SETTINGS EDITOR HANDS BACK, FOLDED INTO THE CAMPAIGN'S OVERRIDES - section by section.
  *
  * Lifted verbatim out of `applyStarmapOverrides` in `src/routes/+page.svelte` (3.1.1), for the same

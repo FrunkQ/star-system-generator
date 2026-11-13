@@ -64,7 +64,7 @@
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
   import { applyListDelta } from '$lib/rulepackDelta';
-  import { buildEffectiveRulePack, applyEditorOverrides } from '$lib/rulepack/effectivePack';
+  import { buildEffectiveRulePack, applyEditorOverrides, campaignRulePack } from '$lib/rulepack/effectivePack';
   import { allLiquids } from '$lib/physics/liquids';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel } from '$lib/physics/pigments';
@@ -2015,6 +2015,9 @@
     const systems = starmap.systems ?? [];
     if (!selectedRulepack || systems.length === 0) return starmap;
     recalcCancelRequested = false;
+    // 3.1.1: against THIS CAMPAIGN'S rules, not the shipped pack alone - or every world using a custom
+    // gas or liquid is derived as though it did not exist until its system is opened. See the helper.
+    const pack = campaignRulePack(selectedRulepack, starmap);
     const nameOf = (i: number) => systems[i]?.name || `system ${i + 1}`;
     physicsProgress = { done: 0, total: systems.length, joke: PHYSICS_JOKES[0], current: nameOf(0) };
     perfStage('physics.start');
@@ -2037,7 +2040,7 @@
           // a stored body keeps its old class/tags — the processor's guard won't re-classify a body that
           // already has a (stale) non-empty class — so an engine fix (e.g. the moon-eyeball correction)
           // would never show on a refresh of an existing map. Authored inputs + GM-pinned types survive.
-          node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack);
+          node.system = systemProcessor.process(fixUpImportedSystem(node.system, pack), pack);
         }
       } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
       loadProcessed.push(nameOf(i));
@@ -2492,9 +2495,11 @@
     // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
     // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
     if (selectedRulepack && Array.isArray(sanitized.systems)) {
+      // 3.1.1: against the rules THIS FILE carries, not the shipped pack alone (`campaignRulePack`).
+      const pack = campaignRulePack(selectedRulepack, sanitized);
       for (const node of sanitized.systems) {
         if (node?.system?.nodes) {
-          try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
+          try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, pack), pack); }
           catch (e) { console.warn('Fix-up failed for system', node.name, e); }
         }
       }

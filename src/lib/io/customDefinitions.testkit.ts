@@ -125,8 +125,10 @@ export function authoredCounts(overrides: RulePackOverrides | null | undefined, 
 
 /**
  * A small system whose objects NAME the custom definitions: a world breathing both custom gases over
- * an ocean of one custom liquid with a subsurface layer of the other, carrying both custom
- * morphologies; and a ship with both custom engines, both custom fuels and both custom sensors.
+ * an ocean of a custom liquid, carrying both custom morphologies; and a ship with both custom
+ * engines, both custom fuels and both custom sensors. (The second custom liquid is named by nothing:
+ * `hydrosphere.layers` is DERIVED by the engine and stripped from a save, so a test cannot author
+ * one - and a definition nothing names must survive every road all the same.)
  */
 export function homeSystem(): System {
 	const sol = JSON.parse(fs.readFileSync(path.resolve('tests/fixtures/solar-system-input.json'), 'utf-8'));
@@ -135,7 +137,7 @@ export function homeSystem(): System {
 	const world = {
 		...earth, id: 'home-world', name: 'Homeworld', classes: [], tags: [],
 		atmosphere: { name: 'Xq-rich', composition: { Xq: 0.6, Zz: 0.3, N2: 0.1 }, pressure_bar: 1.2, main: 'Xq' },
-		hydrosphere: { composition: 'unobtainium', coverage: 0.5, layers: [{ kind: 'subsurface', liquid: 'liquid-neon' }] },
+		hydrosphere: { composition: 'unobtainium', coverage: 0.5 },
 		biosphere: { ...earth.biosphere, morphologies: ['microbial', 'crystalline', { morphology: 'aerial', coverage: 0.1 }] }
 	};
 	delete world.image;
@@ -159,7 +161,7 @@ export function namedBySystem(system: System): Record<string, string[]> {
 	const ship: any = system.nodes.find((n: any) => n.name === 'Kestrel');
 	return {
 		gases: Object.keys(world?.atmosphere?.composition ?? {}).sort(),
-		liquids: [world?.hydrosphere?.composition, ...(world?.hydrosphere?.layers ?? []).map((l: any) => l?.liquid)],
+		liquids: [world?.hydrosphere?.composition],
 		morphologies: (world?.biosphere?.morphologies ?? []).map((m: any) => (typeof m === 'string' ? m : m?.morphology)),
 		engines: (ship?.engines ?? []).map((e: any) => e.engine_id),
 		fuels: (ship?.fuel_tanks ?? []).map((t: any) => t.fuel_type_id),
