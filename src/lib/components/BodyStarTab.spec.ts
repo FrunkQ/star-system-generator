@@ -495,3 +495,30 @@ describe('A85 — the rotation band and the rotation thumb measure ONE axis', ()
 		expect(rotBlock(container).number.value).toBe('');
 	});
 });
+
+// ideas B20 / inbox B150 - "whenever you edit the temperature of a brown dwarf it goes to something
+// like 2372 ... when you try to increase or lower it it goes straight back". The physics is right
+// (a brown dwarf's temperature is its cooling track) and the box gave no hint of it. Until the age
+// control lands, the editor at least SAYS so - on a brown dwarf, and on nothing else.
+describe('BodyStarTab - a brown dwarf is told its temperature is derived', () => {
+	const MJ = 1.898e27;
+	const note = (body: any) => render(BodyStarTab, { props: { body, rulePack } }).container.querySelector('.cooling-note');
+
+	it('a 37 Jupiter-mass T dwarf carries the sentence, and it names the lever that works', () => {
+		const dwarf = { id: 'bd', kind: 'body', roleHint: 'star', name: 'BD', classes: ['star/T'], massKg: 36.9 * MJ, radiusKm: 56000, temperatureK: 1172 };
+		const el = note(dwarf);
+		expect(el).toBeTruthy();
+		expect(el!.textContent).toMatch(/replaced on the next recalculation/);
+		expect(el!.textContent).toMatch(/older system gives a cooler dwarf/);
+	});
+
+	it('both edges of the substellar window are covered: 8 and just under 80 Jupiter masses', () => {
+		expect(note({ id: 'lo', kind: 'body', roleHint: 'star', name: 'Lo', classes: ['star/Y'], massKg: 8 * MJ, radiusKm: 70000, temperatureK: 400 })).toBeTruthy();
+		expect(note({ id: 'hi', kind: 'body', roleHint: 'star', name: 'Hi', classes: ['star/L'], massKg: 79 * MJ, radiusKm: 60000, temperatureK: 2000 })).toBeTruthy();
+	});
+
+	it('a FUSING star does not: its temperature is the GM\'s to set and it sticks', () => {
+		expect(note(makeStar())).toBeNull();                                                              // the Sun
+		expect(note({ ...makeStar(['star/M']), id: 'm', massKg: 0.1 * 1.989e30, radiusKm: 85000, temperatureK: 2900 })).toBeNull();  // 105 M_Jup
+	});
+});

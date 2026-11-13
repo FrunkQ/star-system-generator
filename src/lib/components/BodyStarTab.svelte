@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { luminositySolarFromRT } from '$lib/physics/luminosity';
+  import { brownDwarfThermal } from '$lib/physics/substellar';
   import type { CelestialBody, StellarType } from '$lib/types';
   import UnitValue from './UnitValue.svelte';
   import UnitInput from './UnitInput.svelte';
@@ -631,6 +632,16 @@
       dispatch('update');
   }
 
+  // B20 / B150: A BROWN DWARF'S TEMPERATURE IS NOT A FREE FIGURE, AND THE BOX DID NOT SAY SO.
+  // Inside the substellar mass window the processor writes the effective temperature from the
+  // cooling track on every pass (mass, the system's age, radius), so a value typed below is
+  // replaced a moment later - correct physics, and to a GM it read as the box snapping back for no
+  // reason (three reporters). The owner's decision is that the field should stop pretending and that
+  // age becomes the lever (G94/G96, Stream Z); this is only the sentence that says so until that
+  // lands. It asks the cooling model itself whether it applies, so there is no second copy of the
+  // 8-80 Jupiter-mass window, and it changes nothing about what the box does.
+  const tempIsCoolingTrack = $derived(brownDwarfThermal(body?.massKg ?? 0, 1, body?.radiusKm ?? 0).isSubstellar);
+
   // --- Black holes ---
   const isBH = $derived(currentClass === 'star/BH' || currentClass === 'star/BH_active');
 
@@ -987,6 +998,13 @@
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={tempSliderPos} on:input={updateTemp} class="full-width-slider overlay" />
         </div>
+        {#if tempIsCoolingTrack}
+            <div class="sub-label cooling-note" role="note">
+                A brown dwarf does not fuse, so its temperature is not a free figure: it is read from its mass
+                and the system's age as it cools, and a value set here is replaced on the next recalculation.
+                An older system gives a cooler dwarf.
+            </div>
+        {/if}
     </div>
 
     <!-- ONE BLOCK, THREE ROWS, READ TOP-DOWN AS CAUSE AND EFFECT (owner, 2026-08-16): "the mag field
