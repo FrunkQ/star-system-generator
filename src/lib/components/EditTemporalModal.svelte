@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import type {
     BucketDrainCalendarDefinition,
     RatioLinearCalendarDefinition,
     Starmap,
     TemporalCalendarDefinition
   } from '$lib/types';
-  import { ensureTemporalState } from '$lib/temporal/defaults';
+  import { ensureTemporalState, shippedCalendar } from '$lib/temporal/defaults';
+  import { sameAsShipped } from '$lib/io/shippedDefaults';
   import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
@@ -172,22 +173,76 @@
     workingTemporal = { ...workingTemporal };
   }
 
-  function addMonth() {
-    if (!selectedCalendar || selectedCalendar.math_type !== 'BUCKET_DRAIN') return;
-    selectedCalendar.lookup_tables = selectedCalendar.lookup_tables || {};
-    selectedCalendar.lookup_tables.months = selectedCalendar.lookup_tables.months || [];
-    selectedCalendar.lookup_tables.months.push({
-      name: `Month ${selectedCalendar.lookup_tables.months.length + 1}`,
+  // THE CALENDAR BEING EDITED, READ FROM THE REGISTRY BY ITS KEY AT THE MOMENT OF THE CLICK, rather
+  // than through `selectedCalendar` - a `$:` mirror, which is whatever the last flush left there.
+  // Two separate clicks always have a flush between them, so this was not shown to send a month to
+  // the wrong calendar; it removes the possibility rather than fixing an observed case.
+  function editedBucket(): BucketDrainCalendarDefinition | null {
+    const calendar = workingTemporal?.temporal_registry[selectedKey];
+    return calendar && calendar.math_type === 'BUCKET_DRAIN' ? calendar : null;
+  }
+
+  let monthsEl: HTMLDivElement | undefined;
+  async function addMonth() {
+    const calendar = editedBucket();
+    if (!calendar) return;
+    calendar.lookup_tables = calendar.lookup_tables || {};
+    calendar.lookup_tables.months = calendar.lookup_tables.months || [];
+    calendar.lookup_tables.months.push({
+      name: `Month ${calendar.lookup_tables.months.length + 1}`,
       days: 30
     });
     workingTemporal = { ...workingTemporal! };
+    // The list is a short scrolling box and the new month lands at its END - below the fold, so
+    // the button looked as if it did nothing ("you can't actually add months"). Show what was added.
+    await tick();
+    if (monthsEl) monthsEl.scrollTop = monthsEl.scrollHeight;
   }
 
   function removeMonth(index: number) {
-    if (!selectedCalendar || selectedCalendar.math_type !== 'BUCKET_DRAIN') return;
-    const months = selectedCalendar.lookup_tables?.months;
+    const months = editedBucket()?.lookup_tables?.months;
     if (!months || months.length <= 1) return;
     months.splice(index, 1);
+    workingTemporal = { ...workingTemporal! };
+  }
+
+  // A BUILT-IN CALENDAR IS EDITABLE ON PURPOSE (its month names and format are the GM's to change),
+  // which is also how one gets changed by accident: the editor opens on the ACTIVE calendar, which
+  // for most campaigns is Earth Gregorian, and "+ Add Month" is right there ("i accidentally added
+  // a new month to the Gregorian calendar and now I cant get rid of it"). So the editor says when
+  // the calendar in hand is one of ours, says when it no longer matches what we ship, and offers the
+  // way back in one press. The id is left out of the comparison: Save re-stamps every id.
+  $: builtIn = selectedKey ? shippedCalendar(selectedKey) : undefined;
+  // `selectedCalendar` is named so that an edit made THROUGH it (a month's days box) re-runs this.
+  $: inHand = (selectedCalendar, workingTemporal?.temporal_registry[selectedKey]) as TemporalCalendarDefinition | undefined;
+  $: builtInChanged = !!builtIn && !!inHand
+    && !sameAsShipped({ ...inHand, id: builtIn.id }, builtIn);
+  function restoreBuiltIn() {
+    const shipped = shippedCalendar(selectedKey);
+    if (!workingTemporal || !shipped) return;
+    workingTemporal.temporal_registry[selectedKey] = shipped;
+    workingTemporal = { ...workingTemporal };
+  }
+
+  // MONTHS AND THE YEAR ARE TWO SEPARATE NUMBERS, and nothing said so. The months table only NAMES
+  // the days of a year whose length is the "year sec" box above; a month added past the end of that
+  // year is never reached by the clock, and days past the end of the table have no month. The line
+  // under the list states both totals, and the button makes the year as long as its months.
+  const lengthOf = (calendar: BucketDrainCalendarDefinition, unit: string) =>
+    Number(calendar.hierarchy?.find((u) => u.unit === unit)?.multiplier);
+  $: monthDays = inHand?.math_type === 'BUCKET_DRAIN'
+    ? (inHand.lookup_tables?.months ?? []).reduce((sum: number, m) => sum + (Number.isFinite(Number(m?.days)) && Number(m.days) > 0 ? Number(m.days) : 0), 0)
+    : 0;
+  $: yearDays = inHand?.math_type === 'BUCKET_DRAIN' && lengthOf(inHand, 'day') > 0
+    ? lengthOf(inHand, 'year') / lengthOf(inHand, 'day')
+    : NaN;
+  $: monthsMismatch = Number.isFinite(yearDays) && monthDays > 0 && Math.abs(monthDays - yearDays) > 1e-6;
+  const showDays = (n: number) => String(Number(n.toFixed(2)));
+  function fitYearToMonths() {
+    const calendar = editedBucket();
+    const year = calendar?.hierarchy?.find((u) => u.unit === 'year');
+    if (!calendar || !year || !(lengthOf(calendar, 'day') > 0) || !(monthDays > 0)) return;
+    year.multiplier = monthDays * lengthOf(calendar, 'day');
     workingTemporal = { ...workingTemporal! };
   }
 
@@ -240,6 +295,18 @@
                   <input type="text" value={selectedKey} on:change={(e) => renameCalendarKey((e.currentTarget as HTMLInputElement).value)} />
                 </div>
               </div>
+
+              {#if builtIn}
+                <p class="builtin-note" data-testid="builtin-note">
+                  {#if builtInChanged}
+                    This is a built-in calendar and it has been changed from the one that ships.
+                    <button class="small-add" on:click={restoreBuiltIn}>Restore the built-in</button>
+                  {:else}
+                    This is a built-in calendar. Anything you change here changes it for this campaign;
+                    use + Add Calendar for a reckoning of your own.
+                  {/if}
+                </p>
+              {/if}
 
               <div class="row two">
                 <div class="field">
@@ -334,7 +401,7 @@
                 </div>
 
                 <div class="section-title months-title">Months</div>
-                <div class="months">
+                <div class="months" bind:this={monthsEl}>
                   {#each selectedCalendar.lookup_tables?.months || [] as month, idx}
                     <div class="month-row">
                       <input type="text" bind:value={month.name} />
@@ -344,6 +411,15 @@
                   {/each}
                 </div>
                 <button class="small-add" on:click={addMonth}>+ Add Month</button>
+                <p class="section-hint" data-testid="months-total">
+                  The months add up to {showDays(monthDays)} days{#if Number.isFinite(yearDays)}; the year is {showDays(yearDays)} days long (year sec ÷ day sec){/if}.
+                  {#if monthsMismatch}
+                    {monthDays > yearDays
+                      ? 'The clock never reaches the days past the end of the year, so the last months are cut short or never appear.'
+                      : 'Days past the end of the last month have no month name.'}
+                    <button class="small-add" on:click={fitYearToMonths}>Make the year {showDays(monthDays)} days</button>
+                  {/if}
+                </p>
               {:else}
                 <div class="section-title">Ratio Linear Setup</div>
                 <div class="token-note">
@@ -553,6 +629,14 @@
     max-height: 180px;
     overflow-y: auto;
     padding-right: 4px;
+    /* A scrolling box inside a flex column may shrink to nothing when the panel is short, taking
+       the month rows and their delete buttons with it. It keeps its height; the panel scrolls. */
+    flex-shrink: 0;
+  }
+  .builtin-note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
   }
   .month-row {
     display: grid;
