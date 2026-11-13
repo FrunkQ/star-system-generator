@@ -752,8 +752,9 @@
 
           {#if preUpgradeName}
             <div class="form-group">
-              <p class="section-hint">A campaign here was replaced — by a bundled-map upgrade, or by opening
-                a map somebody shared with you. The version from before that is still here, and you can go
+              <p class="section-hint">A campaign here was replaced — by a bundled-map upgrade, by opening
+                a map somebody shared with you, or by starting a new map after a load that did not
+                finish. The version from before that is still here, and you can go
                 back to it. Doing so replaces what is currently loaded, so save that to a file first if you
                 want to keep it.</p>
               <button class="section-btn" on:click={() => dispatch('restorepreupgrade')}>

@@ -9,7 +9,7 @@
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route, ContentCredit } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
+  import { renameNode, computePlayerSnapshot } from '$lib/api';
   import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
   import { openSystemReport } from '$lib/reports/openReport';
   import { validateStarmap, generateId } from '$lib/utils';
@@ -40,6 +40,8 @@
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import { createPersistQueue } from '$lib/persistQueue';
+  import { createLoadGuard } from '$lib/loadGuard';
+  import { onBeforeReload } from '$lib/util/beforeReload';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
@@ -73,7 +75,7 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
   import WelcomeModal from '$lib/components/WelcomeModal.svelte';
-  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds, temporalForExport } from '$lib/temporal/defaults';
+  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, temporalForExport } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
   import { buildFlightUpdate } from '$lib/constructs/flightState';
@@ -586,8 +588,26 @@
   // B131: ONE pending snapshot, cloned when the write happens - never a promise chain holding a clone per
   // store emission. A ship in transit emits once per frame; the chain held a full campaign per frame.
   const starmapPersist = createPersistQueue<StarmapType>((snapshot) => persistStarmap(snapshot), {
-    onError: (e) => console.error('Failed to persist starmap:', e)
+    onError: (e) => { console.error('Failed to persist starmap:', e); noteSaveFailed(); }
   });
+  // B-1: A RELOAD THE APP PERFORMS ITSELF WAITS FOR THE AUTOSAVE - `$lib/util/beforeReload`. Without
+  // this the deploy-skew recovery and the "new version" reload could leave with the last edit unwritten.
+  if (browser) onDestroy(onBeforeReload(() => starmapPersist.flush()));
+
+  // B-1: A SAVE THAT FAILED IS SAID OUT LOUD. `saveStarmap` rejects only when NEITHER store would take
+  // the campaign, and that used to reach the console and nobody else - so a GM worked on for an
+  // evening with nothing being kept, and found out at the next reload. One banner per run of
+  // failures, not one per edit; it is withdrawn by the next save that lands, because by then the
+  // campaign as it stands IS stored and the warning would no longer be true.
+  let saveFailing = false;
+  let saveProblem: string | null = null;
+  function noteSaveFailed() {
+    if (saveFailing) return;
+    saveFailing = true;
+    saveProblem = 'Your latest changes could not be saved in this browser, so a reload would lose them. ' +
+      'Save your campaign to a file now (Save Starmap) — a file is safe whatever the browser does. ' +
+      'This message goes away by itself if saving starts working again.';
+  }
 
   $: currentSystemId = $page.state.systemId || null;
 
@@ -1731,17 +1751,24 @@
   }
 
   async function persistStarmap(starmap: StarmapType) {
+    if (unloadedCampaignAtRisk) {
+      unloadedCampaignAtRisk = false;
+      await keepUnloadedCampaign(starmap);
+    }
     await saveStarmap(starmap);
     hasSavedStarmap = true;
+    if (saveFailing) { saveFailing = false; saveProblem = null; }
   }
 
   function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean; mapMode: 'diagrammatic' | 'scaled' }>) {
     const { name, rulepack, distanceUnit, unitIsPrefix, mapMode } = event.detail;
     selectedRulepack = rulepack;
 
-    const seed = `seed-${Date.now()}`;
-    const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
-    const anchoredTimeSec = defaultCampaignStartSeconds().toString();
+    // B4: "START EMPTY" STARTS EMPTY. This used to generate one random system at the centre of
+    // every new map - a leftover from before the map had a wizard of its own - which is not what
+    // the button ("Create Vast Nothingness") says, and which a GM then had to find out how to
+    // delete before they could begin. The first system is now placed by the GM, through the same
+    // "Add System Here" every later one uses; `emptyMapHint` below says how while the map is bare.
     const newStarmap: StarmapType = {
       id: `starmap-${Date.now()}`,
       name,
@@ -1754,23 +1781,23 @@
         pixelsPerUnit: 25,
         showScaleBar: true
       },
-      systems: [
-        {
-          id: newSystem.id,
-          name: newSystem.name,
-          position: { x: 0, y: 0 },
-          system: newSystem,
-          time: {
-            displayTimeSec: anchoredTimeSec
-          }
-        },
-      ],
+      systems: [],
       routes: [],
       temporal: createAnchoredTemporalState()
     };
     starmapStore.set(newStarmap);
     showNewStarmapModal = false;
   }
+
+  // B4: a bare map says how to put the first system on it, because the only way to add one is a
+  // menu that is invisible until asked for. Shown whenever the open map has no systems - a new one,
+  // or one whose last system was just deleted - and dismissible, coming back only if the map empties
+  // again.
+  let emptyMapHintDismissed = false;
+  $: mapIsEmpty = !!$starmapStore && ($starmapStore.systems?.length ?? 0) === 0;
+  $: if (!mapIsEmpty) emptyMapHintDismissed = false;
+  $: emptyMapHint = mapIsEmpty && !emptyMapHintDismissed && !currentSystemId && !showNewStarmapModal
+    && !showGenerationWizard && !pendingHubSystem && !showWelcome;
 
   function handleSystemClick(event: CustomEvent<string>) {
     const sysId = event.detail; // Local var to ensure immediate availability
@@ -1851,13 +1878,29 @@
   // startup, the previous load never finished — so we do not auto-load, and instead offer: try
   // again, start without the map (data untouched), or download the stored map as a file.
   // The stamp doubles as the diagnosis: it names the last stage that started.
-  const LOAD_GUARD_KEY = 'sse-load-guard';
-  let loadGuardArmed = false;
+  //
+  // B2: THE STAMP ITSELF LIVES IN `$lib/loadGuard`, with the one rule that stopped it misfiring - a
+  // page that goes away or goes into the background mid-load is not a load that hung. Read the head
+  // of that module before changing when the stamp is written or removed.
+  const loadGuard = createLoadGuard({
+    // Reached through functions, never held: merely touching `localStorage` can throw in a locked-down
+    // browser, and the guard catches whatever its storage throws.
+    storage: browser
+      ? {
+          getItem: (key) => localStorage.getItem(key),
+          setItem: (key, value) => localStorage.setItem(key, value),
+          removeItem: (key) => localStorage.removeItem(key)
+        }
+      : null,
+    win: browser ? window : null,
+    doc: browser ? document : null
+  });
+  onDestroy(() => loadGuard.destroy());
   let loadGuardPrompt: string | null = null; // non-null = show the safe-mode screen (value = stalled stage)
-  function loadGuardArm(stage: string) { if (!browser) return; loadGuardArmed = true; loadGuardStage(stage); }
-  function loadGuardStage(stage: string) { if (browser && loadGuardArmed) { try { localStorage.setItem(LOAD_GUARD_KEY, stage); } catch { /* private mode */ } } }
-  function loadGuardClear() { loadGuardArmed = false; if (browser) { try { localStorage.removeItem(LOAD_GUARD_KEY); } catch { /* private mode */ } } }
-  function loadGuardTripped(): string | null { if (!browser) return null; try { return localStorage.getItem(LOAD_GUARD_KEY); } catch { return null; } }
+  function loadGuardArm(stage: string) { loadGuard.arm(stage); }
+  function loadGuardStage(stage: string) { loadGuard.stage(stage); }
+  function loadGuardClear() { loadGuard.clear(); }
+  function loadGuardTripped(): string | null { return loadGuard.tripped(); }
   // Emergency export: the stored map straight to a .json file WITHOUT rendering anything — the
   // escape hatch for a map that cannot load. Plain JSON on purpose: it is what the ordinary .json
   // load path reads back, and this path must not depend on any machinery that might be the hang.
@@ -1873,6 +1916,38 @@
     a.download = `${(saved.name || 'starmap').replace(/[^\w\- ]+/g, '').trim() || 'starmap'}-recovered.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  // B-1: "START WITHOUT LOADING IT" MUST NOT BE THE STEP THAT DESTROYS THE CAMPAIGN. The screen says
+  // the starmap is still saved and nothing has been lost, which is true - until the GM starts a new
+  // map from here, and the first autosave of that overwrites the only stored copy with no question
+  // asked (the New Starmap confirm looks at the campaign that is OPEN, and none is). So this only
+  // raises a flag, and `persistStarmap` - the one place every way of starting a map ends up - copies
+  // the stored campaign to the one-step-back slot before it writes over it. That is the same single
+  // undo an upgrade or a map opened from Explorers keeps, and Settings offers the way back.
+  let unloadedCampaignAtRisk = false;
+  function startWithoutLoading() {
+    loadGuardPrompt = null;
+    loadGuardClear();
+    unloadedCampaignAtRisk = true;
+    showNewStarmapModal = true;
+  }
+  // Storage to storage: nothing rendered and nothing processed, for the reason `downloadStoredStarmap`
+  // gives (engine map UI-L4) - the campaign being kept may be the one that would not load.
+  async function keepUnloadedCampaign(aboutToWrite: StarmapType) {
+    try {
+      const stored = await loadSavedStarmap();
+      // The same campaign coming back in (its own recovered file, say) replaces nothing.
+      if (!stored || stored.id === aboutToWrite.id) return;
+      if (await savePreUpgradeStarmap(stored)) {
+        preUpgradeSnapshotName = stored.name ?? 'your previous campaign';
+        remoteNotice = `"${preUpgradeSnapshotName}" was not loaded and has been kept — it is one step back, in Settings.`;
+        if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+        remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 12000);
+      }
+    } catch (e) {
+      console.warn('[sse-load] could not keep a copy of the campaign that was not loaded', e);
+    }
   }
 
   let physicsProgress: { done: number; total: number; joke: string; current: string } | null = null;
@@ -2654,6 +2729,14 @@
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept={FILE_ACCEPT.campaign} />
 
+  <!-- B4: first in the list on purpose - every banner sits in the same place, and a real notice
+       must cover this standing hint rather than the other way round. -->
+  {#if emptyMapHint}
+    <div class="mem-banner" role="status">
+      <span>This map is empty. Right-click (or press and hold) anywhere on it and choose "Add System Here" to place your first star system.</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (emptyMapHintDismissed = true)}>×</button>
+    </div>
+  {/if}
   {#if remoteNotice}
     <div class="mem-banner" role="status">
       <span>{remoteNotice}</span>
@@ -2681,6 +2764,12 @@
     <div class="mem-banner" role="status">
       <span>{createdWithNotice}</span>
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (createdWithNotice = null)}>×</button>
+    </div>
+  {/if}
+  {#if saveProblem}
+    <div class="mem-banner critical" role="alert">
+      <span>{saveProblem}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (saveProblem = null)}>×</button>
     </div>
   {/if}
   {#if memBanner}
@@ -2744,7 +2833,7 @@
         </p>
         <div class="physics-guard-actions">
           <button type="button" class="physics-guard-btn primary" on:click={async () => { loadGuardPrompt = null; await handleLoadStarmap(); }}>Try loading again</button>
-          <button type="button" class="physics-guard-btn" on:click={() => { loadGuardPrompt = null; loadGuardClear(); showNewStarmapModal = true; }}>Start without loading it</button>
+          <button type="button" class="physics-guard-btn" on:click={startWithoutLoading}>Start without loading it</button>
           <button type="button" class="physics-guard-btn" on:click={downloadStoredStarmap}>Download a copy (.json)</button>
           <button type="button" class="physics-guard-btn" disabled={diagnosticBuilding} on:click={() => downloadDiagnosticBundle({
             reason: `the previous load never finished (safe mode; stopped at "${loadGuardPrompt}")`,

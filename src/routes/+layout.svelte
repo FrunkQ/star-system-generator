@@ -7,9 +7,16 @@
 	import '$lib/styles/paletteStore'; // applies any saved palette overrides to :root app-wide
 	import '$lib/styles/skinStore'; // applies the viewer's chosen skin (data-skin on <html>)
 	import '$lib/styles/touch-overrides.css';
+	import { wireServiceWorkerUpdates } from '$lib/util/swUpdate';
+	import { settleBeforeReload } from '$lib/util/beforeReload';
 
 	let { children } = $props();
-	let swUpdateInterval: ReturnType<typeof setInterval> | undefined;
+	let stopSwUpdates: (() => void) | undefined;
+	// Merely touching `sessionStorage` throws in some locked-down browsers; the prompt then remembers
+	// its answer in memory instead.
+	function sessionOrNull(): Storage | null {
+		try { return window.sessionStorage; } catch { return null; }
+	}
 
 	// Vercel Web Analytics — anonymous visitor counts (user community OK'd tracking #s).
 	// Requires Web Analytics enabled in the Vercel project too.
@@ -74,43 +81,18 @@
 			return;
 		}
 
-		let refreshing = false;
-		navigator.serviceWorker.addEventListener('controllerchange', () => {
-			if (refreshing) return;
-			refreshing = true;
-			window.location.reload();
+		// B3: the prompt, the one reload it may cause, and why Cancel now means it - `$lib/util/swUpdate`.
+		stopSwUpdates = wireServiceWorkerUpdates({
+			container: navigator.serviceWorker,
+			ask: (message) => window.confirm(message),
+			reload: () => window.location.reload(),
+			// B-1: the campaign autosave finishes before an agreed reload leaves.
+			beforeReload: () => settleBeforeReload(),
+			session: sessionOrNull()
 		});
-
-		navigator.serviceWorker
-			.register('/sw.js')
-			.then((registration) => {
-				registration.update();
-
-				registration.addEventListener('updatefound', () => {
-					const nextWorker = registration.installing;
-					if (!nextWorker) return;
-
-					nextWorker.addEventListener('statechange', () => {
-						if (nextWorker.state === 'installed' && navigator.serviceWorker.controller) {
-							const applyUpdate = window.confirm(
-								'A new version is available. Reload now to update?'
-							);
-							if (applyUpdate) {
-								nextWorker.postMessage({ type: 'SKIP_WAITING' });
-							}
-						}
-					});
-				});
-
-				// Poll for updates roughly hourly while app is open.
-				swUpdateInterval = setInterval(() => registration.update(), 60 * 60 * 1000);
-			})
-			.catch((err) => console.error('Service worker registration failed:', err));
 	});
 
-	onDestroy(() => {
-		if (swUpdateInterval) clearInterval(swUpdateInterval);
-	});
+	onDestroy(() => stopSwUpdates?.());
 </script>
 
 <svelte:head>
