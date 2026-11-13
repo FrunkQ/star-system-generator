@@ -740,6 +740,18 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   /** @deprecated A second name for `axial_tilt_deg`, kept only so `importFixup` can recover it from
    *  older saves and delete it. Nothing reads it. Write `axial_tilt_deg`. */
   obliquity_deg?: number;
+  /** WHEN THIS BODY FORMED (G94): cosmic time in Gyr AFTER THE BIG BANG, on the master clock's own
+   *  axis (G62). ABSENT MEANS INHERIT - a body without one is as old as its system, and the
+   *  system's age is NEVER stamped onto bodies on save, or a GM who later ages the system would
+   *  find the change reaches nothing.
+   *
+   *  It is a PROPERTY, not an override: a body older than its system is a history (captured, a
+   *  second generation, rebuilt after a collision), not a cheat, so it raises no anomaly.
+   *
+   *  NEVER READ THIS FIELD DIRECTLY. The age is `ageOf(body, system)` in `physics/bodyAge.ts`,
+   *  which is also the only place that knows what "now" is (the system's reference epoch, never
+   *  the scrub position of the campaign clock). Write it with `setBodyAge` / `clearBodyAge`. */
+  formationTimeGyr?: number;
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
   // F-OVR: GM overrides for otherwise-derived scalars. A key being PRESENT means the GM pinned that
   // value — it is saved and fed into the derivation instead of the computed default, with a reset that

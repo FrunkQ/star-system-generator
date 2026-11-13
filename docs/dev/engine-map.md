@@ -7945,3 +7945,31 @@ own estimate from the radius - and is still printed as plain "Mass"; relabelling
 shipped map (LHS 475 b). Past ~12 Earth radii the relation cannot be inverted and answers with the
 mass at which its plateau begins. THE FIXTURE ROW IS SYNTHESISED from published figures; the live
 composite row for Kepler-32 f has not been seen from a browser.
+### PHY-43 A BODY'S AGE HAS ONE ANSWER, AND ITS "NOW" IS THE SYSTEM'S REFERENCE EPOCH, NEVER THE SCRUB
+BUCKET: ARCHITECTURE + DOMAIN - architecture: one function answers "how old is this body" and
+nothing else may read the stored field or the system's age in its place. Domain: an age is a
+property with a history behind it, not an overruled derivation. Carries to V4 unchanged.
+WHERE: `physics/bodyAge.ts` (`ageOf`, `setBodyAge`, `clearBodyAge`, `hasOwnAge`, `cosmicNowGyr`);
+the field is `CelestialBody.formationTimeGyr` (`types.ts`). Design: `docs/dev/deep-time-design.md`.
+Gate: `physics/bodyAge.spec.ts`.
+RULE: a body's age is `ageOf(body, system)`. WHAT IS STORED IS A FORMATION TIME, in Gyr after the
+big bang on the master clock's axis (G62), and it is OPTIONAL: ABSENT MEANS INHERIT, the body is as
+old as its system, and NOTHING STAMPS THE SYSTEM'S AGE ONTO A BODY - not the processor, not a save,
+not an importer. It is NOT in `body.overrides` and raises no anomaly. "Now" is
+`cosmicNowGyr(system)`: the system's reference epoch `epochT0` (unix ms, written once at creation)
+placed on the master clock by `temporal/utre.ts unixMsToMasterSeconds`. IT IS NEVER THE CAMPAIGN
+CLOCK'S DISPLAY TIME: no code that reads `starmap.temporal`, `currentTime` or a scrub position may
+feed an age.
+WHY: [[G94]], the owner: "EVERY object should have an independent age anyway as V4 will track
+formation times, captured bodies and rebuilding planets smashed in system" and, settling the trap,
+"No clock is changed as you can slide the age of a body independently". Stamping on save is the
+fault rule-pack deltas exist to avoid: a GM who later ages the system would find it reaches
+nothing. Deriving against the scrub would make a brown dwarf cool while a GM drags the time bar.
+BLAST: `ageOf` reads the runtime temporal anchor through `unixMsToMasterSeconds`. The shipped
+anchor equals the built-in constant, so this is the same number in a test and in the app; a
+campaign whose anchor is moved moves "now" for every body that has its own formation time, by the
+same amount, and moves nothing for a body that inherits. A body pasted into another system keeps
+its formation time and therefore its place in history - its AGE there is that system's "now" less
+it, which differs only by the gap between the two reference epochs. `epochT0` of 0 (the Traveller
+importer) reads as 1970 and is 56 years in 13.787 Gyr. The float round trip is not exact
+(`now - (now - 9.2)` is 9.2 to about 1e-15): compare with a tolerance, display rounded.

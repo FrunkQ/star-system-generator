@@ -75,6 +75,18 @@ anything, which is exactly the fault the rule-pack deltas exist to avoid.
 **Store a formation time on the absolute axis**, and derive the age. A duration would need migrating the moment
 V4 tracks formation properly, and a rebuilt planet simply moves its own formation time forward.
 
+### As built (2026-11, Stream Z)
+
+- **The field** is `CelestialBody.formationTimeGyr`: Gyr after the big bang. Optional; absent means inherit.
+- **The one answer** is `ageOf(body, system)` in `src/lib/physics/bodyAge.ts`. Nothing else reads the field or
+  substitutes the system's age for it (engine map PHY-43).
+- **"Now"** is `cosmicNowGyr(system)`: the system's own reference epoch (`System.epochT0`, written once when the
+  system is created) placed on the master clock. It is about 13.787 Gyr for a campaign set in our era and is
+  derived from the clock's anchor, never typed. It is not the campaign clock's display time and nothing a GM
+  scrubs can reach it.
+- **Writing** goes through `setBodyAge(body, ageGyr, system)` and `clearBodyAge(body)`. The GM thinks in ages;
+  the file stores the formation time that age implies.
+
 ---
 
 ## 4. The slider, and the floor
