@@ -793,7 +793,10 @@ export class SystemProcessor implements ISystemProcessor {
         // worlds). When the GM sets it, it adds surface heat AND boosts the geological vigor (see geology).
         const radiogenicHeatK = body.overrides?.radiogenicHeatK ?? 0;
         body.radiogenicHeatK = radiogenicHeatK;
-        body.internalHeatK = estimateInternalHeatK(body, pack, this.systemAgeGyr);
+        // G94: a giant is still shedding the heat of ITS OWN formation, so the age that matters is the
+        // body's - a captured giant older than its star has had longer to cool than anything that
+        // formed here. Same call as before for a body with no age of its own.
+        body.internalHeatK = estimateInternalHeatK(body, pack, this.ageOf(body));
 
         // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
         // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's

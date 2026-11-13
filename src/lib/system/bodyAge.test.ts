@@ -64,6 +64,7 @@ function makeSystem(ageGyr: number): System {
         rotation_period_hours: 100, tags: [], orbit: orbit('planemo', 0.003) },
       { id: 'jove', name: 'Jove', kind: 'body', parentId: 'star', roleHint: 'planet', classes: [],
         massKg: 1 * M_JUP_KG, radiusKm: 10.97 * R_E_KM, makeup: { gas: 0.95, ice: 0.05 }, axial_tilt_deg: 3,
+        atmosphere: { name: 'Hydrogen', pressure_bar: 1, composition: { H2: 0.86, He: 0.13, CH4: 0.01 } },
         rotation_period_hours: 10, tags: [], orbit: orbit('star', 5.2) }
     ]
   } as any;
@@ -133,5 +134,25 @@ describe('G94 / B150 - a brown dwarf cools on its OWN age', () => {
     const young = node(systemProcessor.process(aged(makeSystem(4.6), 'planemo', 0.5), pack), 'moon').temperatureK as number;
     const old = node(systemProcessor.process(aged(makeSystem(4.6), 'planemo', 12), pack), 'moon').temperatureK as number;
     expect(old).toBeLessThan(young - 20);
+  });
+});
+
+describe('G94 - a giant sheds the heat of ITS OWN formation', () => {
+  const pack = loadRulePack();
+  const heat = (s: System) => node(systemProcessor.process(s, pack), 'jove').internalHeatK as number;
+
+  it('the anchor holds: a Jupiter with no age of its own in a 4.6 Gyr system radiates +52 K', () => {
+    expect(heat(makeSystem(4.6))).toBeCloseTo(52, 1);
+  });
+
+  it('given its own age it reads that age: twice as old is +37.3 K (the shipped pack cooling exponent), in a system of any age', () => {
+    expect(heat(aged(makeSystem(4.6), 'jove', 9.2))).toBeCloseTo(37.28, 1);
+    expect(heat(aged(makeSystem(1), 'jove', 9.2))).toBeCloseTo(37.28, 1);
+    expect(heat(aged(makeSystem(12), 'jove', 9.2))).toBeCloseTo(37.28, 1);
+  });
+
+  it('...and a giant captured young into an old system is still hot', () => {
+    expect(heat(aged(makeSystem(9), 'jove', 0.05))).toBeCloseTo(455.6, 0);   // 50 Myr old
+    expect(heat(makeSystem(9))).toBeCloseTo(37.7, 0);                       // the same giant, formed here
   });
 });

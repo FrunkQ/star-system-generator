@@ -7983,6 +7983,9 @@ RULE: a consumer that answers a question ABOUT ONE BODY'S HISTORY asks `this.age
 so far, each with its own gate:
   - THE SUBSTELLAR COOLING TRACK (`applySubstellarSelfLuminosity`, and the substellar test in the
     star pre-pass) - a brown dwarf's temperature and luminosity. This is [[B150]]'s fix.
+  - A GIANT'S INTERNAL HEAT (`estimateInternalHeatK` in `processEnvironment`) - the heat of its own
+    formation, still being shed. The Temperature tab's live preview is handed the same figure
+    (`BodySidePanel` passes `ageOf(body, system)`), so the tab and the card cannot disagree.
 `ageOf` IS AN INPUT: it is read from authored data and the system record, never from anything a
 pass writes, so it may be asked anywhere in the pass and answers the same every time.
 WHY: [[G94]]. There was exactly one age, `System.age_Gyr`, consumed at 21 sites, so the only lever

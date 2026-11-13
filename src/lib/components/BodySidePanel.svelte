@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, System } from '$lib/types';
+  import { ageOf } from '$lib/physics/bodyAge';
   import BodyBasicsTab from './BodyBasicsTab.svelte';
   import BodyDetailsTab from './BodyDetailsTab.svelte';
   import BodyStarTab from './BodyStarTab.svelte';
@@ -100,7 +101,7 @@
     {:else if selectedTab === 'Orbit'}
       <BodyOrbitTab {body} {parentBody} {system} {rulePack} {nowMs} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
-      <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} systemAgeGyr={(system as any).age_Gyr ?? 4.6} on:update={handleUpdate} />
+      <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} systemAgeGyr={ageOf(body, system)} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
       <BodyAtmosphereTab {body} {rulePack} {system} on:update={handleUpdate} />
     {:else if selectedTab === 'Hydro'}

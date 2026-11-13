@@ -13,7 +13,9 @@
   export let parentBody: CelestialBody | null = null;
   export let nodes: (CelestialBody | Barycenter)[] = [];
   // A giant's internal heat is age-dependent (it is still cooling from formation), so the live
-  // preview needs the system's age or it would quote a 4.6 Gyr answer for a young world.
+  // preview needs an age or it would quote a 4.6 Gyr answer for a young world. G94: it is THIS
+  // BODY'S age the panel hands in (`ageOf`), which is the system's unless the body has its own -
+  // the name is historical and the processor reads the same figure.
   export let systemAgeGyr: number = 4.6;
 
   const dispatch = createEventDispatcher();
