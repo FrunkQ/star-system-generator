@@ -8463,3 +8463,40 @@ still compared by name in about ten files (scene.ts, reports, derived specs, top
 word has one spelling and was left alone - it is the reason an in-atmosphere placement for an
 aerostat is not a small job. (5) The Traveller importer writes `${type} Orbit` from its own
 table; none of its words is the middle band.
+
+### UI-C25 "OBSERVED FROM A DISTANCE ONLY" IS AN ALLOW-LISTED COPY OF THE BODY, NOT A LIST OF ROWS TO HIDE
+BUCKET: ARCHITECTURE - durable: a veil that hides a derived fact must hide every FORM of it, and
+the only way to be sure is to hand the surface a node that never had it.
+WHERE: `catalogue/bodyDisclosure.ts` (`BodyDisclosure`, `bodyDisclosureFor`, `observedBody`,
+`genericTypeLabel`, `graphicModeFor`); read by `catalogue/bodyFacts.ts`, `document/guideDocument.ts`,
+`DocPanel`, `FilteredDocumentView` and `routes/catalogue/+page.svelte`. The preset field is
+`PlayerPreset.bodyDisclosure` (optional, absent = `full`, NOT in `DEFAULT_PRESET`). Gate:
+`catalogue/bodyDisclosure.spec.ts`.
+RULE: every info surface takes a LEVEL (`full` | `observed`), never the preset's field, and
+`bodyDisclosureFor(preset, body)` is the only reader of that field. At `observed` a natural body
+that is not a star is replaced by `observedBody()`: a NEW object built from `OBSERVABLE_FIELDS`
+(identity, orbit, period, rotation, tilt, mass, radius, the GM's description), plus hand-added tags
+(`tagOrigin === 'manual'`, and the anonymous placeholder), plus `image` only when `image.custom`.
+`bodyFacts` then STOPS after the bulk rows, so a row added below that line later is hidden without
+anyone remembering to. Stars, constructs and barycentres pass through untouched.
+WHY: the request was "hide atmosphere and air mix, keep orbit and rotation", and hiding those rows
+alone leaks the same answer five more ways - the Type row ("Earth Analogue"), the heading's
+subtitle, the derived tag pills, the class swatch (`getClassColor` is habitable BLUE and biosphere
+GREEN, which is TAG-25's category-colour leak again), and the stock type picture, which is chosen
+BY the class. A field the engine starts deriving next month would have been a sixth.
+BLAST: (1) IT IS A PRESENTATION VEIL, NOT A SNAPSHOT STRIP. The preset is resolved in the player's
+own window, so the full body still crosses the wire (the `liveReadings` trade-off, A29) and TAG-9
+still has one redaction point. Do not describe it to a GM as secure against developer tools.
+(2) THE ECLIPSE ROW NEEDS THE REAL SYSTEM: `nextEclipseCached` keys on the system OBJECT, so a
+veiled system rebuilt per render would run the forward search on every tick. `discloseSystem` is
+for id lookups (the photo loader) only. (3) ONE FACT IS READ BEFORE THE COPY IS MADE:
+`orbit/spin-orbit-resonance` is a rotation fact stored as a derived tag, and without it Mercury
+reads "tidally locked" beside a day length that contradicts it (B7). (4) THE PICTURE: the live
+globe and the gallery disc draw from the body's own data, so a veiled body takes the plain disc
+(`graphicModeFor`) - one function because the builder reserves the gap and two components fill it.
+(5) NOT VEILED, knowingly: the 2D/3D maps and the document's chart still DRAW the world as it
+looks (`apparentColorHex`, clouds, oceans), and map-highlight badges still badge whatever the GM
+highlighted - the renderers read tags to draw, so they cannot be handed the copy. (6) V4's
+per-body "scanned" state is one line in `bodyDisclosureFor` (a scanned body returns `full`); if it
+ever moves into `computePlayerSnapshot` to take data off the wire, it should call this same
+`observedBody`.

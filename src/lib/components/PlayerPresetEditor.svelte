@@ -21,6 +21,7 @@
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   import { tagDisclosure } from '$lib/tags/tagLifecycle';
+  import { bodyDisclosureFor } from '$lib/catalogue/bodyDisclosure';
   // The GM's live snap-grid, so the preview shows the same grid the players will see.
   $: previewMapGrid = { type: toLegacyMapGridType($starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType), size: 50 };
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -1163,6 +1164,12 @@
                      the tanks now. Off = capacity alone, on = current-of-capacity. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.liveReadings} /> Live readings</label>
                 <p class="hint">Fuel, cargo and crew as they are now, not just capacity.</p>
+                <!-- Stored as a LEVEL, not a boolean (presetTypes has why), so the box maps to it by
+                     hand; unticking leaves the field undefined, which JSON drops, so a preset that
+                     never used it is saved exactly as it was. -->
+                <label class="chk"><input type="checkbox" checked={bodyDisclosureFor(draft) === 'observed'}
+                  on:change={(e) => (draft = { ...draft, bodyDisclosure: (e.currentTarget as HTMLInputElement).checked ? 'observed' : undefined })} /> Observed from a distance only</label>
+                <p class="hint">Worlds show orbit, period, rotation, size and mass, and a plain type such as Planet or Gas giant. Atmosphere, climate, hazards, life, the engine's tags and the type picture stay hidden; your own description and hand-added tags still show.</p>
                 <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info {draft.systemView === 'document' ? 'block' : 'panel'} (clean display)</label>
                 {#if !draft.hideInfoPanel}
                   <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block
@@ -1328,7 +1335,7 @@
                        players will see. It used to be the raw pixel figure capped at 340, which meant the
                        top half of the slider's travel moved nothing on screen at all. -->
                   <aside class="preview-insp" style="width:{Math.round(draft.inspectorWidthPct * 100)}%; font-family:{draft.font}; font-size:{Math.round(13 * draft.infoFontScale)}px">
-                    <DocPanel system={previewSystem} selectedId={previewInfoId} {rulePack} liveReadings={draft.liveReadings}
+                    <DocPanel system={previewSystem} selectedId={previewInfoId} {rulePack} liveReadings={draft.liveReadings} disclosure={bodyDisclosureFor(draft)}
                       font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                       fontScale={draft.infoFontScale} listStyle={draft.listStyle} documentStyle={draft.documentStyle}
                       tagStyle={draft.tagStyle} themeColors={draft.themeColors}
@@ -1341,7 +1348,7 @@
               <!-- The WS2 Guide document, drawn through the real filter exactly as players get it. Tap a
                    world on the schematic (or a navigator row) to drill in — the info block is in-page. -->
               <FilteredDocumentView
-                system={previewSystem} selectedId={previewFocusId} {rulePack} liveReadings={draft.liveReadings}
+                system={previewSystem} selectedId={previewFocusId} {rulePack} liveReadings={draft.liveReadings} disclosure={bodyDisclosureFor(draft)}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 colorful={draft.accentColor === 'rainbow'}
                 imagery={draft.bodyGfx} photoFrame={draft.photoFrame}
