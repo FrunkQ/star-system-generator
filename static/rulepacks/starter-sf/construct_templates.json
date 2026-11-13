@@ -643,7 +643,7 @@
       },
       "explain": "A Shkadov thruster rides a star's light. {host} is not a star.",
       "description": "A vast mirror cap held over a star on the pressure of its own light. The star's output leaves lopsided and the star, with everything bound to it, is slowly pushed.",
-      "gmNotes": "The push is published, not performed: the engine states the thrust and what a million years of it would do, and the star stays where it is on the map. Tilt it on its Orbit tab to aim it. Slow by design - about ten metres a second per million years on a sun-like star with half the sky covered.",
+      "gmNotes": "The push is published, not performed: the engine states the thrust and what a million years of it would do, and the star stays where it is on the map. Tilt it on its Orbit tab to aim it. Slow by design - about ten metres a second per million years on a sun-like star with half the sky covered. On the number: the thrust shown is (L/2c) x (1 - cos of the cap's half-angle), so a full hemisphere over a sun-like star gives L/2c, about 6.4e17 N. The figure usually quoted for the Sun, 1.28e18 N, is L/c: it assumes every photon from half the star is turned straight back. Adding up the light a curved cap really redirects comes to half of that, and that is what the engine publishes.",
       "IsTemplate": true,
       "icon_type": "diamond",
       "icon_color": "#ffe9a8",

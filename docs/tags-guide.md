@@ -351,8 +351,10 @@ at?".
 ## Sharing
 
 A category — its tags, colours, applies-to list and rules — saves to a file and loads back, so you
-can flavour a starmap to your universe and hand the result to another GM. Categories also travel
-inside the starmap itself, so a shared map arrives already speaking its own language.
+can flavour a starmap to your universe and hand the result to another GM. A saved starmap carries
+the tags themselves on every world and ship, but not the whole category: tagging rules, world-only
+categories, per-tag colours and descriptions, and "hide from players" do not travel inside the
+starmap. To pass those on, export the category to a file and send it with the map.
 
 Importing a file whose namespace you already use asks first. **Replace mine with the file** makes
 your category exactly what the file says; **Keep both** brings the file in as a copy under its own
