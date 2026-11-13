@@ -933,7 +933,10 @@ RULE: a regular satellite's elements are quoted in its PARENT'S EQUATOR, and `co
 applies that rotation itself. So the difference of two world positions is already the framed offset —
 a consumer must NOT apply `toParentEquator` to it. `satelliteTiltRad(node, parent)` is the ONLY
 spelling of the gate (star parent → 0; `orbit.frame: 'ecliptic'` → 0, which is the real Laplace
-handover, not a data error). The flat `computeWorldPositions` deliberately does NOT frame: it
+handover, not a data error) - and the decision inside it has a NAME,
+`orbitReferencePlane(node, parent)` (`parent-equator` / `system-declared` / `system`), which is what
+a surface that has to SAY the plane asks: the Orbit tab's hint under Inclination reads it, and
+`BodyOrbitTab.plane.spec.ts` requires the words and `satelliteTiltRad` to agree case by case. The flat `computeWorldPositions` deliberately does NOT frame: it
 propagates ω-only in the reference plane, 2D is the plan view, and there is no out-of-plane axis to
 tilt into.
 WHY: C9. The rotation lived only in `holo/scene.ts`, so the propagator and the renderer answered
@@ -6634,6 +6637,55 @@ the TAG beside it said 130% - one question, two answers, and every existing test
 compared a surface against a number rather than against the other surface. The gate now compares the
 two SURFACES across six arrangements. When one function grows a second caller with a slightly
 different question, give the caller a FLAG, never a copy.
+
+### PHY-48 AN EDITOR SHOWS A PHASE AT ONE STATED EPOCH, OR IT IS SHOWING A DIFFERENT QUANTITY ON EVERY BODY
+BUCKET: DOMAIN + ARCHITECTURE - domain: `M(t) = M0 + n*(t - t0)`, so a mean anomaly is a number AND
+an instant, and a catalogue always states the instant. Architecture: a stored pair that is one fact
+(PHY-33) must be shown as one fact - displaying half of it publishes a number whose meaning depends
+on a field no surface shows.
+WHERE: `components/BodyOrbitTab.svelte` (`shownMeanAnomalyDeg`, `applyMeanAnomaly`, `writeOrbit`);
+`physics/orbits.setPhaseAtEpoch` (the write) and `rephasedM0` (the read); the epoch is
+`system.epochT0`, labelled through `temporal/utre.formatInstantMs` (UI-C14). Gate:
+`components/BodyOrbitTab.epoch.spec.ts`.
+RULE: the Mean Anomaly box shows `rephasedM0(orbit, system.epochT0)` - the stored phase re-expressed
+at the system's reference epoch - and typing in it writes `t0 = epochT0` and `M0_rad = typed`
+together. NOTHING STORED IS MIGRATED: opening the tab writes nothing, and an edit of any OTHER
+element leaves `t0` and `M0_rad` exactly as they were (`writeOrbit` no longer writes the phase at
+all; it used to re-write `M0_rad` from the box on every keystroke of every field, which was harmless
+only while the box held the raw stored value). With no system to name an epoch the box falls back
+to the stored phase and its label drops "at epoch".
+WHY: user report from the bug run: *"two objects with identical orbital elements placed at
+different times end up in different places."* `t0` is the instant a body was created or placed
+(`Date.now()` in the generators, the display clock in `SystemView`'s placement routes, 0 in three
+importers) and nothing showed it, so the same six numbers typed into two bodies were two orbits.
+Measured in the gate with the epoch handling switched off: twins on a 2.5 AU orbit, placed 311 and
+2,045 days into a campaign and given identical elements, sat 3.14 AU apart.
+BLAST: A NEW SEMI-MAJOR AXIS IS A NEW MEAN MOTION, so the same stored phase is a different mean
+anomaly at the epoch. The box is RE-READ after every non-phase edit rather than left stale, which
+means dragging the distance slider moves the Mean Anomaly box on a body whose `t0` is not the
+epoch. That is the honest reading of "the phase is held where it was stored", and it stops the
+moment the GM types a mean anomaly (the orbit is at the epoch from then on). THE ALTERNATIVE WAS
+WEIGHED AND NOT TAKEN: re-stamping `t0 = epochT0` on EVERY element edit makes the six boxes
+independent, but a world just placed at the display instant (`t0` = now) would then swing round its
+orbit by `dn * (now - epoch)` while its distance slider is dragged - years of phase in a long
+campaign - where today it holds still. That changes what dragging feels like; it is the owner's
+call, recorded in the handover.
+BLAST: A PAIR. `processBarycenters` copies `t0` and `M0_rad` from the member with the later
+`lastEditedT0` onto both (PHY-33), and `writeOrbit` stamps `lastEditedT0`, so typing a mean anomaly
+on one member puts BOTH at the epoch on the next pass - gated through `process()`. A PINNED
+`n_rad_per_s` (a pair member's, an l1/l2 point's) is respected because the read is `rephasedM0`,
+which asks `orbitMeanMotion`; never recompute `sqrt(mu/a^3)` in the tab. Between a keystroke and
+the processor's next pass a pair member's pinned `n` is one edit stale, so the box can lag one
+pass on a pair whose separation is being dragged.
+BLAST: `on:input={updateOrbit}` HANDS THE HANDLER AN EVENT. An optional `phaseTyped = false`
+argument on `updateOrbit` is switched ON by every input in the tab, silently - which is why the flag
+lives on `writeOrbit(phaseTyped)` and `updateOrbit()` takes nothing.
+BLAST: NOT REACHED. `ConstructGeneralTab` shows and writes a construct's `M0_rad` bare, against the
+construct's own `t0` (three sites) - the same shape on ships, owned by another stream and DATA-R29.
+The Retrograde orbit checkbox flips the sign of `n` without re-expressing the phase, so a body whose
+`t0` is not "now" jumps when it is ticked; that predates this entry and was left alone. The
+propagator answers in AU: a position gate written as "less than 1" is a one-AU tolerance and
+passes with the fault fully present (it did, once, in this gate's first draft).
 
 ### PHY-42 THE POSITION WALK MUST TERMINATE ON ANY DATA
 BUCKET: ARCHITECTURE - a recursive walk over AUTHORED references is bounded by the data, not by the

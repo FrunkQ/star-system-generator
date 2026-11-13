@@ -10,6 +10,9 @@
   import { hostCandidates, reparentBody } from '$lib/system/reparent';
   import { placementLimitAu, PLACEMENT_FLOOR_AU } from '$lib/system/systemReach';
   import { starmapStore } from '$lib/starmapStore';
+  import { rephasedM0, setPhaseAtEpoch } from '$lib/physics/orbits';
+  import { orbitReferencePlane } from '$lib/system/satelliteFrame';
+  import { formatInstantMs, activeCalendarOf } from '$lib/temporal/utre';
   import BodySpinEditor from './BodySpinEditor.svelte';
 
   export let body: CelestialBody;
@@ -92,11 +95,60 @@
           i_deg = body.orbit.elements.i_deg;
           omega_deg = body.orbit.elements.omega_deg || 0;
           Omega_deg = body.orbit.elements.Omega_deg || 0;
-          M0_deg = (body.orbit.elements.M0_rad || 0) * (180 / Math.PI);
+          M0_deg = shownMeanAnomalyDeg();
       }
 
       calculateZones();
   }
+
+  // PHY-48: THE MEAN ANOMALY THIS TAB SHOWS IS THE ONE AT THE SYSTEM'S REFERENCE EPOCH, not the
+  // stored `M0_rad`. The stored number is the phase at the orbit's own `t0` - the instant the body
+  // happened to be created or placed, which no surface shows - so the same six elements typed into
+  // two bodies made at different clock times were two different orbits (user report: "two objects
+  // with identical orbital elements placed at different times end up in different places").
+  // `M(t) = M0 + n*(t - t0)`: the phase and its epoch are one fact (PHY-33), so the field shows that
+  // fact re-expressed at `system.epochT0`, and typing in it writes BOTH halves (`setPhaseAtEpoch`).
+  // Nothing stored is migrated, and editing any OTHER element leaves the phase and its epoch alone.
+  //
+  // A function, not a `$:` mirror, because `init()` and the handlers need it in the same flush.
+  // With no system to name an epoch (a bare mount) the field falls back to the stored phase.
+  const epochOf = (sys: any): number | null =>
+      typeof sys?.epochT0 === 'number' && Number.isFinite(sys.epochT0) ? sys.epochT0 : null;
+  const referenceEpochMs = () => epochOf(system);
+  function shownMeanAnomalyDeg(): number {
+      if (!body.orbit) return 0;
+      const epoch = referenceEpochMs();
+      const rad = epoch == null ? (body.orbit.elements.M0_rad || 0) : rephasedM0(body.orbit, epoch);
+      // Four decimals of a degree is far below anything the map can show. Rounding the DISPLAY is
+      // safe because only a typed value is ever written back.
+      return parseFloat((rad * (180 / Math.PI)).toFixed(4));
+  }
+  function applyMeanAnomaly() {
+      if (!body.orbit) return;
+      const typed = Number(M0_deg);
+      if (M0_deg == null || !Number.isFinite(typed)) return; // a blanked box is not a phase of zero
+      const rad = typed * (Math.PI / 180);
+      const epoch = referenceEpochMs();
+      if (epoch == null) body.orbit.elements.M0_rad = rad;
+      else setPhaseAtEpoch(body.orbit, epoch, rad);
+      writeOrbit(true);
+  }
+  // The date the mean anomaly refers to, on the campaign's own calendar (UI-C14: one function puts
+  // an instant on the calendar, and with no calendar it answers null rather than guess Gregorian).
+  $: hasReferenceEpoch = epochOf(system) != null;
+  $: epochLabel = hasReferenceEpoch
+      ? formatInstantMs(epochOf(system) as number, activeCalendarOf(($starmapStore as any)?.temporal))
+      : null;
+
+  // WHICH PLANE THE INCLINATION AND THE NODE ARE MEASURED FROM, for THIS body. The decision is
+  // `satelliteFrame.orbitReferencePlane` - the propagator's own - and this only puts it into words.
+  $: referencePlane = orbitReferencePlane(body, parentBody);
+  $: parentTiltDeg = Number((parentBody as any)?.axial_tilt_deg) || 0;
+  $: planeHint = referencePlane === 'parent-equator'
+      ? `Inclination and the ascending node are measured from ${parentBody?.name ?? 'the parent'}'s equator${parentTiltDeg ? `, itself tilted ${+parentTiltDeg.toFixed(1)}° to the system plane` : ''}: 0° lies in the plane of its rings and inner moons.`
+      : referencePlane === 'system-declared'
+          ? `Inclination and the ascending node are measured from the system plane, not from ${parentBody?.name ?? 'the parent'}'s equator: this orbit is marked as following the system plane, as a distant moon's does.`
+          : 'Inclination and the ascending node are measured from the system plane.';
 
   function calculateZones() {
       zones = null;
@@ -177,7 +229,10 @@
       updateSliderFromReal();
       updateOrbit();
   }
-function updateOrbit() {
+// The handlers' form: markup calls this as `on:input={updateOrbit}`, which hands it the EVENT, so
+// the flag lives on `writeOrbit` rather than on an optional argument an event would switch on.
+function updateOrbit() { writeOrbit(false); }
+function writeOrbit(phaseTyped: boolean) {
     if (!body.orbit) return;
     // A negative/zero/NaN semi-major axis is unphysical and throws in ctx.ellipse
     // (it froze the orrery in a user file). Clamp to a tiny positive floor — and to a generous
@@ -198,7 +253,12 @@ function updateOrbit() {
     body.orbit.elements.i_deg = i_deg;
     body.orbit.elements.omega_deg = omega_deg;
     body.orbit.elements.Omega_deg = Omega_deg;
-    body.orbit.elements.M0_rad = M0_deg * (Math.PI / 180);
+    // The PHASE is not written here: it and its epoch are one fact, and only the Mean Anomaly field
+    // itself writes them (`applyMeanAnomaly`, PHY-48). Re-writing it on every edit of another
+    // element would stamp a mean anomaly meant for one epoch onto another. What such an edit CAN do
+    // is change the mean motion, and with it what the stored phase amounts to at the reference
+    // epoch - so the field is re-read, unless it is the one being typed in.
+    if (!phaseTyped) M0_deg = shownMeanAnomalyDeg();
     body.orbit.lastEditedT0 = Date.now();
 
     // Binary Coupling: If we are in a binary system (child of a barycenter with exactly 2 members)
@@ -420,14 +480,20 @@ function updateOrbit() {
 
         <div class="form-group">
             <div class="label-row">
-                <label>Mean Anomaly (°)</label>
-                <input type="number" step="any" min="0" max="360" bind:value={M0_deg} on:input={updateOrbit} />
+                <label for="mean-anomaly" title="How far round its orbit the body is, counted evenly in time from its closest approach: 0° is periapsis, 180° is the far point.">{hasReferenceEpoch ? 'Mean Anomaly at epoch (°)' : 'Mean Anomaly (°)'}</label>
+                <input id="mean-anomaly" type="number" step="any" min="0" max="360" bind:value={M0_deg} on:input={applyMeanAnomaly} />
             </div>
-            <input type="range" min="0" max="360" step="0.01" bind:value={M0_deg} on:input={updateOrbit} class="full-width-slider" />
+            <input type="range" min="0" max="360" step="0.01" bind:value={M0_deg} on:input={applyMeanAnomaly} class="full-width-slider" aria-label="Mean anomaly at the reference epoch" />
+            {#if hasReferenceEpoch}
+            <div class="info-row epoch-hint">
+                Where {body.name} is on its orbit at this system's reference epoch{epochLabel ? ` (${epochLabel})` : ''}. The clock carries it on from there, so the same elements always describe the same orbit, whenever they are typed.
+            </div>
+            {/if}
         </div>
 
         <!-- A106: these two sat behind "Show Advanced Orbital Elements" until the 3D view made
-             them part of what a GM can see. They are first level now. -->
+             them part of what a GM can see. They are first level now, with the plane they are
+             measured from said beside them. -->
         <div class="form-group">
             <div class="label-row">
                 <label for="inclination">Inclination (°)</label>
@@ -442,6 +508,7 @@ function updateOrbit() {
                 <input id="asc-node" type="number" step="any" min="0" max="360" bind:value={Omega_deg} on:input={updateOrbit} />
             </div>
             <input type="range" min="0" max="360" step="0.01" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
+            <div class="info-row plane-hint">{planeHint}</div>
         </div>
 
         <hr />
@@ -565,4 +632,5 @@ function updateOrbit() {
   .rehome-btn { align-self: flex-start; margin-top: 4px; }
   .rehome-toggle { align-self: flex-start; }
   .rehome-panel { display: flex; flex-direction: column; gap: 5px; }
+  .epoch-hint, .plane-hint { font-size: 0.78em; }
 </style>
