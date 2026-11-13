@@ -8111,3 +8111,27 @@ the star editor's own 50,000 K), not yet "the star's own mass-and-age track" as 
 that track needs the zero-age seed G97 is about. A white dwarf is given no band. FOUND ON THE WAY:
 `formatOverrideValue` trimmed trailing zeros from ANY string, so the first record with
 `decimals: 0` printed 500 K as "5 K" and 1900 K as "19 K"; it now trims only after a decimal point.
+### UI-C21 THE SYSTEM'S AGE IS EDITED ON A STAR'S "SYSTEM INFO" TAB, AND AN EDIT MAKES IT CHOSEN
+BUCKET: ARCHITECTURE (where a system-level property is edited) - there is no system panel; the
+system's own properties ride a tab on its stars, and the edit reaches the processor by MUTATING the
+store's system object and announcing a body update.
+WHERE: `components/SystemInfoTab.svelte` (mounted by `BodySidePanel.svelte` for a star only);
+`SystemView.svelte handleBodyUpdate` (re-processes `{ ...system }` on every body update, which is
+how a changed `age_Gyr` is picked up). Gate: `components/SystemInfoTab.spec.ts`; the consequence is
+gated in `system/bodyAge.test.ts` ("ageing the SYSTEM afterwards...").
+RULE: `System.age_Gyr` is written here, by the generation wizard and by the import dialog, and
+nowhere else. An edit here DELETES `ageEstimated` (the import dialog's rule: an age a GM chose is
+not a guess) and leaves `ageBandGyr` alone - the band is what the star's own life makes likely,
+shown under the control, and an age outside it is KEPT and said, never clamped. The slider is
+log-scaled from 1 Myr to `cosmicNowGyr(system)` and bound ONE WAY (UI-C19).
+WHY: [[B150]]'s workaround was "the lever that works is the SYSTEM'S AGE" - and an existing
+system's age had no control at all, so the people it was said to could not act on it. [[G94]]
+makes it the age of every body that has not been given its own; the tab counts the ones that have,
+because those will not follow.
+BLAST: THE TAB EXISTS ON STARS ONLY, so a system with no star (a rogue planet on its own) has no
+way to reach this control; it would need the tab offered on the root body. CHANGING THE AGE DOES
+NOT AGE THE STARS: `ageStar` runs at creation only ([[G97]]), and the tab says so in words. The
+sentence listing what the age drives is PROSE, not measured (unlike the body Age control's,
+UI-C20); it names the system-wide consumers of PHY-44 and must be kept true by hand when one moves.
+The `system` prop here is the STORE'S OWN OBJECT (`BodyDetailsPane` is given `$systemStore`), which
+is the only reason mutating it works; a caller that hands this tab a copy would see edits vanish.
