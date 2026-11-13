@@ -40,3 +40,27 @@ export function cssFilterApprox(filterId: string, params: FilterParamValues = {}
   }
   return NONE;
 }
+
+// THE TINT FOR A TRANSPARENT GRAPHIC (an overlay logo or frame laid over a surface that already
+// carries the filter). The whole-surface tint above is a solid colour under `mix-blend-mode: color`,
+// which only colours what is BENEATH it: over a mostly-empty overlay layer in its own stacking
+// context there is nothing beneath, the blend falls back to plain source-over, and the phosphor
+// paints the whole stage. A colour matrix is the same blend applied per PIXEL instead, so it can
+// only ever touch pixels the graphic itself owns - the alpha row is the identity.
+// The maths is the W3C `color` blend, B = Cs + (Lum(Cb) - Lum(Cs)), mixed in at `opacity`.
+// Returns the twenty `values` of an feColorMatrix (rows R, G, B, A; sRGB, not linearRGB).
+export function graphicTintMatrix(tintHex: string, opacity: number): number[] {
+  const k = Math.max(0, Math.min(1, opacity));
+  const m = /^#?([0-9a-f]{6})$/i.exec(tintHex.trim());
+  const v = m ? parseInt(m[1], 16) : 0xffffff;
+  const cs = [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255];
+  const LUM = [0.3, 0.59, 0.11];
+  const lumCs = cs[0] * LUM[0] + cs[1] * LUM[1] + cs[2] * LUM[2];
+  const out: number[] = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) out.push((row === col ? 1 - k : 0) + k * LUM[col]);
+    out.push(0, k * (cs[row] - lumCs) + 0); // + 0: a zero offset is 0, never -0
+  }
+  out.push(0, 0, 0, 1, 0);
+  return out;
+}
