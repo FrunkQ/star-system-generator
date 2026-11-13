@@ -13,7 +13,7 @@
   import {
     tagCategories, upsertCategory, deleteCategory, setCategoryEnabled, setCategoryPlayerHidden,
     addTagToCategory, removeTagFromCategory, updateTagDef, exportCategory, importCategory,
-    isSystemCategory, type TagCategory
+    addImportedCategory, freeCategoryId, isSystemCategory, type TagCategory, type CategoryImportMode
   } from '$lib/tags/tagCategories';
   import { tagSlugSegment } from '$lib/tags/tagLifecycle';
   import DualRange from './DualRange.svelte';
@@ -100,14 +100,29 @@
     a.download = `${(c.longName || c.id).replace(/[^\w-]+/g, '_')}.tagcategory.json`; a.click(); URL.revokeObjectURL(a.href);
   }
   let importError = '';
+  // A file whose namespace is ALREADY IN USE waits here for the GM's answer. It used to go straight
+  // into the store and overwrite the category of the same namespace without a word ("importing a tag
+  // category makes the tag just reset"), with no way to bring it in beside the one already there.
+  let pendingImport: TagCategory | null = null;
   function onImportFile(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
     const r = new FileReader();
     r.onload = () => {
-      try { const c = importCategory(String(r.result)); upsertCategory(c); selectedId = c.id; importError = ''; }
+      try {
+        const c = importCategory(String(r.result));
+        importError = '';
+        if ($tagCategories.some((x) => x.id === c.id)) { pendingImport = c; return; }
+        selectedId = addImportedCategory(c);
+      }
       catch (err) { importError = (err as Error).message; }
     };
     r.readAsText(file); (e.target as HTMLInputElement).value = '';
+  }
+  function resolveImport(mode: CategoryImportMode | null) {
+    const c = pendingImport; pendingImport = null;
+    if (!c || !mode) return;
+    try { selectedId = addImportedCategory(c, mode); importError = ''; }
+    catch (err) { importError = (err as Error).message; }
   }
   function toggleAppliesTo(role: PoIRole, on: boolean) {
     if (!cat) return;
@@ -254,6 +269,21 @@
         <label class="imp">Import…<input type="file" accept=".json" on:change={onImportFile} hidden /></label>
       </div>
       {#if importError}<p class="err">{importError}</p>{/if}
+      {#if pendingImport}
+        {@const mine = cats.find((c) => c.id === pendingImport?.id)}
+        <div class="import-clash" role="alertdialog" aria-label="This namespace is already in use">
+          <p class="note">
+            The file is <b>{pendingImport.longName || pendingImport.id}</b> — namespace <code>{pendingImport.id}</code>,
+            {pendingImport.tags.length} tag{pendingImport.tags.length === 1 ? '' : 's'}, {pendingImport.rules.length} rule{pendingImport.rules.length === 1 ? '' : 's'}.
+            You already have <b>{mine?.longName || pendingImport.id}</b> under that namespace
+            ({mine?.tags.length ?? 0} tag{mine?.tags.length === 1 ? '' : 's'}, {mine?.rules.length ?? 0} rule{mine?.rules.length === 1 ? '' : 's'}).
+          </p>
+          <button class="ghost" on:click={() => resolveImport('replace')} title="Your category becomes exactly what the file says. Changes you made since are lost.">Replace mine with the file</button>
+          <button class="ghost" on:click={() => resolveImport('copy')} title="The file comes in beside yours under its own namespace, with its own tags and rules.">Keep both — import as a copy</button>
+          <button class="link" on:click={() => resolveImport(null)}>Cancel</button>
+          <p class="note">A copy takes the namespace <code>{freeCategoryId(cats, pendingImport.id)}</code>, so its tags and rules are separate from yours.</p>
+        </div>
+      {/if}
       {#if stranded.tags > 0}
         <div class="stranded">
           <p class="note">
@@ -559,6 +589,9 @@
   .addtag { display: flex; gap: 6px; align-items: center; }
   .addtag input { flex: 1; }
   .hide-row { margin: 6px 0; }
+  .import-clash { margin-top: 8px; padding: 8px; border: 1px solid var(--accent); border-radius: 4px; display: flex; flex-direction: column; gap: 6px; }
+  .import-clash .ghost { font-size: 0.76rem; padding: 5px 8px; text-align: left; }
+  .import-clash code { font-family: var(--font-mono, monospace); }
   .stranded { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 6px; }
   .stranded .ghost { font-size: 0.76rem; padding: 5px 8px; }
   .rolechk.ghosted { opacity: 0.4; }
