@@ -7986,7 +7986,16 @@ four numbers are PACK DATA (`deepTime` in the pack's `main.json`, read only thro
 `deepTimeConfig`, which defaults each field separately); they are first values awaiting the
 owner's eye. `age/` and `origin/` never read each other. The namespace is `overridable: false`:
 forcing the tag by hand would describe an age the body does not have, and the Age control is the
-lever. (This paragraph wants its own TAG- entry; no TAG id was reserved for the stream.)
+lever. A NEW ENGINE NAMESPACE IS DECLARED IN THREE PLACES and `age/` is in all three:
+`tagDefaults.ENGINE_NAMESPACES` (provenance), `tagPresentation` (`NAMESPACE_META`, `NAMESPACE_DESC`
+and the four `TAG_INFO` entries) and `importFixup.DERIVED_TAG_PREFIXES` - miss the last and the tag
+is written into every save as a fossil beside the field it was derived from.
+(This paragraph wants its own TAG- entry; no TAG id was reserved for the stream.)
+BLAST: WHAT A SAVE CARRIES. `formationTimeGyr` is AUTHORED and is not in
+`importFixup.DERIVED_FIELDS`; it must never be added there. The stellar pin's `temperature0K` and
+`radiationOutput0` (OVR-9) are written by the processor and are DECLARED in `NOT_STRIPPED`: strip
+them and a pin becomes irreversible across a save. `system/bodyAge.test.ts` ("a save keeps the ages
+it was given...") gates all three through `stripSystemForExport` and `fixUpImportedSystem`.
 ### PHY-44 WHICH PHYSICS READS A BODY'S OWN AGE AND WHICH STILL READS THE SYSTEM'S - THE LIST IS THE RULE
 BUCKET: ARCHITECTURE (ordering + single source) - the processor holds two ages on purpose, and a
 consumer on the wrong one is invisible until a GM ages one body. First-order for V4's evolution

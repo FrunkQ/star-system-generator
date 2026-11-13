@@ -9,6 +9,8 @@ import fs from 'fs';
 import path from 'path';
 import { systemProcessor } from '../core/SystemProcessor';
 import { setBodyAge, clearBodyAge } from '../physics/bodyAge';
+import { stripSystemForExport, fixUpImportedSystem } from './importFixup';
+import { clearOverride } from '../physics/overrides';
 import { ageDriven, ageDrivesSentence, type AgeDriven } from '../physics/ageDrives';
 import type { System, RulePack, CelestialBody } from '../types';
 
@@ -325,5 +327,51 @@ describe('G94 - the age/ tag family is emitted, re-derived and cleared', () => {
     const slow = { ...pack, deepTime: { generationGyr: 3 } } as RulePack;
     const s = systemProcessor.process(aged(makeSystem(4.6), 'planemo', 9), slow);
     expect(ageTags(node(s, 'planemo'))).toEqual(['age/old=9 Gyr']);
+  });
+});
+
+// WHAT A SAVE CARRIES. An age is authored, so it must survive the export strip and the load fix-up
+// exactly; the system's age must not be stamped onto anything on the way; and the `age/` tag is a
+// fossil in a file - stripped on export, re-derived on load - like every other engine-owned tag.
+describe('G94 - a save keeps the ages it was given and gives none to anything else', () => {
+  const pack = loadRulePack();
+  const roundTrip = (s: System): System => {
+    const file = JSON.parse(JSON.stringify(stripSystemForExport(JSON.parse(JSON.stringify(s)), pack)));
+    return systemProcessor.process(fixUpImportedSystem(file, pack), pack);
+  };
+
+  it('formation times come back exactly, the dwarf is the same temperature, and nobody else gains one', () => {
+    const before = systemProcessor.process(aged(aged(makeSystem(2.9), 'dwarf', 9), 'jove', 0.5), pack);
+    const t = { dwarf: node(before, 'dwarf').formationTimeGyr, jove: node(before, 'jove').formationTimeGyr };
+    const teff = node(before, 'dwarf').temperatureK;
+    const after = roundTrip(before);
+    expect(node(after, 'dwarf').formationTimeGyr).toBe(t.dwarf);
+    expect(node(after, 'jove').formationTimeGyr).toBe(t.jove);
+    expect(node(after, 'dwarf').temperatureK).toBe(teff);
+    expect(teff).toBeCloseTo(989.70, 1);
+    for (const id of ['star', 'red', 'planemo', 'moon', 'ares']) expect('formationTimeGyr' in node(after, id), id).toBe(false);
+  });
+
+  it('the exported file holds the formation time and NOT the age tag; the tag is re-derived on load', () => {
+    const processed = systemProcessor.process(aged(makeSystem(4.6), 'jove', 9), pack);
+    expect((node(processed, 'jove').tags ?? []).map((x) => x.key)).toContain('age/ancient');
+    const file = stripSystemForExport(JSON.parse(JSON.stringify(processed)), pack) as System;
+    expect(node(file, 'jove').formationTimeGyr).toBeCloseTo(13.787 - 9, 3);
+    expect((node(file, 'jove').tags ?? []).some((x) => x.key.startsWith('age/'))).toBe(false);
+    const loaded = systemProcessor.process(fixUpImportedSystem(JSON.parse(JSON.stringify(file)), pack), pack);
+    expect((node(loaded, 'jove').tags ?? []).filter((x) => x.key.startsWith('age/')).map((x) => `${x.key}=${x.value}`)).toEqual(['age/ancient=9 Gyr']);
+  });
+
+  it('a pinned stellar temperature survives a save WITH what it displaced, so a reset after reload still works', () => {
+    const s0 = makeSystem(4.6);
+    (node(s0, 'star') as any).overrides = { effectiveTempK: 4000 };
+    const loaded = roundTrip(systemProcessor.process(s0, pack));
+    expect(node(loaded, 'star').temperatureK).toBe(4000);
+    expect(node(loaded, 'star').temperature0K).toBe(5778);
+    clearOverride(node(loaded, 'star'), 'effectiveTempK');
+    const reset = systemProcessor.process(loaded, pack);
+    expect(node(reset, 'star').temperatureK).toBe(5778);
+    expect(node(reset, 'star').radiationOutput).toBe(1);
+    expect('temperature0K' in node(reset, 'star')).toBe(false);
   });
 });
