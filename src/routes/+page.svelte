@@ -41,6 +41,7 @@
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import { createPersistQueue } from '$lib/persistQueue';
   import { createLoadGuard } from '$lib/loadGuard';
+  import { createViewRestore, declinedRestoreNotice } from '$lib/viewRestore';
   import { onBeforeReload } from '$lib/util/beforeReload';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
@@ -633,7 +634,10 @@
           saveSystemState(previousSystemId);
           // Clear system store to free memory/reset views
           systemStore.set(null);
+          // UI-L10: the GM left for the starmap, so a reload stays on the starmap.
+          viewRestore.forget();
       }
+      if (currentSystemId) noteSystemOpen(currentSystemId);
       previousSystemId = currentSystemId;
   }
 
@@ -703,6 +707,7 @@
     // still has the offer waiting in Settings.
     await refreshPreUpgradeSnapshot();
     hasSavedStarmap = await hasPersistedStarmap();
+    let campaignLoadedOnStart = false;
     if (hasSavedStarmap) {
       // Safe-mode brake: if the guard stamp survived from last time, the previous load never
       // reached a painted frame — auto-loading again would just repeat the hang. Ask instead.
@@ -712,6 +717,7 @@
         loadGuardPrompt = tripped;
       } else {
         await handleLoadStarmap();
+        campaignLoadedOnStart = true;
       }
     } else if (!hubOpenRequest()) {
       // R-05/R-17: a `?hub=` or `?open=` link is a request to open THAT map. Putting the
@@ -719,6 +725,9 @@
       // something else.
       showNewStarmapModal = true;
     }
+    // UI-L10: back into the system the GM was in. Called on EVERY path, because the paths that
+    // restore nothing must also forget what was remembered.
+    restoreViewAfterStartup(campaignLoadedOnStart);
     // R-05/R-17 runs LAST, deliberately: it has to know whether there is already a campaign in
     // this browser before it can decide whether it is allowed to open anything.
     await maybeOpenHubMap();
@@ -1800,7 +1809,12 @@
     && !showGenerationWizard && !pendingHubSystem && !showWelcome;
 
   function handleSystemClick(event: CustomEvent<string>) {
-    const sysId = event.detail; // Local var to ensure immediate availability
+    enterSystem(event.detail);
+  }
+
+  // `navigate` is `pushState` for the GM's own click and `replaceState` for the start-up restore,
+  // which re-enters the history entry the reload left it on rather than stacking a second one.
+  function enterSystem(sysId: string, navigate: typeof pushState = pushState): boolean {
     const currentMap = get(starmapStore);
     const systemNode = currentMap?.systems.find(s => s.id === sysId);
     if (systemNode) {
@@ -1833,8 +1847,69 @@
       }
       systemStore.set(JSON.parse(JSON.stringify(refreshedNode.system)));
       // Push state to enter the system
-      pushState('', { systemId: sysId });
+      navigate('', { systemId: sysId });
+      return true;
     }
+    return false;
+  }
+
+  // --- UI-L10: after a reload, back into the system the GM was in ---------------------------------
+  //
+  // THE LAW IS IN `$lib/viewRestore` - what is remembered, why it is this TAB's and not the
+  // device's, and the one-shot rule that stops a system which kills the tab from being re-opened
+  // on every start. Read the head of that module before changing when anything here is called.
+  let systemViewComponent: SystemView | null = null;
+  const viewRestore = createViewRestore({
+    // Reached through functions, never held, for the reason the load guard gives below.
+    storage: browser
+      ? {
+          getItem: (key) => sessionStorage.getItem(key),
+          setItem: (key, value) => sessionStorage.setItem(key, value),
+          removeItem: (key) => sessionStorage.removeItem(key)
+        }
+      : null,
+    win: browser ? window : null,
+    doc: browser ? document : null,
+    // A system view that threw while mounting was never bound, so it never counts as open.
+    ready: () => !!systemViewComponent && !!currentSystemId
+  });
+  onDestroy(() => viewRestore.destroy());
+
+  // Every way into a system ends in `$page.state.systemId`, so this is called from the one
+  // reactive block that watches it rather than from each of them.
+  function noteSystemOpen(id: string) {
+    const map = get(starmapStore);
+    // The state can carry the map node's id or the system's own (SystemView's focus changes write
+    // the latter); they are one system, and it is remembered by its node.
+    const node = map?.systems.find((s) => s.id === id || s.system?.id === id);
+    if (map && node) viewRestore.entered(map.id, node.id);
+    else viewRestore.forget(); // state naming a system this campaign does not have
+  }
+
+  function restoreViewAfterStartup(campaignLoaded: boolean) {
+    // Already in a system (a remount with the campaign still in memory, and a quick click): what
+    // is remembered is THIS visit's, written by `noteSystemOpen`, and start-up has no say.
+    if (currentSystemId) return;
+    // Nothing is restored behind the safe-mode screen or a stopped load, nor when the page was
+    // opened by a link that brings a shared map or a system of its own.
+    const blocked = !campaignLoaded || loadGuardPrompt !== null || diagnosticOffer !== null || !!hubOpenRequest();
+    const view = viewRestore.startup(blocked ? null : get(starmapStore), blocked);
+    if (view.kind === 'declined') {
+      remoteNotice = declinedRestoreNotice(view.name);
+      if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+      remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 12000);
+      return;
+    }
+    if (view.kind !== 'restore') return;
+    // The load guard is still armed (its clears are a painted frame and a timer, both ahead of
+    // us), so name this stage: if the open hangs, the safe-mode screen says where (UI-L1).
+    const name = get(starmapStore)?.systems.find((s) => s.id === view.systemId)?.name || 'the last system';
+    loadGuardStage(`re-opening ${name}`);
+    perfStage('view.restore');
+    let opened = false;
+    try { opened = enterSystem(view.systemId, replaceState); }
+    catch (e) { console.warn('[sse-load] could not re-open the last system:', e); }
+    if (!opened) viewRestore.forget();
   }
 
   function handleSystemZoom(event: CustomEvent<string>) {
@@ -2419,8 +2494,11 @@
       return starmap;
     });
     selectedSystemForLink = null; // Deselect after deletion
-    currentSystemId = null; // If the deleted system was being viewed, go back to starmap
-    systemStore.set(null);
+    // If the deleted system was being viewed, go back to starmap - the way every other exit does.
+    // Setting `currentSystemId` alone left the id in `$page.state`, to come back at the store's next
+    // emission and (UI-L10) to be written down as the system to re-open.
+    if ($page.state.systemId) exitToStarmap();
+    else { currentSystemId = null; systemStore.set(null); }
   }
 
   function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
@@ -2958,6 +3036,7 @@
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
     {#if $systemStore && effectiveRulePack}
       <SystemView
+        bind:this={systemViewComponent}
         on:pasteClip={(e) => pasteClipInto(e.detail)}
         system={$systemStore} rulePack={effectiveRulePack} shippedRulePack={selectedRulepack} {exampleSystems}
         on:notice={(e) => { clipNotice = e.detail; if (clipNoticeTimer) clearTimeout(clipNoticeTimer); clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000); }}
