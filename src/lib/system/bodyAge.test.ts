@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { systemProcessor } from '../core/SystemProcessor';
-import { setBodyAge } from '../physics/bodyAge';
+import { setBodyAge, clearBodyAge } from '../physics/bodyAge';
 import { ageDriven, ageDrivesSentence, type AgeDriven } from '../physics/ageDrives';
 import type { System, RulePack, CelestialBody } from '../types';
 
@@ -270,5 +270,60 @@ describe('G94 - what the Age control says it drives is what moves', () => {
     expect(ageDrivesSentence(node(s, 'jove'), pack)).toBe('Drives the heat still left over from its formation.');
     expect(ageDrivesSentence(node(s, 'ares'), pack)).toBe('Drives how much of its air it has lost.');
     expect(ageDrivesSentence(node(s, 'moon'), pack)).toMatch(/^Nothing this body shows is worked out from its age yet/);
+  });
+});
+
+// G94 job 6 - the `age/` tags, through the processor. The bands themselves are pinned in
+// `physics/ageTags.spec.ts`; this is the lifecycle: emitted from the body's own formation time,
+// owned and cleared by one pass, and never an anomaly.
+describe('G94 - the age/ tag family is emitted, re-derived and cleared', () => {
+  const pack = loadRulePack();
+  const ageTags = (b: CelestialBody) => (b.tags ?? []).filter((t) => t.key.startsWith('age/')).map((t) => `${t.key}=${t.value}`);
+
+  it('a system in which no body has its own age carries no age/ tag anywhere', () => {
+    const s = systemProcessor.process(makeSystem(4.6), pack);
+    for (const n of s.nodes) expect(ageTags(n as CelestialBody), n.id).toEqual([]);
+  });
+
+  it('each band lands on the body that earned it, with its age as the value', () => {
+    const s0 = makeSystem(4.6);
+    for (const [id, a] of Object.entries({ ares: 0.5, jove: 5, planemo: 9, dwarf: 13.2, moon: 4.6 })) setBodyAge(node(s0, id), a, s0);
+    const s = systemProcessor.process(s0, pack);
+    expect(ageTags(node(s, 'ares'))).toEqual(['age/young=500 Myr']);
+    expect(ageTags(node(s, 'jove'))).toEqual(['age/old=5 Gyr']);
+    expect(ageTags(node(s, 'planemo'))).toEqual(['age/ancient=9 Gyr']);
+    expect(ageTags(node(s, 'dwarf'))).toEqual(['age/primordial=13.2 Gyr']);
+    expect(ageTags(node(s, 'moon'))).toEqual([]);             // its own age, but the system's: formed with it
+    expect(ageTags(node(s, 'star'))).toEqual([]);
+  });
+
+  it('it is a TAG and not an anomaly: nothing is pinned and no anomaly is raised', () => {
+    const s = systemProcessor.process(aged(makeSystem(4.6), 'planemo', 9), pack);
+    const b = node(s, 'planemo');
+    expect(b.overrides).toBeUndefined();
+    expect((b.tags ?? []).some((t) => t.key.startsWith('anomaly/'))).toBe(false);
+  });
+
+  it('the relative band follows the SYSTEM when the system is aged; the body\'s own age does not move', () => {
+    const s1 = systemProcessor.process(aged(makeSystem(4.6), 'jove', 5), pack);
+    expect(ageTags(node(s1, 'jove'))).toEqual(['age/old=5 Gyr']);
+    const s2 = systemProcessor.process({ ...s1, age_Gyr: 6 }, pack);
+    expect(ageTags(node(s2, 'jove'))).toEqual(['age/young=5 Gyr']);
+  });
+
+  it('handing the age back to the system removes the tag, and exactly one tag is ever present', () => {
+    let s = systemProcessor.process(aged(makeSystem(4.6), 'jove', 5), pack);
+    setBodyAge(node(s, 'jove'), 9, s);
+    s = systemProcessor.process(s, pack);
+    expect(ageTags(node(s, 'jove'))).toEqual(['age/ancient=9 Gyr']);
+    clearBodyAge(node(s, 'jove'));
+    s = systemProcessor.process(s, pack);
+    expect(ageTags(node(s, 'jove'))).toEqual([]);
+  });
+
+  it('the pack\'s own figures decide: a 3 Gyr generation makes the same 9 Gyr body merely old', () => {
+    const slow = { ...pack, deepTime: { generationGyr: 3 } } as RulePack;
+    const s = systemProcessor.process(aged(makeSystem(4.6), 'planemo', 9), slow);
+    expect(ageTags(node(s, 'planemo'))).toEqual(['age/old=9 Gyr']);
   });
 });

@@ -1286,6 +1286,9 @@ export interface RulePack {
    */
   playerStrings?: { incoming?: string };
   climateModel?: ClimateModelConfig;
+  // G94: the bands of the `age/` tag family, in Gyr. Read ONLY through `physics/ageTags.ts
+  // deepTimeConfig`, which supplies a default for anything a pack leaves out.
+  deepTime?: { accretionGyr?: number; generationGyr?: number; ancientGenerations?: number; primordialBeforeGyr?: number };
   gasMolarMassesKg?: Record<string, number>; // Legacy support (optional)
   gasShielding?: Record<string, number>; // Legacy support (optional)
   liquids?: LiquidDef[];

@@ -7973,6 +7973,20 @@ its formation time and therefore its place in history - its AGE there is that sy
 it, which differs only by the gap between the two reference epochs. `epochT0` of 0 (the Traveller
 importer) reads as 1970 and is 56 years in 13.787 Gyr. The float round trip is not exact
 (`now - (now - 9.2)` is 9.2 to about 1e-15): compare with a tolerance, display rounded.
+BLAST: THE `age/` TAG FAMILY IS DERIVED FROM THIS AND FROM NOTHING ELSE (`physics/ageTags.ts`,
+`ageBand`; emitted by pass 0d of `SystemProcessor.process`, which owns the namespace and clears it
+first, TAG-6; gates `physics/ageTags.spec.ts` and the last block of `system/bodyAge.test.ts`).
+ONLY A BODY WITH ITS OWN FORMATION TIME IS BANDED OR EVEN TOUCHED - an inheriting body formed with
+its system, carries no tag, and has its tag array left exactly as it arrived, which is what keeps
+old saves and the Sol baseline identical. ONE TAG, the most specific band, value = the body's age.
+PRIMORDIAL IS ABSOLUTE AND IS ASKED FIRST (cosmic formation time below `primordialBeforeGyr`);
+young, old and ancient are RELATIVE to the SYSTEM's formation - the system's, not the nearest
+star's, so a moon of a captured brown dwarf is compared with the system like everything else. The
+four numbers are PACK DATA (`deepTime` in the pack's `main.json`, read only through
+`deepTimeConfig`, which defaults each field separately); they are first values awaiting the
+owner's eye. `age/` and `origin/` never read each other. The namespace is `overridable: false`:
+forcing the tag by hand would describe an age the body does not have, and the Age control is the
+lever. (This paragraph wants its own TAG- entry; no TAG id was reserved for the stream.)
 ### PHY-44 WHICH PHYSICS READS A BODY'S OWN AGE AND WHICH STILL READS THE SYSTEM'S - THE LIST IS THE RULE
 BUCKET: ARCHITECTURE (ordering + single source) - the processor holds two ages on purpose, and a
 consumer on the wrong one is invisible until a GM ages one body. First-order for V4's evolution

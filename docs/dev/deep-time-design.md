@@ -162,6 +162,34 @@ matters: refuse only when a choice would corrupt a neighbour.)*
 Two are relative and two are absolute, and the difference is load-bearing: the relative pair keeps working for
 a young host, the absolute pair keeps meaning something whatever it orbits.
 
+### As built (2026-11, Stream Z)
+
+`src/lib/physics/ageTags.ts ageBand` decides the band; pass 0d of the processor owns the namespace, clears it
+and emits at most ONE tag per body, the most specific band, with the body's age as its value.
+
+- **Only a body with a formation time of its own is banded.** One that inherits formed with its system, which is
+  the ordinary case and carries no tag. This is also what leaves every existing save untouched.
+- **`age/primordial` is asked first and is absolute**: formed less than `primordialBeforeGyr` after the big bang,
+  whatever it orbits - including a system that is itself that old.
+- **The other three are relative to the SYSTEM's formation** (the age the system's star was dated at): `ancient`
+  when older by `ancientGenerations x generationGyr`, `old` when older at all, `young` when younger by more than
+  `accretionGyr`. Within the accretion window, or exactly the system's age, is "formed with it": no tag.
+- **The four numbers are pack data**, `deepTime` in the rule pack's `main.json`:
+
+  | key | first value | what it is |
+  |---|---|---|
+  | `accretionGyr` | 0.1 | how long after its star a body may form and still have formed with its system |
+  | `generationGyr` | 0.5 | one stellar generation |
+  | `ancientGenerations` | 2 | generations older than the host to be `ancient` (the owner's "2-3 stars ago") |
+  | `primordialBeforeGyr` | 1 | cosmic time before which a body is `primordial` |
+
+  **These are FIRST VALUES chosen by the stream, not decided by the owner.** The reasoning: worlds finish
+  assembling within about 100 Myr; rocky planets are known around stars 11 Gyr old, so if rock needs three to
+  four generations (section 4) a generation is about half a gigayear; the first gigayear is the era before
+  reionisation ended. Each is one number in one file.
+- **Not built:** the slider's four coloured zones, the composition floor and its detent (section 4), and any tag
+  for a body pushed beyond its floor. The Age control marks the system's formation on its axis and nothing else.
+
 **What is NOT here: metallicity.** The engine has none — no `metallicity`, no `[Fe/H]`, no population field.
 So `ancient` and `primordial` are derived from age alone today. That is honest but incomplete: a primordial rock
 should also be metal-poor. **Word the tag descriptions to say the age is what was measured**, and treat
@@ -193,9 +221,16 @@ Each of these should be an addition, not a redesign. If one is not, this documen
 
 ## 7. Open
 
-- The `age/` band edges, and the generation length, as pack data — first values want a human's eye.
-- Whether a STAR carries its own age too. It should: `flareActivity` reads age, and a captured companion is a
-  real case.
+- The `age/` band edges, and the generation length, as pack data — **first values are now in the pack
+  (section 5, "As built") and want a human's eye.**
+- ~~Whether a STAR carries its own age too.~~ It does: `ageOf` answers for any body and `flareActivity` reads the
+  star's own. A fusing star has no Age control yet, because what its age should do to its temperature, size and
+  brightness is [[G97]]; a brown dwarf filed as a star has one.
+- Whether a moon with no age of its own should inherit its PLANET's age rather than the system's. Today
+  everything inherits the system's, as [[G94]] decided; a captured brown dwarf's moons are therefore dated with
+  the system, not with their host.
+- The other per-body readers of age still on the system's (tidal locking, the surface-age read in the thermal
+  solve, geology, the classifier's age feature): engine map PHY-44.
 - Metallicity, whenever it arrives, and the cross-check against `age/ancient` and `age/primordial`.
 - ~~Where the control lives on the body's panel~~ — settled 2026-09-11 ([[G96]]): the Temperature tab on a
   planet or moon; in place of the Effective Temperature block on a star. The label stays **Age**, not "time",

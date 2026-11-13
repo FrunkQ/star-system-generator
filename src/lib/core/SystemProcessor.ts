@@ -91,6 +91,8 @@ import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
 import { isLegacyTag } from '../tags/tagPresentation';
 import { ageOf, systemAgeGyr, type AgeFrame } from '../physics/bodyAge';
+import { AGE_TAG_NAMESPACE, ageBand } from '../physics/ageTags';
+import { formatAgeGyr } from '../physics/ageDrives';
 
 export class SystemProcessor implements ISystemProcessor {
     private systemAgeGyr = 4.6;
@@ -247,6 +249,22 @@ export class SystemProcessor implements ISystemProcessor {
             if (!secondary || !primary) continue;
             const hold = coOrbitalHold(b.coOrbital.point, massOf(primary), massOf(secondary), b.massKg || 0);
             emit(b.tags, { key: 'flight/fuel-use', value: hold.fuelUse });
+        }
+
+        // 0d (G94): THE `age/` FAMILY - when a body formed, set against the system it is in now.
+        //     Physics decides, tags record: the band comes from the body's own formation time and
+        //     the pack's deep-time figures (physics/ageTags.ts), all INPUTS, so the answer is the
+        //     same on every pass. This pass OWNS the namespace and clears it first (TAG-6), so a
+        //     body handed back to its system's age loses its mark. ONLY A BODY WITH AN AGE OF ITS
+        //     OWN IS TOUCHED: one that inherits formed with its system, carries no tag, and - with
+        //     no `age/` tag to strip - is left exactly as it arrived.
+        for (const node of allNodes) {
+            if (node.kind !== 'body') continue;
+            const b = node as CelestialBody;
+            const band = ageBand(b, this.ageFrame, rulePack);
+            if (!band && !(b.tags ?? []).some((t) => t.key.startsWith(AGE_TAG_NAMESPACE))) continue;
+            b.tags = stripForReprocess(b.tags ?? [], [AGE_TAG_NAMESPACE]);
+            if (band) emit(b.tags, { key: `${AGE_TAG_NAMESPACE}${band}`, value: formatAgeGyr(this.ageOf(b)) });
         }
 
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)
