@@ -24,7 +24,8 @@
 
 <svelte:window on:keydown={onKey} />
 
-<div class="modal-overlay" role="presentation" on:click={close} use:foreground>
+<!-- `help-layer`: see the style rule. This viewer is opened BY other dialogs, so it stacks above them. -->
+<div class="modal-overlay help-layer" role="presentation" on:click={close} use:foreground>
   <div class="modal-card help-card" role="dialog" aria-label={heading} on:click|stopPropagation>
     <header class="help-head">
       <span>{heading}</span>
@@ -35,6 +36,15 @@
 </div>
 
 <style>
+  /* A GUIDE IS A DIALOG THAT OTHER DIALOGS OPEN, so it has to sit above every one of them.
+     It took the shared `.modal-overlay` layer (1000), which was enough while it rendered INSIDE its
+     opener: the opener's backdrop is its own stacking context and the guide was the last thing in
+     it. `use:foreground` now moves every dialog to <body> (engine map UI-C14), where the guide's
+     1000 is compared directly with the opener's own number - Find by tag is 1500, the tag category
+     editor and the ship panel 2200 - and the guide opened BEHIND all three. Only the Help menu,
+     itself at 1000 and earlier in the document, still worked.
+     The top of the modal tier, under the toasts: nothing a guide is opened from sits higher. */
+  .help-layer { z-index: calc(var(--z-modal, 3000) + 2); }
   .help-card {
     width: min(760px, 94vw);
     max-height: 88vh;
