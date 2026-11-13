@@ -220,6 +220,11 @@ WHERE: `src/lib/tags/tagLifecycle.ts`
 RULE: `stripForReprocess` / `stripRuleTags` are the ONLY ways engine code removes a tag by
 provenance or namespace. Removing by exact key in response to a user action is not covered and is
 allowed (`tagCategories.ts` edit ops, `coi.ts` toggle).
+AMENDED (2026-11-13, the 3.1.1 tag reports): `stripRuleTags` takes a THIRD argument, the ids of
+the rules the caller holds, and clears a rule-seeded tag that names one of them whatever namespace
+its key sits in (TAG-26). `reasonsToVisit.removeStrandedRuleTags` also removes by provenance, but only on a GM's
+explicit act, and it is DEFINED THROUGH `stripRuleTags` (whatever a rule seeded that the strip
+leaves standing) rather than beside it - so it is the user-action class above, not a second owner.
 WHY: the rule used to be restated at 34 call sites and 25 of them deleted hand-added tags, so a GM
 override could not exist. `importFixup` also deleted one on save.
 BLAST: adding a strip anywhere → route it here. Grep `tags.filter` before assuming a site is new.
@@ -324,14 +329,25 @@ AFTER the legacy strip or you launder every V1 tag into a valid-looking user tag
 ### TAG-8 Rule evaluation order is load-bearing
 BUCKET: ARCHITECTURE - an authored rule list whose evaluation advances a seeded stream has an ORDER
 that is output, not presentation. Named by the carry-forward criterion.
-WHERE: `TagRule.seq`, consumed in `reasonsToVisit.poiPacks`
+WHERE: `TagRule.seq`, consumed in `reasonsToVisit.poiPacks`; assigned to an arriving rule by
+`tagCategories.seatArrivingRules` (called from `upsertCategory` and `addImportedCategory`)
 RULE: each body rolls a seeded random number PER RULE and the sequence advances every time. Changing
 the ORDER rules run in changes which tags every world gets. `seq` preserves the authored order across
 storage changes.
+AMENDED (2026-11-13, the 3.1.1 tag reports): A RULE ARRIVING IN THE STORE IS SEATED LAST. A rule
+new to its category takes `max(seq) + 1`; a rule already there keeps the place it has, INCLUDING one saved by an older
+build with no `seq` at all, which is never re-seated (that would be the same reshuffle, once, on a
+campaign nobody touched). A FILE'S `seq` IS NEVER TRUSTED: it is a position in the store that
+exported it, and an exported copy carries the very numbers its original still holds here.
 WHY: moving rules onto their categories grouped them by category and re-rolled the entire bundled
 starmap. Caught only by the derived baseline moving.
+AND THE EDITOR WAS THE DOOR THAT DID NOT RESPECT IT: "+ rule" made a rule with no `seq`, `poiPacks`
+sorts a missing one as 0, and the new rule landed SECOND of forty-six. Measured on the Sol fixture:
+adding one rule with a 0% chance changed the rule-seeded tags on 29 of 40 bodies.
 BLAST: anything that re-orders, filters, or re-groups the rule list. Diff
-`tests/output/solar-system-derived.json` after.
+`tests/output/solar-system-derived.json` after. A new writer of rules into `tagCategories` goes
+through `upsertCategory` or `addImportedCategory`, or seats its rules itself; `tagCategories.update`
+with a seq-less rule puts it at the front. Gated in `tagCategories.spec.ts` against the live store.
 
 ### TAG-9 Player redaction happens at exactly one point
 BUCKET: ARCHITECTURE - audience redaction happens at exactly ONE point. A second site is how a leak
@@ -2403,19 +2419,33 @@ arriving for these objects, it wins - and `typicalForClass` must not be set for 
 ### DATA-R4 The importer never invents and never overwrites — and both must reach the user
 BUCKET: ARCHITECTURE - an importer neither invents nor overwrites, and BOTH the skips and the
 collisions must reach the user, or a silently short import reads as a complete survey.
-WHERE: `convert.mjs` (`starNodeFromRow` skips, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
-RULE: a host missing mass, radius or temperature is SKIPPED with a named reason rather than guessed
-into existence, and a host is treated as a COLLISION only when the TARGET MAP already holds it —
+WHERE: `convert.mjs` (`convertRegion` step 4 and `starNodeFromCensus` for the stars-first path,
+`starNodeFromRow` skips in `convertArchiveRows`, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
+RULE: a star NEITHER catalogue can describe is SKIPPED with a named reason rather than guessed into
+existence, and a host is treated as a COLLISION only when the TARGET MAP already holds it —
 under the id this import would mint, or under the bundled maps' stable id for the same star, which
-callers supply via `existingSystemIds`. `convertArchiveRows` returns `{systems, collisions, skipped}`
+callers supply via `existingSystemIds`. Both converters return `{systems, collisions, skipped}`
 and the caller must SHOW the last two; filtering them away to tidy the dialogue defeats the design.
+CORRECTED (2026-11-13, the 3.1.1 importer pass): THIS ENTRY USED TO SAY "a host missing mass,
+radius or temperature is SKIPPED", AND THAT IS NOW TRUE OF ONLY ONE OF THE TWO CONVERTERS. On the stars-first path
+(`convertRegion`, the one the dialogue calls - D18) the star comes from the CENSUS and the archive
+is an enrichment, so a matched archive row with a gap in its stellar figures no longer costs the
+star: it is built by `starNodeFromCensus` like any planet-less star, keeps its planets, and its
+description says which catalogue fell short. The old rule still holds for `convertArchiveRows`
+(specs only), which has no census to fall back on.
 WHY: a silently short import reads as a complete survey. And the first version got the collision test
 wrong in the other direction — it skipped any host curated on a BUNDLED map whether or not the GM was
 importing into one, so "Local Neighbourhood" into a new starmap imported ZERO systems and 16.5→18 ly
 imported exactly one. Curation elsewhere is not a reason to withhold a star from a map that has none.
+THE CORRECTION'S CASE IS GJ 667 C (`HD 156384C` in SIMBAD): the archive gives it no `st_rad`, so a
+real M dwarf 24 ly away was skipped "missing stellar radius" and ALL FIVE of its confirmed planets
+went with it - while the same star with no planets would have imported from the census untouched.
 BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemIds` means "empty target",
 which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
-roster, so it is only as current as the last kit run (D15).
+roster, so it is only as current as the last kit run (D15). The fallback star's figures are derived
+or class-typical and SAY so (DATA-R42), which is estimating openly, not inventing; the archive's own
+measured mass and temperature for that star are NOT merged onto it. Gated in `bareStar.spec.ts`
+against the committed cache, which must keep a host with a gap for the gate to mean anything.
 
 ### DATA-R46 AN EQUILIBRIUM TEMPERATURE IS A FLOOR ON A SURFACE TEMPERATURE, NEVER A CEILING
 BUCKET: DOMAIN - the two temperatures are different quantities and the gap between them is set
@@ -5733,6 +5763,35 @@ BLAST: `TagDef.secretDefault` is DECLARED AND NEVER READ (`tags/tagCategories.ts
 start redacted" is a comment, not a behaviour. Do not add a `disclosureDefault` beside it until
 something consumes one; a second unconsumed field is a second thing that looks implemented.
 
+### TAG-26 A RULE TAG IS THE PASS'S BY NAMESPACE OR BY RULE ID, AND WHAT IS NEITHER IS NOT DELETED
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a pass may clear only what it can prove it wrote,
+and "this looks like mine" is not proof when the same data arrives from somebody else. The reason
+it cannot be proved is this code's: a save carries no tagging rules.
+WHERE: `tagLifecycle.stripRuleTags` (the strip), `reasonsToVisit.ruleStripScope` (what the pass
+holds), `reasonsToVisit.strandedRuleTags` / `removeStrandedRuleTags` (what is left, and the GM's
+removal of it); surfaced in `BodyTagsTab.svelte` ("Left behind") and `TagCategoryEditor.svelte`.
+RULE: the rules pass clears a rule-seeded tag (`source: 'rule:<id>'`) when its key sits under a
+category that exists, OR when it names a rule the pass holds - wherever that key sits. A rule tag
+that is NEITHER is spared by every pass and removed only by a GM's explicit act. "Stranded" is
+defined as whatever a rule seeded that the strip leaves standing, so the two cannot drift.
+WHY: a GM's report, 2026-10-23, and two faults in one sentence ("how do I REMOVE tags that are
+seeded from rules no longer in the pack?"). (1) THE NAMESPACE TEST ALONE PILED TAGS UP: a category
+file whose `id` was renamed by hand kept rules writing `old/...` from a category called `new`;
+nothing owned `old/`, so the pass never cleared what it pushed again - one more copy on EVERY
+pass, a duplicated key, which is one origin of A104. (2) THE LEFTOVERS CANNOT BE DELETED
+AUTOMATICALLY: a save carries no tagging rules and no world-only category
+(`saveRegistries.registriesForStarmap` writes the old CoI shape and the switches;
+`categoriesForStarmap` / `mergeStarmapCategories` have no callers), so ANOTHER GM'S RULE TAGS LOOK
+EXACTLY LIKE THE OPENER'S OWN LEFTOVERS. A pass that dropped them would strip an author's tagging
+from every shared map on load.
+BLAST: "tidying" `stripRuleTags` into delete-everything-a-rule-seeded empties shared maps -
+`reasonsToVisit.spec.ts` ("a pass does not delete it") goes red. Revisit only when rules travel
+with a save. `importCategory` now re-homes a file into the namespace its `id` names
+(`rehomeCategory`), so the pile-up needs an older store or a hand-built one to occur at all; the
+rule-id clear is what repairs those. A copied category gets NEW rule ids (`asCategoryCopy`), or
+its tags and the original's would be one rule's to this strip. A104's per-group dedupe stays: the
+tab is a reader and old maps still carry the copies.
+
 ### RENDER-S46 THE GREEN BUILD DOES NOT TYPECHECK - A FREE VARIABLE SHIPS AS A RUNTIME THROW
 BUCKET: PLATFORM (vite/esbuild strips types without checking them) + IMPLEMENTATION (the fault).
 WHERE: `holo/scene.ts` `attachMegaVolume` - the drawn-as-a-blob fault, diagnosed by the owner's
@@ -7520,3 +7579,29 @@ part of the new copy paste scope from explorers site".
 BLAST: a NEW field by which one definition names another must be added to `DEFINITION_REFERENCES` (both halves) or
 a copy of it pastes half-attached. A new override section with an identity needs a `<CopyDefinitionButton section>`
 in its editor - the spec compares the editors' sections against `SECTIONS` absolutely.
+
+### DATA-R55 A CATALOGUE MASS IS A VALUE OR A LIMIT, AND THE COLUMN DOES NOT SAY WHICH
+BUCKET: DOMAIN - a published figure carries a kind (measured, minimum, upper limit, estimated) and
+a catalogue may hold all of them in one column. Move verbatim; any importer reading the Exoplanet
+Archive meets this.
+WHERE: `import/realsky/planets.mjs` (`planetMassFromRow`, `estimateMassMe`, `planetDescription`),
+`query.mjs` (`ARCHIVE_COLUMNS`), `convert.mjs` (`planetNodeFromRow`); gated by `massLimit.spec.ts`
+on the QUERY as well as the transform (DATA-R44).
+RULE: `pl_bmasse` is read only through `planetMassFromRow`, which reads `pl_bmasselim` beside it.
+A flag of 1 is an UPPER LIMIT and is never used as the mass while anything better exists: with an
+independently measured radius the mass is estimated from that radius by the inverse of
+`estimateRadiusRe`, never above the limit; with no such radius the limit stays as the figure and
+the description CALLS it a limit. Either way the row's `pl_dens` is ignored, because the archive
+computed it FROM the limit.
+WHY: a user's report, 2026-09-24 - "i dont think the mass for kepler 32f is right". Kepler-32 f is
+0.82 Earth radii and its only published mass is an upper limit near 969 Earth masses (3.05
+Jupiters). The query never asked for the flag, so "lighter than three Jupiters" imported as three
+Jupiters in a body smaller than Venus, with a gas giant's makeup.
+BLAST: THE COMMITTED CACHE AND THE BUNDLED SNAPSHOT PREDATE THE COLUMN, so their rows carry no flag
+and read as values - a limit inside 41 ly stays a mass until `scripts/starmap-build/fetch-sources.mjs`
+asks for the column and the kit is re-run. A flag of -1 is a LOWER limit and is left as it was (a
+minimum mass already is one). `pl_bmassprov` = 'M-R relationship' is a THIRD kind - the archive's
+own estimate from the radius - and is still printed as plain "Mass"; relabelling it changes a
+shipped map (LHS 475 b). Past ~12 Earth radii the relation cannot be inverted and answers with the
+mass at which its plateau begins. THE FIXTURE ROW IS SYNTHESISED from published figures; the live
+composite row for Kepler-32 f has not been seen from a browser.
