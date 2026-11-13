@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { brownDwarfThermal, SUBSTELLAR_MIN_MJUP } from './substellar';
+import { brownDwarfThermal, brownDwarfAgeForTeff, SUBSTELLAR_MIN_MJUP } from './substellar';
 
 const MJUP = 1.898e27;
 
@@ -49,5 +49,54 @@ describe('brownDwarfThermal', () => {
 
   it('exposes the floor constant for callers', () => {
     expect(SUBSTELLAR_MIN_MJUP).toBe(8);
+  });
+});
+
+// G94 job 4 - the cooling track asked the other way round: type a temperature, be told the age.
+describe('brownDwarfAgeForTeff - the inversion of the cooling track', () => {
+  const SUN = 1.989e30;
+  const REPORT_DWARF = 0.0352 * SUN;      // B150: the T dwarf in the user's video, 36.9 Jupiter masses
+
+  it('the dwarf from the report: 988 K is a 9.09 Gyr dwarf, and 1172.77 K is the 2.91 Gyr one he had', () => {
+    const a = brownDwarfAgeForTeff(REPORT_DWARF, 988);
+    expect(a.kind).toBe('age');
+    expect((a as any).ageGyr).toBeCloseTo(9.09, 1);
+    expect((brownDwarfAgeForTeff(REPORT_DWARF, 1172.77190456) as any).ageGyr).toBeCloseTo(2.91, 1);
+  });
+
+  it('...and 914 K, the other figure he typed, needs 15.3 Gyr - which the caller must say, not hide', () => {
+    const a = brownDwarfAgeForTeff(REPORT_DWARF, 914);
+    expect(a.kind).toBe('age');
+    expect((a as any).ageGyr).toBeCloseTo(15.27, 1);
+  });
+
+  it('EVERY answer runs back through the track to the temperature asked for, across the mass window', () => {
+    for (const mjup of [8, 10, 13, 20, 25, 36.9, 45, 60, 79.9]) {
+      for (const teffK of [260, 400, 700, 1000, 1500, 2000, 2700]) {
+        const fit = brownDwarfAgeForTeff(mjup * MJUP, teffK);
+        if (fit.kind !== 'age') continue;
+        expect(brownDwarfThermal(mjup * MJUP, fit.ageGyr, 68000).teffK, `${mjup} M_jup at ${teffK} K`).toBeCloseTo(teffK, 6);
+      }
+    }
+  });
+
+  it('a temperature no dwarf of that mass starts at is called too hot, with where it does start', () => {
+    const light = brownDwarfAgeForTeff(8 * MJUP, 2600);          // an 8 M_jup object is never an L dwarf
+    expect(light.kind).toBe('too-hot');
+    expect((light as any).hottestK).toBeCloseTo(brownDwarfThermal(8 * MJUP, 0, 68000).teffK, 6);
+    expect(brownDwarfAgeForTeff(70 * MJUP, 3500).kind).toBe('too-hot');      // past the L-dwarf ceiling
+  });
+
+  it('below the 250 K floor it is too cold, and says when this dwarf reaches the floor', () => {
+    const fit = brownDwarfAgeForTeff(8 * MJUP, 100) as any;
+    expect(fit.kind).toBe('too-cold');
+    expect(fit.coldestK).toBe(250);
+    expect(brownDwarfThermal(8 * MJUP, fit.ageGyr, 68000).teffK).toBeCloseTo(250, 6);
+  });
+
+  it('outside the brown-dwarf mass window there is no track to invert', () => {
+    expect(brownDwarfAgeForTeff(1 * MJUP, 500).kind).toBe('not-substellar');
+    expect(brownDwarfAgeForTeff(85 * MJUP, 2500).kind).toBe('not-substellar');
+    expect(brownDwarfAgeForTeff(40 * MJUP, 0).kind).toBe('not-substellar');
   });
 });

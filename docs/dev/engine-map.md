@@ -8040,3 +8040,29 @@ The slider is linear in cosmic time, so the youngest 100 Myr is under 1% of its 
 are typed, or reached through the temperature inversion on a brown dwarf. The composition floor,
 the four coloured zones and the detent of deep-time-design.md section 4 are NOT built; the only
 mark on the axis is the system's own formation.
+### PHY-45 A BROWN DWARF'S TEMPERATURE IS ASKED FOR AS AN AGE: THE TRACK IS INVERTED, NEVER PINNED
+BUCKET: ARCHITECTURE (single source) + DOMAIN - domain: a brown dwarf does not fuse, so its
+temperature is a consequence of mass and age and has no independent existence to pin.
+Architecture: an inverse lives beside the law it inverts and is gated by the round trip.
+WHERE: `physics/substellar.ts` - `brownDwarfThermal` (the track) and `brownDwarfAgeForTeff` (the
+same track rearranged), sharing `trackFor`, `TEFF_FLOOR_K`, `TEFF_CAP_K` and `MIN_TRACK_AGE_GYR`.
+Caller: `components/AgeControl.svelte` ("Aim for a temperature"). Gates: `substellar.spec.ts`
+(every answer run back through the track), `AgeControl.spec.ts`.
+RULE: THERE IS NO TEMPERATURE OVERRIDE FOR A SUBSTELLAR BODY AND THERE MUST NOT BE ONE. A GM who
+has a temperature in mind types it and is OFFERED the age that gives it; accepting sets the AGE
+(PHY-43) and stores no temperature. The inverse returns the age the law implies even when that is
+30 Gyr - IT DOES NOT KNOW HOW OLD THE UNIVERSE IS, and the caller compares with
+`cosmicNowGyr(system)` and says so in words instead of offering it. Typing a temperature changes
+nothing until the offer is accepted.
+WHY: [[B150]] - a T dwarf whose typed 914 K and 988 K each returned to 1172.77 K, three reporters.
+The first proposed fix was a `temperatureK` override; the owner withdrew it for [[G94]] ("give the
+GM the cause, not the consequence"). MEASURED on the report's own dwarf (36.9 Jupiter masses): 988 K
+is a 9.1 Gyr dwarf, and 914 K needs 15.3 Gyr - so one of the two figures he typed is not reachable
+by ANY age at that mass, which is exactly what a pin would have hidden.
+BLAST: THE TRACK IS FLAT AT BOTH ENDS (the 2800 K ceiling for a young heavy dwarf, the 250 K
+floor), so the inverse is not unique there: at the ceiling it returns the OLDEST age that still
+gives it, below the floor it reports the age the floor is reached. A planet-filed dwarf's box
+reads in the campaign's PLANET temperature unit (Celsius by default), a star-filed one in kelvin:
+the unit is presentation, the SI value handed to the inverse is the same (DATA-R22). The 1900-2100
+K raise for a fusing star just above the limit (`STELLAR_FLOOR_K`) is untouched and is the one
+place an authored stellar temperature is still overruled.

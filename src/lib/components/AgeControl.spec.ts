@@ -123,3 +123,83 @@ describe('G96 - on a planet or moon the Age control lives on the Temperature tab
 		expect(updates).toBe(before + 1);
 	});
 });
+
+// G94 job 4 - the inversion, which is what answers the user who started this (B150). He typed a
+// temperature into a brown dwarf and it snapped back. He can still type one: he is offered the AGE
+// that gives it.
+describe('AgeControl - a brown dwarf: type a temperature, be offered the age', () => {
+	const MJ = 1.898e27;
+	// The dwarf in the report: 0.0352 solar masses, 0.0806 solar radii - as a star, and as a planet.
+	const dwarf = (extra: Record<string, unknown> = {}): any =>
+		({ id: 'bd', kind: 'body', roleHint: 'star', name: 'BD', classes: ['star/T'], massKg: 0.0352 * 1.989e30, radiusKm: 0.0806 * 696340, temperatureK: 1172, tags: [], ...extra });
+	const aim = async (container: HTMLElement, kelvin: string) => {
+		const input = container.querySelector('#age-aim') as HTMLInputElement;
+		await fireEvent.input(input, { target: { value: kelvin } });
+		await fireEvent.change(input);
+	};
+	const young = { age_Gyr: 2.9, epochT0: system.epochT0 };   // his system: 1173 K
+
+	it('shows the temperature this age gives, straight from the cooling track', () => {
+		const { container } = render(AgeControl, { props: { body: dwarf(), system: young, rulePack } });
+		expect(container.querySelector('.teff')!.textContent).toMatch(/Effective temperature at this age\s*1,?173/);
+	});
+
+	it('988 K is offered as a 9.1 Gyr dwarf, and accepting it sets the AGE - no temperature is stored', async () => {
+		const body = dwarf();
+		let updates = 0;
+		const { container } = render(AgeControl, { props: { body, system: young, rulePack }, events: { update: () => updates++ } } as any);
+		await aim(container, '988');
+		expect('formationTimeGyr' in body).toBe(false);                       // asking is not setting
+		expect(updates).toBe(0);
+		expect(container.querySelector('.fit')!.textContent).toMatch(/A dwarf of this mass is\s*988.*at 9\.1 Gyr/);
+		const accept = container.querySelector('.accept') as HTMLButtonElement;
+		expect(accept.textContent).toBe('Set its age to 9.1 Gyr');
+		await fireEvent.click(accept);
+		expect(ageOf(body, young)).toBeCloseTo(9.1, 1);
+		expect(body.temperatureK).toBe(1172);                                 // untouched: the processor derives it
+		expect(body.overrides).toBeUndefined();
+		expect(updates).toBe(1);
+		expect(container.querySelector('.teff')!.textContent).toMatch(/988/); // and the readout now agrees
+		expect(container.querySelector('.fit')).toBeNull();
+	});
+
+	it('914 K - the other figure he typed - is not offered: it says why, and what the dwarf can reach', async () => {
+		const body = dwarf();
+		const { container } = render(AgeControl, { props: { body, system: young, rulePack } });
+		await aim(container, '914');
+		const text = container.querySelector('.fit')!.textContent!.replace(/\s+/g, ' ');
+		expect(text).toMatch(/would need 15\.3 Gyr to cool to 914/);
+		expect(text).toMatch(/the universe is 13\.8 Gyr old here/);
+		expect(text).toMatch(/coolest it can be by now is 928/);
+		expect(text).toMatch(/a lighter dwarf cools faster/);
+		expect(container.querySelector('.accept')).toBeNull();
+		expect('formationTimeGyr' in body).toBe(false);
+	});
+
+	it('too hot and too cold are each said in words, and neither changes the body', async () => {
+		const body = dwarf();
+		const { container } = render(AgeControl, { props: { body, system: young, rulePack } });
+		await aim(container, '5000');
+		expect(container.querySelector('.fit')!.textContent!.replace(/\s+/g, ' ')).toMatch(/never that hot: it starts at about 2,?800/);
+		await aim(container, '100');
+		expect(container.querySelector('.fit')!.textContent!.replace(/\s+/g, ' ')).toMatch(/No brown dwarf is colder than 250/);
+		expect('formationTimeGyr' in body).toBe(false);
+	});
+
+	it('filed as a PLANET it is offered exactly the same thing (DATA-R22)', async () => {
+		const body = dwarf({ roleHint: 'planet', classes: [] });
+		const { container } = render(AgeControl, { props: { body, system: young, rulePack } });
+		// A planet's temperatures read in the campaign's planet unit, which is Celsius by default: the
+		// same 988 K is typed as 714.85. The unit is the panel's business; the answer is the track's.
+		expect(container.querySelector('.cooling .unit')!.textContent).toMatch(/C/);
+		await aim(container, '714.85');
+		expect((container.querySelector('.accept') as HTMLButtonElement).textContent).toBe('Set its age to 9.1 Gyr');
+	});
+
+	it('an ordinary planet and a fusing star are offered no temperature at all', () => {
+		expect(render(AgeControl, { props: { body: planet(), system, rulePack } }).container.querySelector('.cooling')).toBeNull();
+		const sun = { id: 's', kind: 'body', roleHint: 'star', name: 'S', classes: ['star/G'], massKg: 1.989e30, radiusKm: 696340, temperatureK: 5772, tags: [] };
+		expect(render(AgeControl, { props: { body: sun as any, system, rulePack } }).container.querySelector('.cooling')).toBeNull();
+		expect(MJ).toBeGreaterThan(0);
+	});
+});

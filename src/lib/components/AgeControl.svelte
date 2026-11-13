@@ -18,7 +18,11 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { ageOf, hasOwnAge, setBodyAge, clearBodyAge, cosmicNowGyr, systemAgeGyr, type AgeFrame } from '$lib/physics/bodyAge';
-  import { ageDrivesSentence, formatAgeGyr } from '$lib/physics/ageDrives';
+  import { ageDriven, ageDrivesSentence, formatAgeGyr } from '$lib/physics/ageDrives';
+  import { brownDwarfThermal, brownDwarfAgeForTeff, type BrownDwarfAgeFit } from '$lib/physics/substellar';
+  import { unitBodyTypeFor } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
+  import UnitInput from './UnitInput.svelte';
 
   export let body: CelestialBody;
   export let system: Partial<AgeFrame> | null = null;
@@ -60,8 +64,40 @@
     body = body;
     dispatch('update');
   }
-  /** For a caller that has worked out an age some other way (the temperature inversion). */
-  export function setAge(ageGyr: number) { commitAge(ageGyr); }
+
+  // ── A BROWN DWARF: THE TEMPERATURE THIS AGE GIVES, AND THE AGE A TEMPERATURE NEEDS (G94 job 4) ──
+  // A brown dwarf's temperature is its cooling track, so this is the control that moves it, and the
+  // figure is shown here straight from the track at the age on the slider. And because what a GM
+  // usually HAS is a temperature (B150: he typed 914 and it snapped back), he can still type one:
+  // the track is asked which age gives it, and the answer is OFFERED as an age to set. Nothing is
+  // pinned, so nothing can snap back.
+  //
+  // Whether the track applies is asked of the model (`ageDriven`), never of the role: a brown dwarf
+  // filed as a planet gets exactly this, on its Temperature tab.
+  $: cooling = ageDriven(body, rulePack).includes('cooling-track');
+  $: teffNow = cooling ? brownDwarfThermal(body.massKg || 0, age, body.radiusKm || 0).teffK : 0;
+  $: unitType = unitBodyTypeFor(body);
+
+  let aimK: number | null = null;
+  let fit: BrownDwarfAgeFit | null = null;
+  // The offer is about ONE body at ONE mass: forget it when either changes under the panel.
+  let aimKey = '';
+  $: {
+    const key = `${body.id}:${body.massKg}`;
+    if (key !== aimKey) { aimKey = key; aimK = null; fit = null; }
+  }
+  function aimFor(teffK: number) {
+    aimK = teffK;
+    fit = brownDwarfAgeForTeff(body.massKg || 0, teffK);
+  }
+  // The age is the track's; whether the universe is old enough for it is the campaign's to say.
+  $: reachable = fit?.kind === 'age' && fit.ageGyr <= nowGyr;
+  $: coolestReachableK = cooling ? brownDwarfThermal(body.massKg || 0, nowGyr, body.radiusKm || 0).teffK : 0;
+  function acceptFit() {
+    if (fit?.kind !== 'age') return;
+    commitAge(fit.ageGyr);
+    aimK = null; fit = null;
+  }
 </script>
 
 <div class="age-control">
@@ -89,7 +125,42 @@
         {/if}
     </div>
     <div class="drives" role="note">{drives}</div>
-    <slot {age} {own} />
+
+    {#if cooling}
+        <div class="cooling">
+            <div class="row teff">
+                <span>Effective temperature at this age</span>
+                <strong><UnitValue quantity="temperature" bodyType={unitType} value={teffNow} decimals={0} /></strong>
+            </div>
+            <div class="row aim">
+                <label for="{idPrefix}-aim">Aim for a temperature</label>
+                <UnitInput quantity="temperature" bodyType={unitType} id="{idPrefix}-aim" value={aimK ?? Math.round(teffNow)}
+                    on:commit={(e) => aimFor(e.detail)} />
+            </div>
+            {#if fit && aimK != null}
+                <div class="fit" role="status">
+                    {#if fit.kind === 'age' && reachable}
+                        <span>A dwarf of this mass is <UnitValue quantity="temperature" bodyType={unitType} value={aimK} decimals={0} /> at {formatAgeGyr(fit.ageGyr)}.</span>
+                        <button type="button" class="accept" on:click={acceptFit}>Set its age to {formatAgeGyr(fit.ageGyr)}</button>
+                    {:else if fit.kind === 'age'}
+                        <span>A dwarf of this mass would need {formatAgeGyr(fit.ageGyr)} to cool to
+                            <UnitValue quantity="temperature" bodyType={unitType} value={aimK} decimals={0} />, and the universe is
+                            {formatAgeGyr(nowGyr)} old here. The coolest it can be by now is
+                            <UnitValue quantity="temperature" bodyType={unitType} value={coolestReachableK} decimals={0} />; a lighter
+                            dwarf cools faster.</span>
+                    {:else if fit.kind === 'too-hot'}
+                        <span>A dwarf of this mass is never that hot: it starts at about
+                            <UnitValue quantity="temperature" bodyType={unitType} value={fit.hottestK} decimals={0} /> and only cools. A
+                            heavier one starts hotter.</span>
+                    {:else if fit.kind === 'too-cold'}
+                        <span>No brown dwarf is colder than
+                            <UnitValue quantity="temperature" bodyType={unitType} value={fit.coldestK} decimals={0} />. This one reaches
+                            that at {formatAgeGyr(fit.ageGyr)}.</span>
+                    {/if}
+                </div>
+            {/if}
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -109,4 +180,9 @@
   .inherit { background: transparent; border: 1px solid var(--border); border-radius: 3px; color: var(--link); font-size: 0.9em; padding: 2px 8px; cursor: pointer; white-space: nowrap; }
   .inherit:hover { background: var(--bg-control); border-color: var(--accent); }
   .drives { font-size: 0.8em; color: var(--text-faint); line-height: 1.35; }
+  .cooling { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.9em; color: var(--text-muted); }
+  .teff strong { color: var(--text); }
+  .fit { display: flex; flex-direction: column; gap: 6px; font-size: 0.82em; color: var(--text-muted); line-height: 1.4; }
+  .accept { align-self: flex-start; background: var(--bg-control); border: 1px solid var(--accent); border-radius: 3px; color: var(--text); padding: 3px 10px; cursor: pointer; }
 </style>
