@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { systemProcessor } from '../core/SystemProcessor';
 import { setBodyAge } from '../physics/bodyAge';
+import { ageDriven, ageDrivesSentence, type AgeDriven } from '../physics/ageDrives';
 import type { System, RulePack, CelestialBody } from '../types';
 
 function isObject(item: any): boolean { return item && typeof item === 'object' && !Array.isArray(item); }
@@ -233,5 +234,41 @@ describe('G94 - a system full of aged bodies is still idempotent', () => {
     const p3 = JSON.stringify(systemProcessor.process(JSON.parse(JSON.stringify({ ...s0, nodes: JSON.parse(p2) })), pack).nodes);
     expect(p2).toBe(p1);
     expect(p3).toBe(p2);
+  });
+});
+
+// THE SENTENCE UNDER THE AGE CONTROL IS HELD TO THE PROCESSOR. `ageDriven` says which of a body's
+// figures follow its age; this measures which ones actually do, by giving the body two very
+// different ages and looking. A claim with nothing behind it fails, and so does a figure that
+// moves without being claimed - which is what a newly switched consumer would do.
+describe('G94 - what the Age control says it drives is what moves', () => {
+  const pack = loadRulePack();
+  const measure = (id: string, ageGyr: number) => {
+    const b = node(systemProcessor.process(aged(makeSystem(4.6), id, ageGyr), pack), id) as any;
+    return {
+      'cooling-track': b.selfLuminousTeffK ?? null,
+      'internal-heat': b.internalHeatK ?? null,
+      'atmospheric-escape': b.atmosphere?.pressure_bar ?? null,
+      'flare-activity': b.flareActivity ?? null
+    } as Record<AgeDriven, number | null>;
+  };
+
+  for (const id of ['star', 'red', 'dwarf', 'planemo', 'moon', 'jove', 'ares']) {
+    it(`${id}: the claim and the measurement agree`, () => {
+      const young = measure(id, 0.1);
+      const old = measure(id, 10);
+      const moved = (Object.keys(young) as AgeDriven[]).filter((k) => young[k] !== old[k]).sort();
+      const claimed = ageDriven(node(makeSystem(4.6), id), pack).slice().sort();
+      expect(claimed).toEqual(moved);
+    });
+  }
+
+  it('the sentences a GM reads, for the kinds of body that differ', () => {
+    const s = makeSystem(4.6);
+    expect(ageDrivesSentence(node(s, 'planemo'), pack)).toBe('Drives its temperature and brightness (a brown dwarf does not fuse, so it only cools).');
+    expect(ageDrivesSentence(node(s, 'dwarf'), pack)).toBe('Drives its temperature and brightness (a brown dwarf does not fuse, so it only cools) and how hard it flares.');
+    expect(ageDrivesSentence(node(s, 'jove'), pack)).toBe('Drives the heat still left over from its formation.');
+    expect(ageDrivesSentence(node(s, 'ares'), pack)).toBe('Drives how much of its air it has lost.');
+    expect(ageDrivesSentence(node(s, 'moon'), pack)).toMatch(/^Nothing this body shows is worked out from its age yet/);
   });
 });

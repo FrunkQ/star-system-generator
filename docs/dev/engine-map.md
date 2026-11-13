@@ -8012,3 +8012,31 @@ OBJECT (DATA-R22): the star-filed and planet-filed dwarf must give the same phot
 same age, and the gate asserts it. `process()` works on the nodes it is handed, so a test that
 compares "before" and "after" must read the before figures BEFORE the second run - the first cut
 of this gate compared an object with itself and failed for that reason, not for the physics.
+### UI-C20 THE AGE CONTROL IS ONE COMPONENT, ITS AXIS IS FORMATION TIME, AND ITS SENTENCE IS MEASURED
+BUCKET: ARCHITECTURE (single source) + PLATFORM (the range-input trap again). The control is thin;
+the three things that are easy to get wrong are below.
+WHERE: `components/AgeControl.svelte`, mounted by `BodyTemperatureTab.svelte` (planet, moon) and by
+`BodyStarTab.svelte` (a brown dwarf filed as a star); `physics/ageDrives.ts` (`ageDriven`,
+`ageDrivesSentence`, `formatAgeGyr`). Gates: `components/AgeControl.spec.ts`, and the
+"what the Age control says it drives is what moves" block of `system/bodyAge.test.ts`.
+RULE: (1) THE SLIDER'S VALUE IS THE FORMATION TIME, NOT THE AGE - big bang at the left, the
+system's reference date at the right, so LEFT IS OLDER; the number box beside it is the age. Its
+maximum is `cosmicNowGyr(system)`, derived, never a typed 13.787. (2) THE RANGE IS BOUND ONE WAY
+and the body is written only from a handler (UI-C19): mounting the control on a body with no age
+of its own must leave `formationTimeGyr` ABSENT, and "Use the system's age" DELETES it rather than
+writing the system's age. (3) THE LINE SAYING WHAT AGE DRIVES IS NOT A LIST OF BODY KINDS: each
+clause asks the model it describes whether age changes its answer for this body, and the gate
+gives every body in a test system two ages and requires the set of figures that MOVED to equal the
+set the sentence CLAIMED. A body whose age drives nothing is told so.
+WHY: [[G94]] job 3 and [[G96]]. The label is "Age" and never "time", which here means the campaign
+date. It is not an override - no pin, no anomaly, no warning - because a body older than its
+system is a history.
+BLAST: SWITCHING ANOTHER CONSUMER TO `ageOf` (PHY-44's "still on the system's age" list) TURNS THE
+MEASURED GATE RED until `ageDriven` learns the new clause - that is the gate working, and the fix
+is a clause that asks the model, never a `roleHint` test. A star-filed brown dwarf's sentence
+includes "how hard it flares" because `flareActivity` gives an L, T or Y class an age-dependent
+figure; whether a brown dwarf should flare at all is a physics question the sentence only reports.
+The slider is linear in cosmic time, so the youngest 100 Myr is under 1% of its travel: young ages
+are typed, or reached through the temperature inversion on a brown dwarf. The composition floor,
+the four coloured zones and the detent of deep-time-design.md section 4 are NOT built; the only
+mark on the axis is the system's own formation.

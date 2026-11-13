@@ -86,6 +86,12 @@ V4 tracks formation properly, and a rebuilt planet simply moves its own formatio
   scrubs can reach it.
 - **Writing** goes through `setBodyAge(body, ageGyr, system)` and `clearBodyAge(body)`. The GM thinks in ages;
   the file stores the formation time that age implies.
+- **What reads it** (engine map PHY-44): the substellar cooling track, a giant's internal heat, atmospheric
+  escape and a star's flare activity. Each was switched in its own commit with its own gate. Still on the
+  system's age: tidal locking, the surface-age read in the thermal solve, geology, the classifier's age
+  feature and the habitability bonus - the next candidates, not yet switched.
+- **The control** is `components/AgeControl.svelte` (engine map UI-C20), on the Temperature tab for a planet or
+  moon. It says underneath what the age drives on that body, and says so plainly when it drives nothing.
 
 ---
 
