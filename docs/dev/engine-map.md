@@ -655,6 +655,29 @@ BLAST: `ionisingOutputSolar` returns MULTIPLES OF THE QUIET SUN'S ionising outpu
 the first version of the replacement card got that wrong too and printed "1.61e+0 L(sol)" for the
 Sun. State what a figure measures and in what units before you put a suffix on it.
 
+### OVR-8 A YES/NO CONSUMER OF A PINNABLE QUANTITY ASKS THE RESOLVED VALUE, THROUGH ONE PREDICATE
+BUCKET: ARCHITECTURE - a pin is honoured by every consumer or it is not a pin, and the consumer that
+reads the MODEL instead of the resolved value is the one that silently ignores it.
+WHERE: `physics/magnetism.lacksMagnetosphere`; its callers `SystemProcessor` (the long-term
+habitability term and its breakdown line, asked once for both) and `physicsTrace` (the habitability
+layer). Gate: `system/habitability-magnetosphere-override.test.ts`.
+RULE: when a quantity can be pinned, a consumer that needs a yes/no about it asks ONE predicate that
+reads the pin first and the model second. It never tests the model's own fields (`magnetism.source`,
+`magnetism.intrinsic`) directly. The pin decides in BOTH directions: a field pinned above zero is a
+magnetosphere on a world with no dynamo, and a field pinned to zero is the lack of one on a world
+that has a dynamo.
+WHY: using-sharing B-3. `overrides.magneticFieldGauss` moved the committed field, the shielding tag,
+the magnetopause and the dose, while habitability went on deducting 8 points "for lacking a
+magnetosphere", because that term asked `magnetism.source === 'none'` - the interior model the pin
+exists to overrule. Measured: the score was identical with and without a 0.5 G pin. The condition
+was also written twice, once for the score and once for the line that explains it.
+BLAST: with nothing pinned the predicate IS the old expression, so no un-pinned world moves. That
+also means a slow rotator with a suppressed dynamo (source `suppressed`, field 0, tagged
+`magnetic/unshielded`) is still not deducted - a separate question for the habitability overhaul,
+left alone on purpose. `physicsTrace`'s AURORA layer still prints the interior model's word and was
+not checked against the pin. OVR-6 is the other half of this rule: a pin also suppresses the model
+that would reconcile it.
+
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
 BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a pin whose target is AUTHORED input needs a commit
 at edit time, and a pin on a DERIVED field must not have one. Which pin it happens to be is this
@@ -3672,6 +3695,36 @@ BLAST: **A CONTROL'S PLACE IN A GROUP IS RECORDED ONCE, WHEN IT JOINS, AND FROM 
 BLAST: **ONE settle per member per move, and never a settle per member per FRAME.** A group drag calls `nudge` on the others - `set(..., false)`, no re-settle - because a settle per member per frame is exactly the fight UI-C17 warns about; the anchors do not move during a drag, so a shared delta is right THERE and only there. **`redock` runs on RELEASE and in a LATER MACROTASK**, never per frame and never inside `pointerup`: not per frame or a control dragged past a neighbour snaps to it in passing, and not in `pointerup` because the offset that drag just wrote reaches the DOM as a Svelte microtask - a pill dropped 5.75 px from the clock measured itself 120.75 px away, its own starting distance, and nothing ever docked. **THE 24 px IS A QUESTION ABOUT THE GROUP'S LAYOUT, NOT ABOUT POSITIONS.** Asked of positions it undocks a perfectly good pair mid-correction, because during a re-layout "where the members are" is exactly what is wrong; asked of the offsets and the live sizes it answers the thing it is for, which is a member that has grown or shrunk away from its neighbours. **A control leaving a group must re-read its own edge and gap** (`settle(false)`) or it keeps the group's, which for the member that was not at the group's edge means inheriting its neighbour's distance from the wall - and the two then settle on top of each other. A group of ONE is dissolved when a pair separates. **Undocking is a drag on an END, and the menu item is what a MIDDLE one has instead** (the first design had only the menu item, because with one grip moving all nothing could be dragged clear; the owner's end/middle rule replaced it).
 **AND NONE OF THIS IS VISIBLE HEADLESSLY.** Four faults survived a green suite of twenty gates and were found in ten minutes of driving the real app. In jsdom the mocked rect follows the store synchronously, so every "the DOM is one flush behind" fault is invisible by construction, and no mocked box has a fractional width. **`ResizeObserver` never fires in the browser pane either** - not even its initial callback - because delivery is part of the same rendering steps that suspend `requestAnimationFrame` ([[E7]]), so the detail-pane path has to be driven through the window `resize` listener there.
 
+### UI-C19 A RANGE INPUT BOUND TO AN ABSENT FIELD WRITES ITS MIDPOINT INTO THE DATA AT MOUNT
+BUCKET: PLATFORM (Svelte 5 and the browser) - a range input always has a value and the framework's
+two-way binding writes it back. The fix shape carries: bind one-way, write in the handler.
+WHERE: `components/BodyBasicsTab.svelte` (the tilt slider, `onTiltSlider` / `onTiltInput`); Svelte's
+`bind_value` (`internal/client/dom/elements/bindings/input.js`, the branch that fires when the bound
+value is nullish and `input.value` is not). Gate: `components/BodyBasicsTab.tilt.spec.ts`.
+RULE: never `bind:value` a `type="range"` input to a field that may be undefined. Give it a one-way
+`value={field ?? resting}` and write the field in the `on:input` handler, so the data changes only
+when the thumb is moved. An unset field must READ as unset, and clearing its number box must delete
+it (PHY-9).
+WHY: B21, four reporters: "the axis tilt always sets to 90 degrees". A range with nothing to show
+rests at its midpoint - 90 on a 0..180 slider - and Svelte 5 writes the DOM value back at mount when
+the bound value is nullish and the input has one. So merely OPENING the Basics tab gave every
+tilt-less world a 90 degree axis, and the next edit of anything saved it. It read as a physics
+default and nothing in the engine ever chose 90. Every body from the type picker was tilt-less -
+`SystemView.placeBodyOfType` was a fourth creation route the tilt model had not reached, and now
+calls `importFixup.inferMissingAxialTilt` - so every new world showed it.
+BLAST: A NUMBER INPUT IS SAFE (its empty string is falsy, so the branch does not fire); only ranges
+do this. A GATE MUST ASSERT `undefined`, NEVER "not 90": jsdom rests a range at 50, so a test for 90
+passes with the bug fully present. A local initialised to a number (`massSliderPos = 0.5`) is safe.
+`BodyStarTab`'s star-tilt slider has the same markup and tested clean in jsdom (an effect re-seeds
+its local state from the body), so it was left alone; that is not proof for a browser.
+BLAST: OTHER SITES OF THE SAME SHAPE, FOUND BY READING AND NOT VERIFIED. Each binds a range to a
+field its own label defaults with `??`, which is the tell: `PlayerPresetEditor.svelte`
+(`starmapGridFalloff ?? 0.5`, `gridFalloff ?? 0`, `orbitOpacity ?? 1`, `constellationBoost ?? 0.35`,
+`constellationLabelSize ?? 11` - its neighbours in the same file already use the one-way form);
+`ConstructFuelTab.svelte` (`tank.current_units`); `EditBiospheresModal.svelte` (`defaultCoverage`,
+`pigmentDriven`, `opacity`). Where the stated default is not the midpoint, opening the editor may be
+changing the value. Measure each before fixing it.
+
 ### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
 BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
 clean console, no error, no warning and a hit test that measures perfectly.
@@ -4326,7 +4379,11 @@ stops (anything drawing from raw or partly-processed data steps outside it).
 fraction, so it is exactly the body the two could disagree about.
 HOLDS because `SystemProcessor.reconcileGiantMakeup` runs TWICE (`:455` and `:849`, idempotent) and
 rewrites a gas-poor fluid-giant makeup to gas 0.6–0.92 before either helper is consulted; where the
-makeup is absent entirely, `makeupFractions` infers it from density and lands gas-dominated anyway.
+makeup is absent entirely, `makeupFractions` infers it and lands gas-dominated anyway - from density
+below 2.5 g/cc, and BY MASS past ~1.9 M_Jup (PHY-41). Until B18 the second half was missing, so this
+clause was false for any dense heavy giant: a makeup-less super-Jupiter or brown dwarf inferred as
+rock or iron and both helpers called it solid. An AUTHORED gas-poor makeup at that mass is outside
+the repair by design (`isFluidGiant` is still mass AND density) and both helpers agree it is solid.
 Checked on the bundled Sol: Uranus and Neptune correctly carry NO `hazard/radiation` tag.
 BREAKS IF: `rendersAsGiant`'s consumers are RENDERING code (`planetAppearance`, `apparentColor`,
 `holo/scene`, `catalogue/smallBodyShape`) and none of them requires the body to have been through
@@ -6381,6 +6438,38 @@ BLAST: NOTHING HERE MAY READ `beltInnerEdgeRadii` OFF A BODY. Radiation stamps t
 one pass LATER, so the belt torus's geometry comes from `beltInnerEdgeRadii(body, pack)` and
 `beltScaleLengthRadii(field, pack)` - the belt model's own pure functions - and never from the
 stamped value. Same reason `totalIncidentFlux` and `surfaceRadiation` are forbidden here.
+
+### PHY-41 PAST ABOUT 1.9 JUPITER MASSES DENSITY IS NOT EVIDENCE OF ROCK - MASS DECIDES, FOR INFERENCE ONLY
+BUCKET: DOMAIN + ARCHITECTURE - domain: electron degeneracy holds a hydrogen body near one Jupiter
+radius, so past a couple of Jupiter masses density climbs with mass and says nothing about
+composition. Architecture: the rule governs INFERENCE and must never reach a model that rewrites
+authored data.
+WHERE: `physics/makeup.ts` (`isFluidByMass`, `nominalGasDensityGcc`, `FLUID_GIANT_MIN_ME` /
+`FLUID_GIANT_MAX_GCC`, the inference branch of `makeupFractions`); `physics/bodyEdit.ts`
+(`makeupForGeomDensity`, `denserThanFluid`, the `outOfBand` of `editDensityAnchored`);
+`SystemProcessor` emits `structure/overdense`. Gate: `physics/massDecides.spec.ts`.
+RULE: "massive and lighter than 2.5 g/cc" tells a giant from a solid world only below the mass at
+which the engine's OWN giant relation reaches 2.5 g/cc (1.86 M_Jup, 591 M_Earth - derived from
+`gasGiantRadiusRe`, not a constant). Above it a body with NO stored makeup is fluid whatever its
+density, and a density-driven edit HOLDS the composition and moves the radius. An implausible
+density is tagged and explained (`structure/overdense`), never clamped or corrected.
+WHY: B18/B17. CoRoT-3b is a measured 26.4 g/cc at 22 M_Jup - denser than iron, and hydrogen.
+`makeupFractions` inferred it as 100% metal and `makeupForGeomDensity` re-inferred rock or iron on
+every density edit, so "lock the mass, raise the density" and a Space Engine import both turned
+super-Jupiters and brown dwarfs into "very large rocky planets". The class label often stayed a
+giant; the body had ground, geology and a habitability score.
+BLAST: NEVER ROUTE `isFluidGiant` OR `reconcileGiantMakeup` THROUGH `isFluidByMass`. The reconcile
+REWRITES `body.makeup` and that reaches the save; an authored heavy solid world is a GM's statement,
+not an inconsistency (steer, never stop). Measured: the bundled Mesklin (61 Cygni, 5 M_Jup, 672
+g/cc, 5% gas by hand) would have become a gas giant. The cost, accepted: a giant ALREADY flipped to
+iron by the old fault stays iron until the GM recomposes it.
+BLAST: THE RULE KEYS ON MASS AND NOT ON ROLE (DATA-R22), SO STARS MOVE TOO. 98 dense stars in the
+two bundled starmaps (M dwarfs and remnants) now infer `gas 0.8` where they inferred rock or metal;
+no class or tag moved, but anything that newly asks a star for its makeup gets a different answer
+than it would have. `denserThanFluid` is scoped to this regime on purpose: below it an ice giant
+sits on the edge of its own envelope (Neptune 1.638 against 1.637 g/cc) and the tag would be noise.
+The editor's density box still stops at 30 g/cc (`bodyEdit.MAX_D`), below a 20 M_Jup dwarf's nominal
+36.
 
 ### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
 BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which

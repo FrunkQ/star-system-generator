@@ -30,7 +30,10 @@ you can do about it.
 **Physics.** Derived from the body's properties every time the system is processed —
 `magnetic/dynamo`, `orbit/tidally-locked`, `hazard/radiation`, `stability/marginal`. Edit the world
 and they change with it. Open the Newton panel (the apple) on any body to see which layer produced
-each one, and from what.
+each one, and from what. One of them marks rather than describes: `structure/overdense` sits on a
+heavy giant or brown dwarf squeezed denser than hydrogen packs on its own at that mass. It is still
+a giant, not a rock - past about two Jupiter masses nothing is solid - and the tag only says its
+size is unusual.
 
 **Automated rules.** Seeded by rules you can read and change, which test a body's physics and roll
 against a chance — mineable resources, scientific draws, frontier logistics, plot hooks. The roll is
