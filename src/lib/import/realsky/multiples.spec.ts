@@ -124,6 +124,45 @@ describe('D29 - an unresolved pair is named, never invented', () => {
   });
 });
 
+// EPSILON INDI, the third system the report names ("eps indi Ab's partner"), pinned 2026-11-13
+// because it was the one of the three with no assertion of its own. `* eps Ind B` is ONE catalogue
+// row typed `T1V+T6V` - the Ba/Bb brown-dwarf pair - and SIMBAD's h_link has no children for it
+// (skyFixtures), so unlike Luhman 16 there is nothing to fetch and split it with. It therefore
+// arrives as the K dwarf plus ONE body that SAYS it stands for an unresolved pair. That is the
+// honest ceiling of what the catalogue supports (DATA-R43), not three bodies - and this pins it so
+// a reader of the release note knows which of the two was meant.
+describe('D29 - Epsilon Indi arrives as its star and a brown-dwarf pair that says it is one', () => {
+  const stars = () => starsOf(runCensus(), 'sys-epsilon-indi');
+
+  it('is ONE system led by the K dwarf, with the brown dwarfs in orbit round it', () => {
+    const s = stars();
+    expect(s.length).toBe(2);
+    expect(s[0].name).toBe('Epsilon Indi');
+    expect(s[0].classes[0]).toMatch(/^star\/K/);
+    expect(s[0].parentId).toBeNull();
+    expect(s[1].parentId).toBe(s[0].id);
+    expect(s[1].classes[0]).toMatch(/^star\/T/);
+    // About 1,460 AU in truth; the projected separation recovers it.
+    expect(s[1].orbit.elements.a_AU).toBeGreaterThan(1000);
+    expect(s[1].orbit.elements.a_AU).toBeLessThan(2000);
+  });
+
+  it('the pair is named as unresolved rather than passed off as a single brown dwarf', () => {
+    const [, b] = stars();
+    expect(b.description).toMatch(/UNRESOLVED PAIR \(T1V\+T6V\)/);
+    expect(b.description).toMatch(/T6V companion is NOT a separate body/);
+  });
+
+  it('the K dwarf carries a size derived from its own measurements, not the K band midpoint', () => {
+    const [a] = stars();
+    expect(a.typicalForClass).toBeUndefined();
+    expect(a.figureSources.radiusKm).not.toBe('typical');
+    // 0.711 solar radii by interferometry.
+    expect(a.radiusKm / 695700).toBeGreaterThan(0.6);
+    expect(a.radiusKm / 695700).toBeLessThan(0.8);
+  });
+});
+
 describe('D29 - a container whose members have no parallax of their own', () => {
   // "completely forgets luhman 16". It was never forgotten - it arrived as ONE body, because
   // `NAME Luhman 16` is a single row typed `L7.5+T0.5` and its components are not in the census.
