@@ -322,7 +322,7 @@ depends on the temperature and the temperature depends on the rust. Second, that
 so the solve reports any world where it does not settle instead of presenting a marginal answer as a
 firm one. A world whose dominant atmospheric gas is below **its own** freezing point brightens the
 same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Triton's nitrogen.
-| `structure/*` | icy shell, subsurface ocean, cloud decks | processor (classification) |
+| `structure/*` | icy shell, subsurface ocean, cloud decks; `structure/overdense` on a heavy giant denser than hydrogen packs at its mass (it stays a giant - past ~1.9 Jupiter masses density no longer implies rock) | processor (classification) |
 | `volatiles/*` | which ices survive on the surface | processor (classification) |
 | `weather/*` | lightning, dust storms, monsoon, precipitation | processor (classification) |
 | `feature/*` | a giant's polar vortex (one tag per pole; a side count for a polygonal jet, or `round` for a plain eyed cyclone) | processor — but SEEDED, not derived: see "known fudges" on the physics page |

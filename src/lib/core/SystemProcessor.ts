@@ -27,6 +27,7 @@ const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
 import { classifyBody, explainClassification, imageClassFor } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup, hasSolidSurface } from '../physics/makeup';
+import { denserThanFluid } from '../physics/bodyEdit';
 import { lobeCount } from '../catalogue/smallBodyShape';
 import { surfaceTempProfile, meanSurfaceTempK } from '../physics/surfaceTemperature';
 import { deriveFluidLayers } from '../physics/fluidLayers';
@@ -1433,6 +1434,12 @@ export class SystemProcessor implements ISystemProcessor {
                 && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism'));
         if (icyShell) body.tags.push({ key: 'structure/icy-shell', value: iceLabel });
         if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
+        // B18: a giant the engine has kept as a giant although it is denser than hydrogen packs on
+        // its own at that mass. It says "unusual", it does not correct anything - the radius and the
+        // density are the GM's. Stripped with the rest of `structure/` above, so it follows the body.
+        if (denserThanFluid((body.massKg ?? 0) / EARTH_MASS_KG, (body.radiusKm ?? 0) / EARTH_RADIUS_KM, mk)) {
+            body.tags.push({ key: 'structure/overdense' });
+        }
 
         // Hydrosphere PHASE tags: what the recorded surface volatile actually is at this T & P.
         if (hydroComp && hydroComp !== 'none' && hydroCov > 0.01) {

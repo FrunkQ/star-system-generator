@@ -143,6 +143,14 @@
         (0.12 g/cc). Bulk density is volume-additive, <code>1⁄ρ = Σ fᵢ⁄ρᵢ</code>, and radius follows from mass +
         density — so <em>density and radius are derived, not dialled in</em>. A body with no explicit makeup gets one
         inferred from its density (mass-aware, so a low-density heavyweight reads as a gas giant, not "icy").</p>
+      <p><strong>Past about two Jupiter masses, mass decides and density stops being asked.</strong> Electron
+        degeneracy holds a hydrogen body near one Jupiter radius however much mass is piled on, so a heavy giant's
+        density simply climbs with its mass: a five-Jupiter-mass planet is around 8 g/cc and the brown dwarf CoRoT-3b
+        is a measured 26 g/cc at 22 Jupiter masses, denser than iron and not a rock. So above the mass where even
+        an ordinary gas body would be denser than the 2.5 g/cc "this is a giant" ceiling, a body with no stated
+        makeup is read as fluid whatever its density, and changing its density changes its <em>size</em>, never its
+        makeup. One squeezed past what hydrogen manages on its own is tagged <code>structure/overdense</code> and
+        left as you made it. A makeup you set yourself always stands.</p>
       <p>The composition classes (iron, silicate, coreless, carbon) key on these fractions, and makeup feeds the
         fluid layers, magnetism and geology below.</p>
     </section>

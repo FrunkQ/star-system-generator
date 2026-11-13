@@ -109,6 +109,43 @@ function gasGiantRadiusRe(mass_Me: number, inflation = 1): number {
   return base * Math.max(0.5, inflation);
 }
 
+// THE FLUID-GIANT TEST, named once: massive AND light. Three sites used to spell `> 8 && < 2.5`.
+export const FLUID_GIANT_MIN_ME = 8;      // Earth masses
+export const FLUID_GIANT_MAX_GCC = 2.5;   // g/cc
+
+/** Bulk density (g/cc) of an ordinary cold hydrogen-helium body of this mass - the giant relation
+ *  above read as a density, no trim, no inflation. Jupiter 1.25, 10 M_Jup 16, 20 M_Jup 36. */
+export function nominalGasDensityGcc(mass_Me: number): number {
+  const r = gasGiantRadiusRe(mass_Me, 1);
+  return r > 0 ? (5.513 * Math.max(0, mass_Me)) / r ** 3 : 0;
+}
+
+/**
+ * MASS DECIDES (ideas B18/B17/S6): above a certain mass, DENSITY STOPS BEING EVIDENCE OF ROCK.
+ *
+ * "Massive and lighter than 2.5 g/cc" is how the engine tells a giant from a solid world, and it is
+ * a good test up to about Jupiter. Past that, electron degeneracy holds a hydrogen body near one
+ * Jupiter radius however much mass is piled on, so its density simply climbs with its mass: 5 M_Jup
+ * is ~8 g/cc, CoRoT-3b (22 M_Jup) is a measured 26.4, an old 60 M_Jup brown dwarf passes 100. Every
+ * one of those is denser than iron and none of them is a rock - but the test read them as one, so a
+ * super-Jupiter or a brown dwarf imported without a composition, or given a higher density by hand,
+ * became "a very large rocky planet".
+ *
+ * WHERE THE LINE IS, and it is derived rather than chosen: the mass at which the engine's OWN giant
+ * relation reaches the 2.5 g/cc ceiling (about 1.9 Jupiter masses, ~590 Earth masses). Above it not
+ * even a perfectly ordinary gas body could pass the lightness test, so the test has nothing left to
+ * say and mass decides: the body is fluid, whatever its density. Below it nothing changes - a dense
+ * Saturn-mass object is still read as mostly heavy elements, which is what one would be.
+ *
+ * WHAT IT DOES NOT DO: overrule a composition somebody WROTE. It governs inference only - a body
+ * with no makeup, and a density edit that would otherwise re-infer one. An authored makeup stands,
+ * however improbable (steer, never stop); that is also why `isFluidGiant` and
+ * `reconcileGiantMakeup` below deliberately do NOT ask this.
+ */
+export function isFluidByMass(mass_Me: number): boolean {
+  return mass_Me > FLUID_GIANT_MIN_ME && nominalGasDensityGcc(mass_Me) >= FLUID_GIANT_MAX_GCC;
+}
+
 // Radius (Earth radii) implied by a mass (Earth masses) + makeup. Rocky/icy bodies use compression
 // (Earth: rock/metal mix → ρ ≈ 5.5 → radius ≈ 1); gas-dominated bodies use the giant mass–radius
 // relation (Jupiter mass → ~11.2 R⊕) with an optional thermal-inflation multiplier (rocky bodies
@@ -164,8 +201,10 @@ export function makeupFractions(body: CelestialBody): Required<Makeup> {
   const density_gcc = volM3 > 0 ? (massKg / volM3) / 1000 : 5.513;
   const massMe = massKg / EARTH_MASS_KG;
   // A massive, low-density body is a gas/ice giant — its bulk density (≈1.3 for Jupiter) would
-  // otherwise read as "icy" and miss the gas envelope.
-  if (massMe > 8 && density_gcc < 2.5) return normalizeMakeup({ gas: 0.8, ice: 0.2 });
+  // otherwise read as "icy" and miss the gas envelope. And past ~1.9 M_Jup the density is no longer
+  // asked at all (B18, `isFluidByMass`): a degenerate super-Jupiter or brown dwarf is legitimately
+  // denser than iron, and inferring iron from that is how they became rocky planets.
+  if (massMe > FLUID_GIANT_MIN_ME && (density_gcc < FLUID_GIANT_MAX_GCC || isFluidByMass(massMe))) return normalizeMakeup({ gas: 0.8, ice: 0.2 });
   // Recover the uncompressed grain density (assume a rocky body for the compression factor).
   const uncompressed = density_gcc / compressionFactor(massMe, { rock: 1 });
   return normalizeMakeup(inferMakeupFromDensity(uncompressed));
@@ -175,13 +214,16 @@ export function makeupFractions(body: CelestialBody): Required<Makeup> {
 // uses to infer a giant's makeup (mass > 8 M⊕, bulk density < 2.5 g/cc). The point of a separate helper:
 // an ICE giant is ice-dominated with a LOW gas fraction, so keying "is a giant?" off `makeup.gas > 0.5`
 // alone mistakes it for a solid iceball — this catches both.
+// It is the massive-AND-light half only, on purpose: it feeds `reconcileGiantMakeup`, which REWRITES
+// a stored makeup, and `isFluidByMass` must never reach that (see its note - an authored composition
+// stands). A dense super-Jupiter with no makeup still draws as a giant, through `makeupFractions`.
 export function isFluidGiant(body: CelestialBody): boolean {
   const massKg = body.massKg || 0;
   const radiusM = (body.radiusKm || 0) * 1000;
   if (massKg <= 0 || radiusM <= 0) return false;
   const volM3 = (4 / 3) * Math.PI * radiusM ** 3;
   const density_gcc = (massKg / volM3) / 1000;
-  return massKg / EARTH_MASS_KG > 8 && density_gcc < 2.5;
+  return massKg / EARTH_MASS_KG > FLUID_GIANT_MIN_ME && density_gcc < FLUID_GIANT_MAX_GCC;
 }
 
 // Should this body be DRAWN as a giant (banded cloud-world, never a cratered solid surface)? True for a

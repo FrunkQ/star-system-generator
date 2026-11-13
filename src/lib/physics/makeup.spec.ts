@@ -128,11 +128,14 @@ describe('hasSolidSurface — the has-ground question, and only that one', () =>
   });
 
   it('excludes a star outright — a photosphere is not somewhere you stand', () => {
-    // And it must not depend on a star's inferred makeup: a DENSE remnant infers as rocky, so
-    // without the roleHint exclusion a white dwarf would report solid ground and be scored for
-    // habitability. Sirius B: 1.02 solar masses inside an Earth-sized ball.
-    const whiteDwarf = b({ roleHint: 'star', massKg: 2.03e30, radiusKm: 5850 });
-    expect(makeupFractions(whiteDwarf).gas).toBeLessThanOrEqual(0.5);  // infers rocky from density
+    // And it must not depend on a star's makeup: without the roleHint exclusion a white dwarf
+    // carrying a solid composition would report solid ground and be scored for habitability.
+    // Sirius B: 1.02 solar masses inside an Earth-sized ball.
+    // (The makeup is WRITTEN here since B18. A dense remnant with none used to INFER as rocky, which
+    // is what this line leaned on; past ~1.9 Jupiter masses density no longer implies rock, so the
+    // premise has to be stated rather than inferred. The exclusion being tested is unchanged.)
+    const whiteDwarf = b({ roleHint: 'star', massKg: 2.03e30, radiusKm: 5850, makeup: { carbon: 0.5, rock: 0.5 } });
+    expect(makeupFractions(whiteDwarf).gas).toBeLessThanOrEqual(0.5);  // a solid makeup...
     expect(hasSolidSurface(whiteDwarf)).toBe(false);                   // ...and is excluded anyway
   });
 

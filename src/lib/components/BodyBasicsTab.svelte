@@ -7,13 +7,13 @@
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, JUPITER_MASS_KG, G } from '$lib/constants';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
-  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
+  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity, isFluidByMass } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
   import { isSmallBodyShape, lobeCount, MAX_LOBES } from '$lib/catalogue/smallBodyShape';
   import CustomImageBlock from './CustomImageBlock.svelte';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
-    trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored,
+    trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored, denserThanFluid,
     type EditLock, type BodyEditState
   } from '$lib/physics/bodyEdit';
   import { bandFit } from '$lib/system/classification';
@@ -336,6 +336,11 @@
       if (r <= 0 || l >= 1 || r <= l) return null;
       return { left: l * 100, width: Math.max(0.8, (r - l) * 100) };
   }
+  // B18: above ~1.9 Jupiter masses the density no longer says what a body is made of (a brown dwarf
+  // is denser than iron and still hydrogen), so a density edit there moves the size and holds the
+  // makeup. Both lines below only EXPLAIN that - nothing is refused and nothing is corrected.
+  $: pMassDecides = isPlanetMoon && isFluidByMass(pMassMe);
+  $: pOverdense = isPlanetMoon && denserThanFluid(pMassMe, pRadiusRe, pMakeup);
   // Only DENSITY carries the trim band now — see the radius slider's markup.
   $: denTrimBand = pEnv ? clipBand(pEnv.denLo, pEnv.denHi, denSpan) : null;
 
@@ -735,7 +740,7 @@
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} on:change={finalizeEdit} disabled={lock === 'density'} />
             <div class="sc-ends"><span>{fmtEnd(denSpan[0])}</span><span>{fmtEnd(denSpan[1])} g/cc</span></div>
         </div>
-        <div class="sub-label">{lock === 'density' ? 'composition held' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}{#if pPorosity > 0.02}<span class="sc-porosity" title="Void fraction this size implies for the mix (ceiling {Math.round(pPorosityMax * 100)}% at this mass — self-gravity crushes the rest). High porosity at low mass reads as a rubble pile."> · porosity ~{Math.round(pPorosity * 100)}%</span>{/if}</div>
+        <div class="sub-label">{lock === 'density' ? 'composition held' : pMassDecides && lock !== null ? 'the makeup holds: this massive, density says nothing about what it is made of' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}{#if pPorosity > 0.02}<span class="sc-porosity" title="Void fraction this size implies for the mix (ceiling {Math.round(pPorosityMax * 100)}% at this mass — self-gravity crushes the rest). High porosity at low mass reads as a rubble pile."> · porosity ~{Math.round(pPorosity * 100)}%</span>{/if}</div>
     </div>
 
     <!-- Composition breakdown: the interior mix at a glance, segmented by mass fraction. -->
@@ -751,6 +756,9 @@
 
     {#if edgeHint}
         <div class="sc-edge-chip" role="status">{edgeHint}</div>
+    {/if}
+    {#if pOverdense && pEnv}
+        <div class="sc-edge-chip" role="status">Denser than hydrogen packs on its own at this mass (about {fmtEnd(pEnv.denLo)}–{fmtEnd(pEnv.denHi)} g/cc). Kept as a giant: nothing this massive is solid, so the density only makes it smaller.</div>
     {/if}
     {#if pendingFlowThrough}
         <div class="sc-morph-chip" role="status">Outside this mix's envelope — recomposing; the type re-reads on release</div>
