@@ -386,10 +386,52 @@ export function categoriesFor(cats: TagCategory[], role: TagRole | undefined): T
 
 // --- mutators (the editor's whole API) ---
 
+// TAG-8 AT THE DOOR: A RULE ARRIVING IN THE STORE TAKES THE LAST PLACE IN THE EVALUATION ORDER.
+//
+// Every body rolls once per rule, in `seq` order, so a rule's POSITION decides which roll every
+// rule after it receives. The loaders have always respected that (the migration numbers the rules,
+// the G38 seed appends after the highest) - and the editor did not: "+ rule" made a rule with no
+// `seq`, the pack view sorts a missing one as 0, and the new rule landed SECOND of forty-six.
+// Measured on the Sol fixture: adding one rule that can never fire (chance 0) changed the
+// rule-seeded tags on 29 of 40 bodies. A GM adding a hook to one category re-rolled every other
+// category's tags across the whole starmap, with nothing to say why.
+//
+// ONLY A RULE THAT IS NEW TO ITS CATEGORY IS SEATED. One already there keeps exactly the place it
+// has - including a rule saved by an older build with no `seq` at all, which stays where it has
+// always sorted. Seating those now would be the same reshuffle, once, on a campaign nobody touched.
+//
+// `fromFile` IS FOR AN IMPORT: a file's `seq` numbers are positions in the store that EXPORTED it
+// and mean nothing in this one (an exported copy of a category carries the very numbers its
+// original still holds here, and would be dealt in between them). So a rule arriving from a file
+// is seated after everything, in the file's own order, and a rule the store already has under that
+// id keeps its place whatever the file says.
+function seatArrivingRules(cat: TagCategory, cats: TagCategory[], fromFile = false): TagCategory {
+  const here = new Map((cats.find((c) => c.id === cat.id)?.rules ?? []).map((r) => [r.id, r]));
+  let next = 0;
+  for (const c of cats) for (const r of c.rules ?? []) if (typeof r.seq === 'number' && r.seq >= next) next = r.seq + 1;
+  if (!fromFile) for (const r of cat.rules ?? []) if (typeof r.seq === 'number' && r.seq >= next) next = r.seq + 1;
+  const arriving = (cat.rules ?? []).filter((r) => !here.has(r.id) && (fromFile || typeof r.seq !== 'number'));
+  if (!arriving.length && !fromFile) return cat;
+  // The file's own order: its seq where it has one, its listing order otherwise.
+  const order = arriving.map((r, i) => ({ r, i })).sort((a, b) => (a.r.seq ?? Infinity) - (b.r.seq ?? Infinity) || a.i - b.i);
+  const seat = new Map(order.map(({ r }) => [r, next++]));
+  return {
+    ...cat,
+    rules: (cat.rules ?? []).map((r) => {
+      if (seat.has(r)) return { ...r, seq: seat.get(r) };
+      if (!fromFile) return r;
+      const was = here.get(r.id)!;
+      const { seq: _fileSeq, ...rest } = r;
+      return was.seq === undefined ? rest : { ...rest, seq: was.seq };
+    })
+  };
+}
+
 export function upsertCategory(cat: TagCategory): void {
   tagCategories.update((cs) => {
+    const seated = seatArrivingRules(cat, cs);
     const i = cs.findIndex((c) => c.id === cat.id);
-    const next = i < 0 ? [...cs, cat] : cs.map((c, j) => (j === i ? cat : c));
+    const next = i < 0 ? [...cs, seated] : cs.map((c, j) => (j === i ? seated : c));
     return normalizeTagCategories(next);
   });
 }

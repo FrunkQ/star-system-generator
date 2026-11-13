@@ -4,8 +4,10 @@
 // is exactly the argument for that baseline, and exactly the argument for these tests, because the
 // baseline can only say THAT something moved, never why.
 import { describe, it, expect } from 'vitest';
-import { migrateLegacyCategories, normalizeTagCategories, isSystemCategory, SYSTEM_CATEGORY_IDS, resolveTagColor, type TagCategory } from './tagCategories';
+import { get } from 'svelte/store';
+import { migrateLegacyCategories, normalizeTagCategories, isSystemCategory, SYSTEM_CATEGORY_IDS, resolveTagColor, tagCategories, upsertCategory, deleteCategory, type TagCategory, type TagRule } from './tagCategories';
 import { DEFAULT_COI_CATEGORIES, DEFAULT_POI_PACK, REASONS_DEFAULTS } from './tagDefaults';
+import { poiPacks } from '../physics/reasonsToVisit';
 
 const defaults = { coi: DEFAULT_COI_CATEGORIES, poi: DEFAULT_POI_PACK };
 const migrate = (coi: any = null, poi: any = null, cfg: any = null) => migrateLegacyCategories(coi, poi, cfg, defaults);
@@ -106,5 +108,72 @@ describe('per-tag colour', () => {
 
   it('resolves regardless of the case the key was written in', () => {
     expect(resolveTagColor(cats, 'Faction/Red')?.color).toBe('#ff0000');
+  });
+});
+
+// TAG-8, at the one door that did not respect it. Every body rolls once per rule in `seq` order, so
+// where a rule SITS decides which roll every later rule gets. The editor's "+ rule" made a rule
+// with no seq; a missing seq sorts as 0; the new rule landed second of forty-six and every
+// chance-based tag on the starmap re-rolled (measured: 29 of 40 Sol bodies changed, from adding a
+// rule with a 0% chance). These run against the LIVE store, because the order the engine reads is
+// the store's - and each cleans up after itself.
+describe('a rule added in the editor takes the last place in the evaluation order', () => {
+  const order = () => get(poiPacks)[0].rules.map((r) => r.id);
+  const science = () => get(tagCategories).find((c) => c.id === 'science')!;
+  const rule = (id: string, over: Partial<TagRule> = {}): TagRule =>
+    ({ id, tag: `science/${id}`, category: 'science', chance: 0, when: true, ...over });
+  const restore = (cat: TagCategory) => tagCategories.update((cs) => cs.map((c) => (c.id === cat.id ? cat : c)));
+
+  it('goes LAST, and no other rule moves', () => {
+    const original = science();
+    const before = order();
+    // Exactly what TagCategoryEditor.saveRule sends: the category with one more rule, no seq on it.
+    upsertCategory({ ...original, rules: [...original.rules, rule('zz-added')] });
+    const after = order();
+    restore(original);
+    expect(after.indexOf('zz-added'), 'the new rule is dealt after every existing one').toBe(after.length - 1);
+    expect(after.slice(0, -1), 'and the order of the rest is untouched').toEqual(before);
+  });
+
+  it('two added together keep the order they were listed in', () => {
+    const original = science();
+    upsertCategory({ ...original, rules: [...original.rules, rule('zz-first'), rule('zz-second')] });
+    const after = order();
+    restore(original);
+    expect(after.slice(-2)).toEqual(['zz-first', 'zz-second']);
+  });
+
+  it('a rule in a brand-new category is seated too', () => {
+    const before = order();
+    upsertCategory({
+      id: 'zz-seat-test', shortName: 'T', longName: 'T', color: '#123456', appliesTo: ['planet'], enabled: true, tags: [],
+      rules: [{ id: 'zz-fresh', tag: 'zz-seat-test/x', category: 'zz-seat-test', chance: 0, when: true }]
+    });
+    const after = order();
+    deleteCategory('zz-seat-test');
+    expect(after).toEqual([...before, 'zz-fresh']);
+  });
+
+  it('does NOT move a rule that is already there with no seq - that would be the same reshuffle, once', () => {
+    // A rule authored on an older build: in the store, seq-less, sorting where it always has.
+    const original = science();
+    const legacy = rule('zz-legacy');
+    tagCategories.update((cs) => cs.map((c) => (c.id === 'science' ? { ...c, rules: [...c.rules, legacy] } : c)));
+    const before = order();
+    upsertCategory({ ...science(), description: 'an unrelated edit to the same category' });
+    const after = order();
+    restore(original);
+    expect(science().rules.some((r) => r.id === 'zz-legacy')).toBe(false);   // cleaned up
+    expect(after).toEqual(before);
+  });
+
+  it('editing an existing rule keeps its place', () => {
+    const original = science();
+    const before = order();
+    const target = original.rules[0];
+    upsertCategory({ ...original, rules: original.rules.map((r) => (r.id === target.id ? { ...r, chance: 0.01 } : r)) });
+    const after = order();
+    restore(original);
+    expect(after).toEqual(before);
   });
 });
