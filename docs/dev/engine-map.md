@@ -2137,6 +2137,13 @@ drawing, the cap is a guarantee no future gate change can reintroduce an unbound
 MUST SIT ABOVE HONEST USE or it silently truncates real grids instead of catching runaways. The
 first pair tried here (3 px / 40,000) failed exactly that way: the densest legible hex view genuinely
 wants 82,112 cells. The spec asserts the two constants against EACH OTHER for that reason.
+BLAST: THE 2D SYSTEM VIEW HAD THE SAME LOOP (found 2026-11, 3.1.1 fix batch). `SystemVisualizer
+drawSystemOverlay` steps a PINNED cell (`gridScaleAu`, e.g. 1 AU hexes) over view/zoom, and that
+view's widest zoom is now fitted to the system's reach (`viewport/camera.setWidestView` from
+`system/systemReach.placementLimitAu`, never under 1e6 AU) - over 10^12 hexes a frame. It now has
+the GATE (`map/niceInterval.gridCellLegible`, 3 px, the figure `Grid.svelte` holds privately) and NO
+cap; a ladder-chosen cell is 36-90 px and never trips it. The gate's call site is in a canvas path
+and is not covered by a test.
 
 ### UI-L6 A load-failure bundle needs the STORED map and the LIVE one, and they answer different questions
 BUCKET: ARCHITECTURE - ask whether the object you are exporting is the INPUT or the STATE, and say
@@ -5726,6 +5733,19 @@ physics criterion tags and explains and never refuses an authored choice. Both a
 is where they meet.
 BLAST: adding a placement rule as a modal branch instead of a `requires` clause; putting any
 numbers-are-bad test in `hard`; any code path that blocks creation off the back of a steer note.
+AMENDED (3.1.1 fix batch): THE RECORD HAS TWO HALVES AND BOTH SURFACES APPLY BOTH. `requires` is
+the HOST half; `allowedPlacements` on the registry record is the PLACEMENT half (an elevator is
+Surface or nothing). The create dialog applied both and the EDIT surface (`ConstructGeneralTab`, the
+Orbit tab) applied neither, so a standing elevator was offered L1-L5, every orbit band and every
+host - PHY-42 is what that cost. Both surfaces now ask `megaPlacement.filterMegaPlacements` /
+`megaPlacementAllowed` / `megaIsSurfaceOnly`, and the Orbit tab greys hosts through `megaHardCheck`.
+The function folds the two surfaces' vocabularies onto the record's words ('Medium Orbit' is 'Mid
+Orbit'; 'Inner System', 'A - B' and 'Outer System' are 'AU Distance'); the spellings themselves are
+NOT unified. Gated at the DOM by `ConstructGeneralTab.spec.ts`.
+BLAST: A HANDLER MUST READ THE PICK, NEVER A `$:` MIRROR OF IT. The Orbit tab read
+`selectedLagrangePoint` (a reactive statement) inside the select's change handler, where it still
+described the PREVIOUS pick: every L-point choice, for ANY construct, was applied one pick late and
+under the wrong label. A `$:` value is one flush behind inside an event handler.
 
 ### RENDER-S44 A MEGA IS CENTRED ON ITS HOST, AND ITS DRAWN RADIUS IS ITS OWN ORBIT
 BUCKET: ARCHITECTURE - a structure that SURROUNDS its host is positioned and sized differently from
@@ -6501,6 +6521,35 @@ compared a surface against a number rather than against the other surface. The g
 two SURFACES across six arrangements. When one function grows a second caller with a slightly
 different question, give the caller a FLAG, never a copy.
 
+### PHY-42 THE POSITION WALK MUST TERMINATE ON ANY DATA
+BUCKET: ARCHITECTURE - a recursive walk over AUTHORED references is bounded by the data, not by the
+code, and this one is called on every frame by every view.
+WHERE: `physics/worldPositions.ts` `walkPositions` - the `resolving` set in `resolve`, and the
+`selfAnchored` test in the attachment pass. Gate: `worldPositions.docking.spec.ts`, "a ladder with
+nothing to stand on is still somewhere". The sibling walk is `transit/physics.ts getGlobalState`.
+RULE: the walk recurses along `parentId` and `attachedTo`. A node met again while it is still being
+resolved answers the origin for that one link, and the walk carries on. A structure attached to
+ITSELF (a ladder at its anchor, RENDER-S51) that gets no offset from `attachedOffsetAu` must NOT ask
+for its structure's position - that is its own - and falls through to its own orbit instead.
+WHY: a user report of 2026-09-26 (Discord triage B9, not a board id): a space elevator sent to L2
+from the Orbit tab froze the system view, and then the site on re-entry. A co-orbital node is
+re-homed onto its world's own host, so the ribbon hung from a star: no geostationary, no ladder,
+`attachedOffsetAu` null, and the fallback `resolve(structure.id)` resolved the node being resolved -
+`RangeError: Maximum call stack size exceeded` in the 2D, 3D and states walks, on every frame, and
+again on load because the save carried the state. The same throw needs no L-point: edit a world's
+rotation until its geostationary is only a fallback and an elevator already standing on it has no
+ladder either.
+BLAST: `getGlobalState` already carried the self guard (`if (structure !== c)`) and the walk did
+not - one rule written twice, one copy missing half of it. It still has NO cycle guard: `attachedTo`
+A -> B -> A recurses there (hand-edited data only; not fixed). `SystemView absolutePositionOf`
+recurses on `parentId` unguarded too.
+BLAST: `orbits.ts solvePerifocal` reads a non-numeric `M0_rad` or `t0` as zero for the same reason:
+one NaN position is inherited by every child of the body.
+BLAST: THE LOAD HEAL IS NARROW ON PURPOSE. `importFixup.fixUpImportedSystem` puts a SURFACE-ONLY
+mega that carries a co-orbital marker back on the world it stood on (relevance, UI-B2: there is no
+reading of "an elevator at L2" to keep). It touches no other node; the guard in the walk is what
+makes every other bad reference harmless rather than repaired.
+
 ### RENDER-S47 A STAR DIMMED TO NOTHING IS AN ABSENCE ON THE MAP, AND READS AS THE WRONG OBJECT
 BUCKET: IMPLEMENTATION - durable: a MARK is not a READING, and a derived quantity that reaches zero
 needs a legibility floor at the drawing layer and nowhere else. The ring is this code's.
@@ -6644,6 +6693,29 @@ every prediction). Measured on this build: the first Earth eclipse after 2026-06
 a 0.597 partial, 771.7 days from the real total of 2026-08-12. A correct anchor does not move that
 by one second. Closing it needs real elements for Earth and Luna plus nodal precession - a physics
 item, filed on the board, and `temporal/eclipseAnchor.spec.ts` records the gap with its numbers.
+BLAST: THE RESOLVER IS TOTAL OVER WHAT THE EDITOR'S BOXES CAN HOLD (user report 2026-09-12, "custom
+calendar completely bricks sse"). A unit length is whatever a GM typed - 1.62, 46043873.28, a blank -
+and `BigInt(x)` THROWS on anything not whole; the resolver runs on every clock tick and the save
+carries the calendar, so one fractional second was a throw per frame and per load.
+`resolveBucketDrain` now works in TICKS (thousandths of a second, `ticks` / `signedTicks`): exact
+for a fractional unit, and bit-for-bit the old answer for a whole-second calendar (360,000 instants
+compared across the shipped calendars, no differences). `resolveCalendar` catches and answers with
+the raw tick. Never write `BigInt(<authored number>)`; `wholeClockSeconds` is the safe form outside
+the resolver (`SettingsModal applyBucketYearOverride` had the same throw). Gate:
+`temporal/calendarSafety.spec.ts`.
+BLAST: A NEGATIVE `drift_per_year_t` IS HONOURED - a year shorter than its whole days, one unit
+taken OUT in the year the deficit reaches the threshold. It was silently ignored. And the first
+guess at the year is the EXACT mean year as a fraction: a GM's new calendar has its zero at the big
+bang, a year index near 1.4e10, where the old guess (Gregorian's 97/400 whatever the cycle said; a
+truncated division for a bucket) could miss by hundreds of years - outside the eight-step search -
+and print a garbage date.
+CAVEAT (found 2026-11, NOT fixed): ADOPTION IS KEYED ON `id` AND THE EDITOR RE-STAMPS EVERY `id`.
+`EditTemporalModal handleSave` writes `CAL_<slug of key>` onto all calendars, shipped ones included
+(`EARTH_GREG` becomes `CAL_earth_gregorian`). After any Save there, `adoptShippedCalendarEpochs` no
+longer recognises that campaign's built-ins, and nothing is `sameAsShipped`, so B112's delta writes
+all four into the file. The re-stamp is also the only thing keeping a GM's edit to a built-in's
+`leap_logic` alive - with the id intact, adoption resets it on the next load - so the two must be
+changed together.
 ### RENDER-S48 A MODEL DRAWN IN ITS HOST'S CURRENCY MUST BE SCALED BY THE HOST'S LIVE RADIUS
 BUCKET: ARCHITECTURE - a build-time snapshot of another object's drawn size is stale by the next
 frame, and the units silently square if the caller also scales by length.
@@ -6865,6 +6937,9 @@ the approach sense at all - it was TRANSIT-8, the far-side velocity sign in `bui
 which parked EVERY Hohmann retrograde. The approach-sense rule above still stands for the
 interplanetary paths; the orbit-change path now conserves the sense and applies the same prograde
 rule at a beanstalk host, with a reversal priced when the origin runs against the spin.
+CORRECTION (PHY-42): "outranks `orbit`" holds only while the structure HAS an offset. A ladder with
+no ports (a host with no real geostationary) falls through to its own orbit; it used to ask for its
+own position and overflow the stack.
 
 ### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
 WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.
