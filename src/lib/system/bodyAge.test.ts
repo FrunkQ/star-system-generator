@@ -65,7 +65,13 @@ function makeSystem(ageGyr: number): System {
       { id: 'jove', name: 'Jove', kind: 'body', parentId: 'star', roleHint: 'planet', classes: [],
         massKg: 1 * M_JUP_KG, radiusKm: 10.97 * R_E_KM, makeup: { gas: 0.95, ice: 0.05 }, axial_tilt_deg: 3,
         atmosphere: { name: 'Hydrogen', pressure_bar: 1, composition: { H2: 0.86, He: 0.13, CH4: 0.01 } },
-        rotation_period_hours: 10, tags: [], orbit: orbit('star', 5.2) }
+        rotation_period_hours: 10, tags: [], orbit: orbit('star', 5.2) },
+      // A Mars: light enough for the stellar wind to bite, and opted in to losing its air over time.
+      { id: 'ares', name: 'Ares', kind: 'body', parentId: 'star', roleHint: 'planet', classes: [],
+        massKg: 0.107 * M_E_KG, radiusKm: 0.532 * R_E_KM, makeup: { rock: 0.75, metal: 0.25 }, axial_tilt_deg: 25,
+        rotation_period_hours: 24.6, tags: [], evolveAtmosphere: true,
+        atmosphere: { name: 'Carbon dioxide', pressure_bar: 1, composition: { CO2: 0.95, N2: 0.05 } },
+        orbit: orbit('star', 1.52) }
     ]
   } as any;
 }
@@ -154,5 +160,31 @@ describe('G94 - a giant sheds the heat of ITS OWN formation', () => {
   it('...and a giant captured young into an old system is still hot', () => {
     expect(heat(aged(makeSystem(9), 'jove', 0.05))).toBeCloseTo(455.6, 0);   // 50 Myr old
     expect(heat(makeSystem(9))).toBeCloseTo(37.7, 0);                       // the same giant, formed here
+  });
+});
+
+describe('G94 - a world loses its air over ITS OWN lifetime', () => {
+  const pack = loadRulePack();
+  const bar = (s: System) => node(systemProcessor.process(s, pack), 'ares').atmosphere?.pressure_bar as number;
+
+  it('with no age of its own it erodes over the system\'s: 0.961 bar left at 1 Gyr, 0.649 at 9', () => {
+    expect(bar(makeSystem(1))).toBeCloseTo(0.9611, 3);
+    expect(bar(makeSystem(4.6))).toBeCloseTo(0.8205, 3);
+    expect(bar(makeSystem(9))).toBeCloseTo(0.6487, 3);
+  });
+
+  // (Compared to six places rather than exactly: the STAR in the two systems is a different age, so
+  //  its wind differs in the ninth decimal. The world's own loss is what is being pinned.)
+  it('given its own age it has lost exactly what a world of THAT age has lost', () => {
+    expect(bar(aged(makeSystem(9), 'ares', 1))).toBeCloseTo(0.9611, 3);    // captured late into an old system
+    expect(bar(aged(makeSystem(1), 'ares', 9))).toBeCloseTo(0.6487, 3);    // an old world round a young star
+    expect(bar(aged(makeSystem(4.6), 'ares', 9))).toBeCloseTo(bar(makeSystem(9)), 6);
+  });
+
+  it('...and reprocessing does not compound the loss', () => {
+    let s = systemProcessor.process(aged(makeSystem(1), 'ares', 9), pack);
+    const first = node(s, 'ares').atmosphere?.pressure_bar;
+    for (let i = 0; i < 3; i++) s = systemProcessor.process(s, pack);
+    expect(node(s, 'ares').atmosphere?.pressure_bar).toBe(first);
   });
 });

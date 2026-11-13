@@ -970,7 +970,11 @@ export class SystemProcessor implements ISystemProcessor {
             const magG = body.magneticField?.strengthGauss || 0;
             const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;
             const stellarFluxRel = calculateTotalStellarRadiation(body, allNodes);
-            const planetAgeGyr = Math.max(0, this.systemAgeGyr - FORMATION_DELAY_GYR);
+            // G94: the air has been leaking for as long as THIS BODY has existed, so it is the body's
+            // own age that is eroded over - a world captured late has lost less, an ancient one more.
+            // One expression for both cases: a body with no age of its own is as old as its system,
+            // which is the figure this line always used.
+            const planetAgeGyr = Math.max(0, this.ageOf(body) - FORMATION_DELAY_GYR);
             const pressureBefore = body.atmosphere?.pressure_bar ?? 0;
             applyAtmosphericEscape(body, equilibriumTempK, planetAgeGyr, stellarFluxRel, magShield, pack);
             // Escape changed the air the clouds condense out of, so the fixed point has to be solved

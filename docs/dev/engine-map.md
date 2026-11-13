@@ -7986,6 +7986,9 @@ so far, each with its own gate:
   - A GIANT'S INTERNAL HEAT (`estimateInternalHeatK` in `processEnvironment`) - the heat of its own
     formation, still being shed. The Temperature tab's live preview is handed the same figure
     (`BodySidePanel` passes `ageOf(body, system)`), so the tab and the card cannot disagree.
+  - ATMOSPHERIC ESCAPE (`applyAtmosphericEscape`, opted-in bodies only) - eroded over the body's
+    own age less `FORMATION_DELAY_GYR`. One expression for both cases, no branch on whether the
+    body has its own age.
 `ageOf` IS AN INPUT: it is read from authored data and the system record, never from anything a
 pass writes, so it may be asked anywhere in the pass and answers the same every time.
 WHY: [[G94]]. There was exactly one age, `System.age_Gyr`, consumed at 21 sites, so the only lever
