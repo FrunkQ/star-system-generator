@@ -5,6 +5,10 @@
   import type { CelestialBody, RulePack, System } from '$lib/types';
   import ConstructBasicsTab from './ConstructBasicsTab.svelte';
   import { SITUATION_FIELDS, stripSituation, constructFileProblem } from '$lib/constructs/constructFile';
+  // THESE TWO WERE CALLED AND NEVER IMPORTED until 3.1.1: exporting a construct that had a 3D model
+  // threw a ReferenceError inside the click handler (no file, no message), and importing a file that
+  // carried one was reported as bad JSON. A construct without a model never reached either call.
+  import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import ConstructGeneralTab from './ConstructGeneralTab.svelte';
   import ConstructMegaTab from './ConstructMegaTab.svelte';
   import { megaTypeDef } from '$lib/constructs/megaTypes';
