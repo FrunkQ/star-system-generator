@@ -25,7 +25,7 @@ export function effectiveOrbitEccentricity(body: any): number | undefined {
 }
 const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
-import { classifyBody, explainClassification, imageClassFor } from '../system/classification';
+import { classifyBody, explainClassification, imageClassFor, imageVariantFor } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup, hasSolidSurface } from '../physics/makeup';
 import { lobeCount } from '../catalogue/smallBodyShape';
 import { surfaceTempProfile, meanSurfaceTempK } from '../physics/surfaceTemperature';
@@ -1851,8 +1851,12 @@ export class SystemProcessor implements ISystemProcessor {
         // the photo was the only one of a body's three views that ignored what the modifiers say.
         const primaryClass = imageClassFor(body.classes, pack.classifier?.fingerprints, pack.classifier?.planetImages);
         if (body.roleHint !== 'star' && primaryClass && pack.classifier?.planetImages && !(body.image as any)?.custom) {
-            const img = pack.classifier.planetImages[primaryClass]
-                ?? pack.classifier.planetImages[`planet/${primaryClass.split('/')[1]}`];
+            // ...and a class's ONE stock picture is drawn in a particular state (the super-earth is
+            // wrapped in cloud, the subsurface ocean is a bare ice shell), which this body may not be
+            // in. The pack says when a class borrows another's picture; see `planetImageVariants`.
+            const imageKey = imageVariantFor(primaryClass, features, pack.classifier.planetImageVariants, pack.classifier.planetImages);
+            const img = pack.classifier.planetImages[imageKey]
+                ?? pack.classifier.planetImages[`planet/${imageKey.split('/')[1]}`];
             if (img) body.image = { url: img };
         }
 

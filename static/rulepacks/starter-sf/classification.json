@@ -2232,6 +2232,32 @@
       "planet/ultra-short-period": "/images/planet_types/web20ultra-short20period20planet.jpg",
       "planet/water-clouds-gas-giant": "/images/planet_types/web20water20clouds20gas20giant.jpg"
     },
+    "planetImageVariants": {
+      "planet/super-earth": [
+        {
+          "note": "The stock picture is a world wrapped in cloud; the class itself never asks about air. An airless one (the same pressure band planet/barren is defined by) borrows the airless rock.",
+          "match": {
+            "atm.pressure_bar": [
+              0,
+              0.01
+            ]
+          },
+          "use": "planet/barren"
+        }
+      ],
+      "planet/subsurface-ocean": [
+        {
+          "note": "The stock picture is a bare cracked ice shell. Under an atmosphere deep enough to hide the surface there is no shell to see, so it borrows a deep-atmosphere world.",
+          "match": {
+            "atm.pressure_bar": [
+              10,
+              1000000000
+            ]
+          },
+          "use": "planet/sub-neptune"
+        }
+      ]
+    },
     "starImages": {
       "star/A": "/images/star_types/A.webp",
       "star/B": "/images/star_types/B.webp",
