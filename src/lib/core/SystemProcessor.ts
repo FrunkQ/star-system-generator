@@ -89,14 +89,21 @@ import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
 import { isLegacyTag } from '../tags/tagPresentation';
+import { ageOf, systemAgeGyr, type AgeFrame } from '../physics/bodyAge';
 
 export class SystemProcessor implements ISystemProcessor {
     private systemAgeGyr = 4.6;
+    // G94: what a body's OWN age is measured against. Held for the pass so every consumer asks the
+    // one function (physics/bodyAge.ts) and none of them restates absent-means-inherit. The system's
+    // age above stays for what is genuinely system-wide.
+    private ageFrame: AgeFrame = { age_Gyr: 4.6, epochT0: 0 };
+    private ageOf(body: CelestialBody): number { return ageOf(body, this.ageFrame); }
 
     process(system: System, rulePack: RulePack): System {
         const processedSystem = { ...system }; // Shallow copy
         const allNodes = processedSystem.nodes;
-        this.systemAgeGyr = system.age_Gyr ?? 4.6;
+        this.systemAgeGyr = systemAgeGyr(system);
+        this.ageFrame = { age_Gyr: this.systemAgeGyr, epochT0: system.epochT0 };
         const rng = new SeededRNG(system.seed); // Deterministic RNG for procedural aspects of processing
 
         // Strip only KNOWN legacy duplicate tags — old data carries friendly-label copies
@@ -153,7 +160,7 @@ export class SystemProcessor implements ISystemProcessor {
             // temperature gate read one value on the first pass and another on the second, and the tag
             // appeared then vanished. Mass and radius are INPUTS, so the same question gets the same
             // answer whenever it is asked.
-            if (!brownDwarfThermal(s.massKg || 0, this.systemAgeGyr, s.radiusKm || 0).isSubstellar) {
+            if (!brownDwarfThermal(s.massKg || 0, this.ageOf(s), s.radiusKm || 0).isSubstellar) {
                 emit(s.tags, { key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
             }
             // WHAT THE STAR THROWS OFF (inbox G26): jets and a shed wind, derived in
@@ -686,8 +693,14 @@ export class SystemProcessor implements ISystemProcessor {
     // + radiationOutput, so (a) its own surface reads ≈ its Teff and (b) it irradiates its moons. Runs
     // before the environment pass. Fully idempotent — clears the markers if the body is no longer in the
     // substellar mass window (e.g. the GM edited its mass down).
+    //
+    // THE AGE IS THE BODY'S OWN (G94, and the whole of B150's fix). A brown dwarf does not fuse, so
+    // its temperature IS its cooling track and deriving it is right - what was wrong is that the only
+    // age on offer was the system's, so the one lever that moves the temperature could not be reached
+    // for one dwarf without ageing everything around it. `ageOf` is an INPUT: the same answer on
+    // every pass, which is why a dwarf given an age keeps the temperature that age implies.
     private applySubstellarSelfLuminosity(body: CelestialBody) {
-        const bd = brownDwarfThermal(body.massKg || 0, this.systemAgeGyr, body.radiusKm || 0);
+        const bd = brownDwarfThermal(body.massKg || 0, this.ageOf(body), body.radiusKm || 0);
         body.tags = stripForReprocess(body.tags, ['thermal/self-luminous']);
         if (bd.isSubstellar) {
             (body as any).isSelfLuminous = true;

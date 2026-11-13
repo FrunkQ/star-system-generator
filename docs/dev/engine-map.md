@@ -7973,3 +7973,25 @@ its formation time and therefore its place in history - its AGE there is that sy
 it, which differs only by the gap between the two reference epochs. `epochT0` of 0 (the Traveller
 importer) reads as 1970 and is 56 years in 13.787 Gyr. The float round trip is not exact
 (`now - (now - 9.2)` is 9.2 to about 1e-15): compare with a tolerance, display rounded.
+### PHY-44 WHICH PHYSICS READS A BODY'S OWN AGE AND WHICH STILL READS THE SYSTEM'S - THE LIST IS THE RULE
+BUCKET: ARCHITECTURE (ordering + single source) - the processor holds two ages on purpose, and a
+consumer on the wrong one is invisible until a GM ages one body. First-order for V4's evolution
+engine, where the system-wide list should shrink to nothing.
+WHERE: `core/SystemProcessor.ts` - `this.ageOf(body)` (the body's own, PHY-43) and
+`this.systemAgeGyr` (the system's). Gate: `system/bodyAge.test.ts`, one describe per consumer.
+RULE: a consumer that answers a question ABOUT ONE BODY'S HISTORY asks `this.ageOf(body)`. Switched
+so far, each with its own gate:
+  - THE SUBSTELLAR COOLING TRACK (`applySubstellarSelfLuminosity`, and the substellar test in the
+    star pre-pass) - a brown dwarf's temperature and luminosity. This is [[B150]]'s fix.
+`ageOf` IS AN INPUT: it is read from authored data and the system record, never from anything a
+pass writes, so it may be asked anywhere in the pass and answers the same every time.
+WHY: [[G94]]. There was exactly one age, `System.age_Gyr`, consumed at 21 sites, so the only lever
+that moves a brown dwarf's temperature could not be reached for one dwarf without ageing every
+world around it - and the Star tab offered a temperature box that the cooling track overwrote on
+the next pass ([[B150]], three reporters).
+BLAST: A MOON IS LIT BY ITS HOST'S OWN AGE: an aged brown dwarf's luminosity is what its moons
+receive, so ageing the host cools the moons and that is correct. A BODY FILED EITHER WAY IS ONE
+OBJECT (DATA-R22): the star-filed and planet-filed dwarf must give the same photosphere for the
+same age, and the gate asserts it. `process()` works on the nodes it is handed, so a test that
+compares "before" and "after" must read the before figures BEFORE the second run - the first cut
+of this gate compared an object with itself and failed for that reason, not for the physics.
