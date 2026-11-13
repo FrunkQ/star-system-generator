@@ -3709,6 +3709,15 @@ are unaffected. Scoped styles ride on the element's own hash class and travel wi
 backdrops were found never registering at all, which is why the contract is now a GATE and not a
 convention: a new full-viewport fixed layer is RED until it registers or is listed as not-a-dialog
 with a reason.
+BLAST (3.1.1): A PORTALLED DIALOG COMPETES AT THE ROOT WITH EVERY OTHER DIALOG'S NUMBER. Declared
+inside its opener it was simply the last thing in that opener's stacking context; on `<body>` its
+z-index is compared directly with the opener's. So a dialog that OTHER DIALOGS OPEN must carry a
+number above all of them. `HelpModal` inherited the shared `.modal-overlay` 1000 and opened BEHIND
+three of its four openers - Find by tag (1500), the tag category editor and the ship panel (2200) -
+which was reported as "the tagging guide opens behind everything"; only the Help menu, itself 1000
+and earlier in the document, still showed it. It now takes the top of the modal tier
+(`--z-modal` + 2). Gate: `components/HelpModal.spec.ts`, whose table of openers is RED for any new
+file that mounts the guide. Other dialog-opened-by-a-dialog pairs have not been audited.
 
 ### UI-C13 A SLIDER AND THE BAND PAINTED BEHIND IT ARE ONE AXIS, AND THE AXIS IS DATA
 BUCKET: IMPLEMENTATION - durable: two halves of one control must not each decide their own scale.
@@ -4178,6 +4187,10 @@ FOUR THINGS THAT ARE NOT OBVIOUS AND EACH COST SOMETHING TO FIND:
     at 1e23 kg is over every tonnage stop, so "largest stop still >= 1" prints 1e11 Gt. Nearest-
     window reaches across the gap and reads 0.01674 M-Earth, which is the comparison A80 asked for.
     Any ladder with a gap wider than three decades has this property; do not add stops to close it.
+    (3.1.1: `M-Luna` now sits IN that gap as a stop a reader can cycle to, and the walk never lands
+    on it - `CHOSEN_ONLY_STOPS` in `units.ts`. As an auto stop it would take every reading from a
+    fiftieth of a lunar mass to a thousand of them, this shell included: 1.362 M-Luna in place of
+    0.01674 M-Earth. Offering a unit and defaulting to it are two decisions.)
  3. AN AUTO STOP CHOOSES DECIMALS; IT NEVER ROUNDS INTEGER DIGITS. Rounding to significant figures
     instead turned every planetary orbit from "1.000 AU" into "1 AU" and a barycentre member from
     "7,465,000 km" into "7,400,000 km". Show enough decimals to reach SIG_FIGS, never fewer than the
@@ -7147,8 +7160,10 @@ layout, a stored scroll, a hit test computed against a stale scale: all of them 
 BUCKET: ARCHITECTURE - a player-facing view that ignores the preset's visual filter does not look
 like a bug from the inside; it looks like a view. The tell is that its PREVIEW disagrees with it,
 which is the one thing the preview exists to prevent.
-WHERE: `routes/catalogue/+page.svelte` - one branch per stage, each of which must either run the
-filter itself (the holo) or wrap in `FilterFrame` (everything else); `components/FilterFrame.svelte`
+WHERE: `routes/catalogue/+page.svelte` - one branch per stage, each of which runs the REAL filter
+itself (the holo as a pass in its own scene; the document, the list and the size comparison through
+the real chain). No stage wraps its content in `FilterFrame` any more - see WHAT STILL MOUNTS IT
+below; `components/FilterFrame.svelte`
 + `player/cssFilterApprox.ts` (the approximation); `holo/filteredCanvas.ts` (the real chain over a
 static canvas); mirrored in `PlayerPresetEditor.svelte`'s preview branches.
 RULE, AND IT IS A DECISION ALREADY TAKEN RATHER THAN A CHOICE PER STAGE. Owner, 2026-07-18, in
@@ -7163,6 +7178,26 @@ composites its info card as a HUD quad so the card warps WITH the picture.
 through GLSL without a capture step, it is one source of truth rendered two ways rather than a rival
 implementation ([[A39]]), and the surfaces still on it are tracked as unfinished, not as finished.
 Reach for it only where a preset is explicitly un-filtered, or as a stop-gap you have written down.
+WHAT STILL MOUNTS IT (3.1.1 - [[G78]]'s kill has NOT happened, and the frame is still shipped): the
+preset's OVERLAY GRAPHIC at three catalogue mounts (the starmap size comparison, the system size
+comparison, and the holo only until its overlay bitmap has loaded and the HUD quad takes over); the
+`.inspector` block, which reads `cssFilterApprox` directly (`inspFx`) wherever the HUD card is not
+drawing it; and the preset editor five times (the cover preview, the text-list preview, and the
+overlay three times - once for every previewed stage, plus an extra copy inside each of the two
+size-comparison previews, which therefore draw their overlay twice).
+AND A FRAME AROUND A TRANSPARENT GRAPHIC IS NOT A FRAME AROUND A SURFACE. The frame's tint,
+scanlines and vignette are WHOLE-FRAME sheets, and the tint is solid colour under
+`mix-blend-mode: color`. `.overlay-wrap` has a z-index and is therefore its own stacking context:
+over a mostly transparent image the blend has no backdrop, falls back to plain source-over, and
+lays a film of phosphor across a stage the real shader has already filtered - reported twice as
+"the phosphor colour overlays the whole screen". A mount around a graphic passes `graphic`: no
+sheet is painted and the tint goes on the image's own pixels as a colour matrix
+(`graphicTintMatrix`). Gate: `components/FilterFrame.spec.ts`, RED for any `FilterFrame` around a
+`GraphicLayer` without it. The same gate pins that `GraphicLayer` is handed a PLACEMENT and never
+the `{img, placement}` pair the canvas surfaces take: the starmap size comparison passed the pair,
+found no asset, and never drew its overlay at all - only the wash. An overlay on a size comparison
+is still DOM and does not warp with the picture; the finish is G78's own first step, the overlay
+drawn into that view's chrome canvas.
 WHY THE DECISION EXISTS, and it is not tidiness: DOM chrome is positioned in SCREEN space and does
 not follow the warped, inset projection. Under a barrel-warped CRT preset the picture bends and the
 DOM sitting over it does not, so labels drift off the things they name - which is the exact fault

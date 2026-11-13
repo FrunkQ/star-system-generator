@@ -182,6 +182,38 @@ rubble-pile + contact-binary is Arrokoth.
 - **`density` is a bulk figure the engine derives from the makeup**, so it is internally consistent —
   but a density that came *in* from a catalogue is not the same kind of number. See below.
 
+### Which picture a type shows — `planetImages`, and `planetImageVariants`
+A body's "standard picture" is looked up in `classifier.planetImages` by class: the first
+**modifier** that has a picture, else the base (`imageClassFor`). One picture per class means the
+picture is drawn in one particular STATE, and the class may not test that state at all:
+`planet/super-earth` is three bands of mass, radius and density, and its picture is a world wrapped
+in cloud.
+
+`classifier.planetImageVariants` is the pack's lever for that. Per class it lists conditions under
+which the class borrows **another class's existing picture**:
+
+```json
+"planetImageVariants": {
+  "planet/super-earth": [
+    { "note": "why", "match": { "atm.pressure_bar": [0, 0.01] }, "use": "planet/barren" }
+  ]
+}
+```
+
+- `match` uses the fingerprints' band language over the same feature map, but with **hard edges**:
+  a body is inside every band or the variant does not apply. There is no soft shoulder — a picture
+  is a yes or a no, not a score.
+- The first variant that applies wins; none applying means the class's own picture.
+- `use` names a key of `planetImages`. A variant that points at a class with no picture, or that
+  has an empty `match`, is ignored.
+- **The class does not change.** This is not a second classifier: only the illustration moves, and
+  a GM's custom uploaded image still wins over all of it.
+
+`starter-sf` ships two: an airless `planet/super-earth` (0–0.01 bar, the band `planet/barren` is
+itself defined by) shows the barren picture, and a `planet/subsurface-ocean` under 10 bar or more
+shows the sub‑Neptune instead of a bare ice shell. Read by `imageVariantFor` in
+`lib/system/classification.ts`; gated in `lib/system/typeImage.spec.ts`.
+
 ### GM‑only types (no fingerprint)
 `forest, jungle, swamp, ecumenopolis` need biome / industrialisation data the engine doesn't
 model (it computes a habitability *score* + tier, not vegetation), and they share the habitable
