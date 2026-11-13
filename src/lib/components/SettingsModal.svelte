@@ -3,7 +3,7 @@
   import { importOrReload } from '$lib/util/importOrReload';
   import { createEventDispatcher, onMount } from 'svelte';
   import { ensureTemporalState } from '$lib/temporal/defaults';
-  import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
+  import { parseClockSeconds, resolveCalendar, wholeClockSeconds } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { skin, SKINS, customSkins, floatSkin, FLOAT_SKINS } from '$lib/styles/skinStore';
   import { hubSavesEnabled } from '$lib/hub/hubSaves';
@@ -361,8 +361,9 @@
     if (deltaYears === 0) return;
 
     const hierarchy = calendar.hierarchy;
-    const yearMul = BigInt(hierarchy.find((u) => u.unit === 'year')?.multiplier ?? 31536000);
-    const driftPerYear = BigInt(calendar.leap_logic?.drift_per_year_t ?? 0);
+    // Authored numbers: a fractional or blanked box must not throw here either (BigInt(1.5) does).
+    const yearMul = wholeClockSeconds(hierarchy?.find((u) => u.unit === 'year')?.multiplier, 31536000n);
+    const driftPerYear = wholeClockSeconds(calendar.leap_logic?.drift_per_year_t, 0n);
     const timeShiftSec = BigInt(deltaYears) * (yearMul + driftPerYear);
     const currentMaster = parseClockSeconds(temporal.masterTimeSec, 0n);
     const currentDisplay = parseClockSeconds(temporal.displayTimeSec, currentMaster);

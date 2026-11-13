@@ -8,6 +8,7 @@
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
 import { megaTypeDef } from '$lib/constructs/megaTypes';
+import { megaIsSurfaceOnly } from '$lib/constructs/megaPlacement';
 import type { System, CelestialBody, Barycenter, Tag, RulePack, TemporalState } from '$lib/types';
 import { temporalForExport } from '$lib/temporal/defaults';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
@@ -18,7 +19,7 @@ import { spinProvenanceTags } from '$lib/generation/spinProvenance';
 import { starClassParts, starClassKeyFor, isBandKey } from '$lib/physics/starDesignation';
 import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
 import { determineSpectralClass } from '$lib/physics/stellar-evolution';
-import { SOLAR_RADIUS_KM } from '$lib/constants';
+import { SOLAR_RADIUS_KM, AU_KM, G } from '$lib/constants';
 import { stripUndoHistory } from '$lib/undo/historyKey';
 import { lagrangePlacementId } from '$lib/physics/lagrange';
 
@@ -421,12 +422,37 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
     // Heal a saved one: a surface-only mega type (registry allowedPlacements exactly ['Surface'])
     // becomes Surface at its host's radius. A GM cannot have chosen the broken state - the dialog
     // never offered it - so this is the template's stamp following the template, not an override.
+    // AND THE SAME HEAL FOR ONE THE ORBIT TAB SENT TO A LAGRANGE POINT (found live, 2026-09-26: "the
+    // planet is stationary at the center of the system screen ... re-entering the system froze the
+    // site"). The edit surface offered L1-L5 to an elevator, and a co-orbital node is re-homed onto
+    // its world's OWN host - so the ribbon was left hanging from a star, which has no surface, no
+    // geostationary and so no anchor, and the position walk had nowhere to put it. The marker names
+    // the world it was standing on; put it back there. Relevance, not plausibility (UI-B2): there
+    // is no reading of "an elevator at L2" to preserve.
     const mdef = megaTypeDef(cn.megaType);
-    if (mdef && mdef.allowedPlacements && mdef.allowedPlacements.length === 1
-        && mdef.allowedPlacements[0] === 'Surface' && cn.placement !== 'Surface') {
-      cn.placement = 'Surface';
-      const hostNode = system.nodes.find((h) => h.id === cn.parentId) as { radiusKm?: number } | undefined;
-      if (cn.orbit?.elements && hostNode?.radiusKm) cn.orbit.elements.a_AU = hostNode.radiusKm / 149597870.7;
+    if (megaIsSurfaceOnly(mdef)) {
+      const co = node as CelestialBody;
+      const stoodOn = co.coOrbital?.hostId ?? (lagrangePlacementId(cn.placement) ? co.ui_parentId : undefined);
+      const world = stoodOn ? system.nodes.find((h) => h.id === stoodOn) as CelestialBody | undefined : undefined;
+      if (co.coOrbital || world) {
+        delete co.coOrbital;
+        co.ui_parentId = null;
+        if (world) {
+          // The derived L-point orbit is a copy of the WORLD's own (its plane, its pinned rate, its
+          // frame) and means nothing about a thing standing on it: back to the create path's
+          // placeholder, a circle at the surface, which the anchor outranks in any case.
+          co.parentId = world.id;
+          co.orbit = {
+            hostId: world.id, hostMu: (world.massKg || 0) * G, t0: co.orbit?.t0 ?? 0,
+            elements: { a_AU: (world.radiusKm || 0) / AU_KM, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 }
+          };
+        }
+        cn.placement = 'Surface';
+      } else if (cn.placement !== 'Surface') {
+        cn.placement = 'Surface';
+        const hostNode = system.nodes.find((h) => h.id === cn.parentId) as { radiusKm?: number } | undefined;
+        if (cn.orbit?.elements && hostNode?.radiusKm) cn.orbit.elements.a_AU = hostNode.radiusKm / AU_KM;
+      }
     }
     if (node.kind === 'barycenter') { stripBarycenter(node as Barycenter); continue; }
     if (node.kind !== 'body') continue;

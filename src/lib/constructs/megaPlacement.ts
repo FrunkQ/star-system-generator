@@ -23,6 +23,7 @@ import type { Barycenter, CelestialBody, MegaRequires, MegaHardClauses, MegaStee
  *  every clause answers honestly for one: no surface, not a star, no boundaries, kind 'barycenter'. */
 export type MegaHost = CelestialBody | Barycenter;
 import type { MegaTypeDef } from './megaTypes';
+import { lagrangePlacementId } from '$lib/physics/lagrange';
 
 export interface MegaHardResult {
   ok: boolean;
@@ -63,6 +64,44 @@ export function effectiveMegaRequires(
   def: MegaTypeDef | undefined
 ): MegaRequires {
   return template.requires ?? def?.requires ?? {};
+}
+
+// ── THE TEMPLATE HALF OF THE AXIS (§2.2), FOR EVERY SURFACE THAT OFFERS A PLACEMENT ─────────────
+// `allowedPlacements` on the registry record says which placements make sense for a type at all -
+// an elevator is Surface or nothing. The create dialog honoured it and the Orbit tab did not, so an
+// elevator already standing could be sent to L2 from the editor; these are the one answer both ask.
+//
+// TWO VOCABULARIES MEET HERE, which is why this is a function and not `includes`: the create dialog
+// says 'Mid Orbit' and offers one 'AU Distance' about a star; the Orbit tab says 'Medium Orbit' and
+// names the same about-a-star distance by its neighbours ('Inner System', 'Earth - Mars', 'Outer
+// System'). Each is folded onto the record's own word before it is compared.
+const BAND_WORDS: ReadonlySet<string> = new Set(['Surface', 'Low Orbit', 'Mid Orbit', 'High Orbit', 'Geostationary Orbit']);
+
+/** The record's word for a placement either surface offers. */
+export function megaPlacementWord(placement: string): string {
+  if (placement === 'Medium Orbit') return 'Mid Orbit';
+  if (BAND_WORDS.has(placement) || lagrangePlacementId(placement)) return placement;
+  return 'AU Distance';   // every remaining option is a distance from a star or barycentre
+}
+
+/** Is this placement one the type can take at all? A type with no list takes all of them, and so
+ *  does a node that is not a mega (an unknown `megaType` degrades to an ordinary construct). */
+export function megaPlacementAllowed(def: Pick<MegaTypeDef, 'allowedPlacements'> | undefined, placement: string | null | undefined): boolean {
+  const allowed = def?.allowedPlacements;
+  if (!allowed || !placement) return true;
+  return allowed.includes(megaPlacementWord(placement));
+}
+
+/** The host's placements, narrowed to those the type can take. Order kept. */
+export function filterMegaPlacements<T extends string>(def: Pick<MegaTypeDef, 'allowedPlacements'> | undefined, placements: readonly T[]): T[] {
+  return placements.filter((p) => megaPlacementAllowed(def, p));
+}
+
+/** A type that can ONLY stand on a surface (the elevator). It has no orbit to tune: its position is
+ *  its anchor, so an altitude, an orbital position or an L-point means nothing for it. */
+export function megaIsSurfaceOnly(def: Pick<MegaTypeDef, 'allowedPlacements'> | undefined): boolean {
+  const allowed = def?.allowedPlacements;
+  return !!allowed && allowed.length > 0 && allowed.every((p) => p === 'Surface');
 }
 
 const warned = new Set<string>();

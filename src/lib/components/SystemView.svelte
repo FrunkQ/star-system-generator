@@ -48,7 +48,7 @@
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { starmapStore } from '$lib/starmapStore';
   import { interstellarConstructIds, adriftFromSystemExit } from '$lib/transit/interstellar';
-  import { rootStarHillAu } from '$lib/physics/twoBodyCoast';
+  import { systemEdgeAu } from '$lib/system/systemReach';
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -2107,10 +2107,9 @@
 
       // C1 — a construct that has coasted BEYOND the system edge has left the local system. The edge is a
       // configurable AU distance (Settings → Starmap → System edge), or the root star's Hill limit by default.
-      const rootNode: any = sys.nodes.find((n) => (n as any).parentId == null);
-      const rootMass = (rootNode?.massKg ?? rootNode?.effectiveMassKg ?? 0) as number;
-      const edgeAu = get(starmapStore)?.systemEdgeAu;
-      const hillLimitAu = (edgeAu && edgeAu > 0) ? edgeAu : (rootMass > 0 ? rootStarHillAu(rootMass) : Infinity);
+      // ONE reading of that setting (system/systemReach.ts) - the Orbit tab's placement ceiling and the
+      // orrery's widest view are derived beside it, so the three cannot drift apart again (B23).
+      const hillLimitAu = systemEdgeAu(sys, get(starmapStore)?.systemEdgeAu);
       const exitAtSec = String(Math.floor(Number(unixMsToMasterSeconds(actualMs))));
 
       const nodes = sys.nodes.map((node) => {
