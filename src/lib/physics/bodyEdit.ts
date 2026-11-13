@@ -46,7 +46,9 @@ export function massFromRadiusDensity(radiusRe: number, density: number): number
 function makeupForGeomDensity(geomDensity: number, massMe: number, current: Required<Makeup>): Required<Makeup> {
   if (isFluidByMass(massMe)) return current;
   const uncompressed = geomDensity / compressionFactor(massMe, { rock: 1 });
-  return normalizeMakeup(inferMakeupFromDensity(uncompressed));
+  // The body's carbon is carried through (v4-plans B2): density inference has no rung for carbon,
+  // so without this a carbon world lost all of it the moment a density was typed.
+  return normalizeMakeup(inferMakeupFromDensity(uncompressed, current.carbon));
 }
 
 // Set one makeup component to `frac` (0..1) and rescale the others proportionally so the mix stays normalised.

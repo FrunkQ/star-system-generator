@@ -173,17 +173,45 @@ export function massMeFromRadiusMakeup(radius_Re: number, m: Makeup, inflation =
 // Reverse: a representative makeup for an UNCOMPRESSED grain density (g/cc), by inverting the
 // volume-additive blend between the two bracketing grain densities. Physically grounded — a density
 // of 5.4 lands at ~⅔ metal (Mercury), not a coarse "rocky" bucket.
-export function inferMakeupFromDensity(density_gcc: number): Makeup {
-  const d = Math.max(0.12, density_gcc);
-  const blend = (heavy: keyof Makeup, hDen: number, light: keyof Makeup, lDen: number): Makeup => {
-    // 1/d = f/hDen + (1−f)/lDen  →  solve the heavy fraction f
-    const f = Math.max(0, Math.min(1, ((1 / lDen) - (1 / d)) / ((1 / lDen) - (1 / hDen))));
-    return { [heavy]: f, [light]: 1 - f } as Makeup;
+//
+// `keepCarbon` (the body's CURRENT carbon share, 0..1) exists because the ladder below has four
+// rungs and the makeup has five. Carbon's grain density (2.3) sits between rock and ice, so no
+// density ever picks it as a bracket - which is right when nothing is known about a body, and wrong
+// when a GM has SAID there is carbon and then merely nudges the density: every density-driven
+// re-inference returned carbon 0, so a carbon world lost its carbon the moment a density was typed
+// (v4-plans B2: "Carbon cannot be seen in densities when I type a value"). Given a share to keep,
+// the carbon is held and the ladder solves the REST of the body to the density that makes the whole
+// come out right. It only gives ground when it must: a density no mix with that much carbon can
+// reach (denser than carbon-plus-pure-metal, lighter than carbon-plus-pure-gas) keeps as much as
+// fits. With no share to keep the answer is exactly what it always was.
+export function inferMakeupFromDensity(density_gcc: number, keepCarbon = 0): Makeup {
+  const ladder = (dd: number): Makeup => {
+    const d = Math.max(GRAIN_GCC.gas, dd);
+    const blend = (heavy: keyof Makeup, hDen: number, light: keyof Makeup, lDen: number): Makeup => {
+      // 1/d = f/hDen + (1−f)/lDen  →  solve the heavy fraction f
+      const f = Math.max(0, Math.min(1, ((1 / lDen) - (1 / d)) / ((1 / lDen) - (1 / hDen))));
+      return { [heavy]: f, [light]: 1 - f } as Makeup;
+    };
+    if (d >= GRAIN_GCC.metal) return { metal: 1 };
+    if (d >= GRAIN_GCC.rock) return blend('metal', GRAIN_GCC.metal, 'rock', GRAIN_GCC.rock);  // metal↔rock
+    if (d >= GRAIN_GCC.ice) return blend('rock', GRAIN_GCC.rock, 'ice', GRAIN_GCC.ice);        // rock↔ice
+    return blend('ice', GRAIN_GCC.ice, 'gas', GRAIN_GCC.gas);                                  // ice↔gas
   };
-  if (d >= GRAIN_GCC.metal) return { metal: 1 };
-  if (d >= GRAIN_GCC.rock) return blend('metal', GRAIN_GCC.metal, 'rock', GRAIN_GCC.rock);  // metal↔rock
-  if (d >= GRAIN_GCC.ice) return blend('rock', GRAIN_GCC.rock, 'ice', GRAIN_GCC.ice);        // rock↔ice
-  return blend('ice', GRAIN_GCC.ice, 'gas', GRAIN_GCC.gas);                                  // ice↔gas
+  const d = Math.max(GRAIN_GCC.gas, density_gcc);
+  if (!(keepCarbon > 0)) return ladder(d);
+  // The most carbon this density can carry: the rest would have to be pure metal (if the body is
+  // denser than carbon) or pure gas (if lighter).
+  const inv = 1 / d, invC = 1 / GRAIN_GCC.carbon;
+  const limit = d >= GRAIN_GCC.carbon ? GRAIN_GCC.metal : GRAIN_GCC.gas;
+  const most = (inv - 1 / limit) / (invC - 1 / limit);
+  const c = Math.max(0, Math.min(1, keepCarbon, most));
+  if (c <= 1e-9) return ladder(d);
+  if (c >= 1 - 1e-9) return { carbon: 1 };
+  // 1/d = c/ρc + (1−c)/ρrest  →  the density the non-carbon remainder has to have
+  const rest = ladder((1 - c) / (inv - c * invC));
+  const out: Makeup = { carbon: c };
+  for (const k of KEYS) if (k !== 'carbon' && rest[k]) out[k] = rest[k]! * (1 - c);
+  return out;
 }
 
 // The normalised makeup fractions for a body: explicit if present, else inferred from its bulk
