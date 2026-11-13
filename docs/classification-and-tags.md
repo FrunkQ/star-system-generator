@@ -97,8 +97,16 @@ and a pack author needs to know which is which.
   is read by `generation/generateBodyOfType.ts`, from `fp.formation`, never from `fp.match`. **A
   body that exists classifies as what it is regardless of whether it could have formed yet:** a
   hand-placed chthonian in a million-year-old system still classifies as a chthonian. Four types
-  declare one today (`protoplanet`, `crater`, `helium`, `chthonian`). Omit it and the type is
-  birthable at any age.
+  declare an age window today (`protoplanet`, `crater`, `helium`, `chthonian`). Omit it and the
+  type is birthable at any age.
+  **It takes a temperature too, `formation.Teq_K`, and where a type declares one the birth gate
+  reads it INSTEAD of the type's `match` temperature band.** `ice-giant` is the one that does: it
+  forms beyond the snow line (`formation.Teq_K [0, 200]`), but a Neptune that has migrated, been
+  placed by hand or been measured on a warm orbit is still an ice giant, so its `match.Teq_K` runs
+  to 700 K, where `hot-neptune` begins. Before the two were separated a Uranus-mass world at 1 AU
+  matched nothing at all and was named a gas giant by the mass fallback. Use the pair whenever
+  "where it forms" is narrower than "where it can be found"; widen `match` alone and the generator
+  starts building the type everywhere the classifier accepts it.
 - **`range` is EDITOR METADATA and the scorer never reads it either** (`system/typeRanges.ts`). It
   gives `mass_Me` / `radius_Re` / `density` / `Teq_K` spans for slider extents, for which types the
   "Add planet/moon here…" picker offers, and for filtering by the orbit's temperature. Because it is

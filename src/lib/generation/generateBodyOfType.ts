@@ -266,8 +266,16 @@ export function judgeTypesAt(
     // greenhouse that will close the gap, and it was written for this. Without this fallback a
     // SurfaceTemp_K type falls through as "no temperature constraint" and lava is offered in the
     // Goldilocks zone — which is what happened to the three eyeball classes at v2.1.283.
+    //
+    // A FORMATION temperature band, where the type declares one, is the answer and the match band is
+    // not consulted (engine map CLASS-2). This gate asks where a type can be BORN; `match` says what
+    // a body IS, and the two differ for anything that can end up somewhere it could not have formed.
+    // An ice giant forms beyond the snow line and is still an ice giant after it has been moved to
+    // 1 AU, so its match band runs to 700 K while its formation band stays at 0-200 K. Read the
+    // match band here and widening it for the classifier would have the generator building Neptunes
+    // in the habitable zone and would move every saved seed.
     if (g.temperature) {
-      const band = fp.match['Teq_K'] ?? fp.match['SurfaceTemp_K'];
+      const band = fp.formation?.['Teq_K'] ?? fp.match['Teq_K'] ?? fp.match['SurfaceTemp_K'];
       if (Array.isArray(band) && typeof band[0] === 'number') {
         const [lo, hi] = band as [number, number];
         const pad = (hi - lo) * SLACK;

@@ -1244,7 +1244,7 @@
       {
         "class": "planet/ice-giant",
         "kind": "base",
-        "note": "Neptune/Uranus-class cold giant.",
+        "note": "Neptune/Uranus-class giant. Forms cold (formation.Teq_K), but one that has since been moved, authored or measured on a warmer orbit is still an ice giant: match.Teq_K runs up to where hot-neptune begins.",
         "match": {
           "mass_Me": [
             8,
@@ -1256,11 +1256,17 @@
           ],
           "Teq_K": [
             0,
-            200
+            700
           ],
           "density": [
             1,
             3.5
+          ]
+        },
+        "formation": {
+          "Teq_K": [
+            0,
+            200
           ]
         },
         "range": {
@@ -1278,7 +1284,7 @@
           ],
           "Teq_K": [
             0,
-            200
+            700
           ]
         }
       },

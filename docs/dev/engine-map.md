@@ -4691,6 +4691,45 @@ BLAST: `minScore` went with it — nothing reads it. If you ever need a fingerpr
 classify richly, the answer is to GENERATE fingerprints, not to restore scoring: the two engines
 disagreed on essentially every body and there was no test that could have told you which was right.
 
+### CLASS-2 WHERE A TYPE FORMS AND WHAT A BODY IS ARE TWO BANDS - AND WIDENING `match` RELABELS GENERATED WORLDS TOO
+BUCKET: DOMAIN + ARCHITECTURE - domain: a planet can end up somewhere it could not have formed
+(migration, a GM's hand, a measured exoplanet), so "born at" is narrower than "found at".
+Architecture: one band answering both questions is a hidden coupling between the classifier and the
+generator; and the classifier cannot tell a generated body from an authored one.
+WHERE: `classification.json` `planet/ice-giant` (`match.Teq_K [0, 700]`, `formation.Teq_K [0, 200]`);
+the temperature gate in `generation/generateBodyOfType.judgeTypesAt`; `system/modifiers.
+preferredOrbitBandAU`. Gates: `generation/warmIceGiant.spec.ts`, `createdPlanetPlacement.spec.ts`.
+RULE: a BIRTH question reads `formation.Teq_K` where the type declares one and falls back to the
+match band (then `range`) only where it does not. There are two birth readers - the viability gate
+(generator AND picker) and the orbit band a newly created type is placed in - and both must prefer
+it. `match` is the classifier's alone; `range.Teq_K` is the editor's "is this type reachable for
+this body" and follows `match`, not `formation`.
+WHY: a Uranus-mass body at 1 AU read "gas giant". It matched NOTHING: ice-giant stopped at 200 K
+(soft edge 230), hot-neptune starts at 700 (soft edge 595), and between them 13.8-17 Earth masses is
+outside every other Neptune-class band, so `fallbackBaseClass` named it by mass. The band was doing
+the generator's job (where ice giants form) inside the classifier.
+BLAST: **"THE GENERATOR IS UNTOUCHED" IS TRUE OF THE DRAW AND FALSE OF THE LABEL.** With the birth
+band held, the viable set at every temperature is identical and so is every drawn body - measured
+over 300 systems / 4,185 bodies, not one field outside the label moved. But generated bodies are
+`autoClassify`, so the processor re-derives their class from the same widened band: 27 of the 4,185
+(0.65%) became ice giants. Four were the fault itself; 23 were drawn as mini-/sub-/super-Neptune or
+protoplanet and are now out-scored, because ice-giant carries FOUR match bands against their two or
+three and the specificity bonus is per band. That is not new behaviour - the same four bands already
+take those bodies on a cold orbit - but widening any band extends its steal to wherever it now
+reaches. Run a before/after dump of generated systems before believing a band change is label-neutral.
+BLAST: THE LABEL DRAGS THREE THINGS WITH IT. (1) Tags keyed on `isGiant`, which is "class NAME
+contains a giant type OR gas >= 0.4": a super-Neptune relabelled ice giant gains `resource/helium-3`
+and `frontier/gas-skimming` with no change to the body. (2) The picture. (3) PROPER NAMES in
+generated systems: `generateSystemFromConfig` rolls a name per planet AFTER processing with a chance
+set by the final class's rarity tier, and a hit consumes extra draws, so one relabel can rename every
+later world in that system (6 of 300 systems). A seed's bodies are stable across a classifier
+change; its names are not.
+BLAST: the warm edge (700) is hot-neptune's cold edge on purpose, and the spec pins them equal. Move
+one without the other and the gap reopens, silently, as a fallback gas giant. Bundled content that
+moved: GJ 674 b and GJ 687 b in both starmaps, and Conquestor and Mors in the e Eridani example
+(642 K hot-neptune and 205 K super-neptune before). None of the four stores a class - the maps ship
+`autoClassify` bodies and the label is derived on load - so no shipped file changed.
+
 ### GEN-6 ONE STAR-HIERARCHY PLANNER, AND THE TRAVELLER PATH WIDENS IT RATHER THAN REPLACING IT
 BUCKET: DOMAIN + ARCHITECTURE - domain: a hierarchy is not a set of orbits round one centre, and a
 TIGHT pair is the wrong answer when the ruleset mandates a habitable-zone main world. Architecture:

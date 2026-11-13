@@ -96,6 +96,11 @@ scorer iterates `Object.entries(fp.match)` and an absent one throws.
 - **Viability gates** — `judgeTypesAt` / `ALL_GATES` in `src/lib/generation/generateBodyOfType.ts`. A type
   whose gates always reject it at every slot is a type nobody will ever see. Check yours can actually pass
   somewhere.
+- **Where it FORMS is not always where it can be FOUND.** The temperature gate reads `formation.Teq_K` when the
+  fingerprint declares one and the `match` band only when it does not (engine map CLASS-2). If your type forms
+  in a narrower range than it can later occupy - the ice giant forms cold and stays an ice giant on a warm
+  orbit - give it both bands. Widening `match.Teq_K` alone makes the generator build it across the whole
+  wider range and moves every saved seed; `warmIceGiant.spec.ts` is the pattern for proving it did not.
 
 **e. The author's picker — and a modifier gets in only if it can be BUILT.**
 `AddBodyTypeModal.svelte` builds its offer from `rulePack.classifier.fingerprints`, so a BASE fingerprint is
