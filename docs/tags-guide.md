@@ -47,6 +47,13 @@ it has stopped being true.
 
 **Yours.** Anything you add by hand, for any purpose. It survives every re-process and every save.
 
+**Left behind.** A tag that an automated rule seeded, where neither the rule nor its category is in
+your settings any more — you deleted or renamed the category, or the map came from another GM whose
+rules you do not have. Nothing re-creates these and nothing clears them by itself, because the app
+cannot tell which of those it is and will not delete another GM's tagging. Click one on the Tags tab
+to remove it, or open **Edit tag categories**, which counts them across the starmap and offers to
+remove them all. Your hand-added tags are never touched.
+
 **Placement steers (`mega/…`).** Stamped when a mega-construct is placed somewhere the physics finds
 demanding — a ringworld outside the goldilocks zone, a space elevator whose counterweight rides near
 the edge of its world's gravity well. Each carries its explanation, numbers included, in the tag
@@ -337,3 +344,10 @@ at?".
 A category — its tags, colours, applies-to list and rules — saves to a file and loads back, so you
 can flavour a starmap to your universe and hand the result to another GM. Categories also travel
 inside the starmap itself, so a shared map arrives already speaking its own language.
+
+Importing a file whose namespace you already use asks first. **Replace mine with the file** makes
+your category exactly what the file says; **Keep both** brings the file in as a copy under its own
+namespace (`faction` becomes `faction-copy`), with its own tags and rules, which is the way to start
+a variant of a category you already have. Either way the tags your worlds already carry from other
+rules are not re-rolled, and neither are they when you add a rule: a new rule takes the last place
+in the order the rules are dealt.

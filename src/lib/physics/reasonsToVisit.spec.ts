@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { annotateReasonsToVisit, REASONS_DEFAULTS, DEFAULT_POI_PACK, exportPack, importPack, type ReasonsConfig, type PoIPack } from './reasonsToVisit';
+import { annotateReasonsToVisit, REASONS_DEFAULTS, DEFAULT_POI_PACK, exportPack, importPack, strandedRuleTags, countStrandedRuleTags, removeStrandedRuleTags, type ReasonsConfig, type PoIPack } from './reasonsToVisit';
 import type { System, CelestialBody } from '../types';
 
 function sys(): System {
@@ -231,5 +231,91 @@ describe('orbit, zone and structure features (G38)', () => {
     expect(keys(s, 'jove')).toContain('science/mooned');
     expect(keys(s, 'jove')).toContain('science/ringed');
     expect(keys(s, 'io')).toContain('science/giant-moon');
+  });
+});
+
+// "how do I REMOVE tags that are seeded from rules no longer in the pack?" (a GM, 2026-10-23, who
+// ended up editing the starmap file by hand). Two different things were hiding in that sentence.
+describe('a rule-seeded tag does not outlive its rule', () => {
+  const pack = (over: Partial<PoIPack>): PoIPack => ({
+    id: 'default', name: 'test', description: '', enabled: true, categories: [], rules: [], ...over
+  });
+  const planet = (s: System) => s.nodes.find((n) => n.id === 'p1') as CelestialBody;
+  const keys = (s: System) => (planet(s).tags ?? []).map((t) => t.key);
+  const on: ReasonsConfig = { enabled: true, categories: {} };
+
+  // THE PILE-UP. Export a category, rename its `id` in the file, import it: the rules now sit in
+  // `newns` and still write `oldns/...`. Nothing owned that prefix, so the pass never cleared what
+  // it was about to write again.
+  it('a rule that writes outside its own category leaves ONE tag, however many passes run', () => {
+    const packs = [pack({
+      categories: [{ id: 'newns', label: 'New', desc: '' }],
+      rules: [{ id: 'rz', tag: 'oldns/reds', category: 'newns', chance: 1, when: true }]
+    })];
+    const s = sys();
+    for (let i = 0; i < 4; i++) annotateReasonsToVisit(s, on, packs);
+    expect(keys(s).filter((k) => k === 'oldns/reds')).toHaveLength(1);
+  });
+
+  it('...and when that rule is retargeted, the tag it used to write goes with it', () => {
+    const before = [pack({ categories: [{ id: 'newns', label: 'New', desc: '' }],
+      rules: [{ id: 'rz', tag: 'oldns/reds', category: 'newns', chance: 1, when: true }] })];
+    const after = [pack({ categories: [{ id: 'newns', label: 'New', desc: '' }],
+      rules: [{ id: 'rz', tag: 'newns/reds', category: 'newns', chance: 1, when: true }] })];
+    const s = sys();
+    annotateReasonsToVisit(s, on, before);
+    annotateReasonsToVisit(s, on, after);
+    expect(keys(s)).toContain('newns/reds');
+    expect(keys(s)).not.toContain('oldns/reds');
+  });
+
+  it('a rule deleted from a category that still exists takes its tags on the next pass', () => {
+    const cats = [{ id: 'faction', label: 'Faction', desc: '' }];
+    const s = sys();
+    annotateReasonsToVisit(s, on, [pack({ categories: cats, rules: [{ id: 'rz', tag: 'faction/reds', category: 'faction', chance: 1, when: true }] })]);
+    expect(keys(s)).toContain('faction/reds');
+    annotateReasonsToVisit(s, on, [pack({ categories: cats, rules: [] })]);
+    expect(keys(s)).not.toContain('faction/reds');
+  });
+
+  // THE STRANDED ONES. Rule gone AND category gone. The pass leaves these alone on purpose: a
+  // save carries no tagging rules, so a map opened from another GM is full of exactly this, and
+  // clearing it on load would delete their work. So it is named, counted and removed by choice.
+  describe('stranded: the rule and its category are both gone', () => {
+    const packs = [pack({ categories: [{ id: 'faction', label: 'Faction', desc: '' }], rules: [] })];
+    const stranded = (): System => {
+      const s = sys();
+      planet(s).tags = [
+        { key: 'gone/ruin', source: 'rule:r9k2x' },      // seeded by a rule nobody here has
+        { key: 'gone/mine', manual: true },              // hand-added in the same dead namespace
+        { key: 'geology/inactive' }                      // physics
+      ];
+      return s;
+    };
+
+    it('a pass does not delete it', () => {
+      const s = stranded();
+      annotateReasonsToVisit(s, on, packs);
+      expect(keys(s)).toContain('gone/ruin');
+    });
+
+    it('is named - and a hand-added or physics tag never is', () => {
+      const s = stranded();
+      expect(strandedRuleTags(planet(s).tags, packs).map((t) => t.key)).toEqual(['gone/ruin']);
+      expect(countStrandedRuleTags([s, s], packs)).toEqual({ tags: 1, bodies: 1 });   // one system given twice counts once
+    });
+
+    it('is removed when the GM asks, and nothing else is touched', () => {
+      const s = stranded();
+      expect(removeStrandedRuleTags(s, packs)).toBe(1);
+      expect(keys(s)).toEqual(['gone/mine', 'geology/inactive']);
+      expect(removeStrandedRuleTags(s, packs)).toBe(0);
+    });
+
+    it('is NOT stranded while its category exists - the next pass clears that one by itself', () => {
+      const s = sys();
+      planet(s).tags = [{ key: 'faction/reds', source: 'rule:deleted' }];
+      expect(strandedRuleTags(planet(s).tags, packs)).toHaveLength(0);
+    });
   });
 });

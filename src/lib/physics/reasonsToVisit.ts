@@ -4,12 +4,12 @@
 // over a flat, documented FEATURE VECTOR (makeup, mass, temperature, derived flags, other tags).
 // Tags are emitted with a per-body SEEDED roll (deterministic from body id + system seed). Multiple
 // packs STACK — their categories merge and their rules all run.
-import type { System, CelestialBody, Barycenter, RulePack } from '../types';
+import type { System, CelestialBody, Barycenter, RulePack, Tag } from '../types';
 import { derived, get } from 'svelte/store';
 import { makeupFractions, hasSolidSurface } from './makeup';
 import { stellarContextFor, calculateAllStellarZones, calculateRocheLimit } from './zones';
 import { EARTH_MASS_KG, AU_KM } from '../constants';
-import { stripRuleTags } from '../tags/tagLifecycle';
+import { stripRuleTags, tagOrigin } from '../tags/tagLifecycle';
 import { tagCategories, tagRulesEnabled, normalizeTagCategories, pristineTagCategories } from '../tags/tagCategories';
 
 // ---------------------------------------------------------------------------------------------
@@ -354,6 +354,67 @@ function evalPoI(expr: PoIExpr, f: Features): boolean {
 
 const CAT_PREFIX_OF = (catId: string) => catId + '/';
 
+// WHAT THE RULES PASS CLEARS BEFORE IT RE-ROLLS, stated once so the pass and the clean-up below
+// cannot disagree about it: every category prefix any pack defines (so a tag is cleared even when
+// its category or rule is switched off), and every rule id any pack holds (so a tag is cleared even
+// when its rule writes outside its own category - see `stripRuleTags`).
+function ruleStripScope(packs: PoIPack[]): { prefixes: string[]; ruleIds: Set<string> } {
+  return {
+    prefixes: [...new Set(packs.flatMap((p) => p.categories.map((c) => CAT_PREFIX_OF(c.id))))],
+    ruleIds: new Set(packs.flatMap((p) => p.rules.map((r) => r.id)))
+  };
+}
+
+/**
+ * RULE-SEEDED TAGS THE PASS WILL NEVER CLEAR: the rule that wrote them is gone and so is its
+ * category. "How do I REMOVE tags that are seeded from rules no longer in the pack?" - a GM who had
+ * renamed a category's namespace and was left with the old one on every world, and ended up editing
+ * the starmap file by hand.
+ *
+ * DEFINED BY THE STRIP ITSELF, not beside it: whatever a rule seeded that `stripRuleTags` would
+ * leave standing. So "stranded" can never drift from what the pass actually does.
+ *
+ * NOT REMOVED AUTOMATICALLY, AND THAT IS THE DESIGN: a save does not carry tagging rules, so on a
+ * map somebody else made every one of their custom rule tags looks exactly like this. Deleting them
+ * on load would strip an author's work from every map they share. The GM is shown them and decides.
+ * A hand-added tag is never one of these, whatever its namespace - it was not seeded by a rule.
+ */
+export function strandedRuleTags(tags: Tag[] | undefined, packs?: PoIPack[]): Tag[] {
+  const scope = ruleStripScope(packs ?? get(poiPacks));
+  return stripRuleTags(tags, scope.prefixes, scope.ruleIds).filter((t) => tagOrigin(t) === 'rule');
+}
+
+/** How many stranded rule tags a set of systems carries, and on how many bodies - for the offer. */
+export function countStrandedRuleTags(systems: (System | null | undefined)[], packs?: PoIPack[]): { tags: number; bodies: number } {
+  const all = packs ?? get(poiPacks);
+  let tags = 0, bodies = 0;
+  const seen = new Set<unknown>();
+  for (const system of systems) {
+    for (const node of system?.nodes ?? []) {
+      if (seen.has(node)) continue;          // the open system is also a node of the starmap
+      seen.add(node);
+      const n = strandedRuleTags((node as CelestialBody).tags, all).length;
+      if (n) { tags += n; bodies++; }
+    }
+  }
+  return { tags, bodies };
+}
+
+/** Remove a system's stranded rule tags, in place. Returns how many went. The GM's explicit act. */
+export function removeStrandedRuleTags(system: System, packs?: PoIPack[]): number {
+  const all = packs ?? get(poiPacks);
+  let removed = 0;
+  for (const node of system?.nodes ?? []) {
+    const b = node as CelestialBody;
+    if (!Array.isArray(b.tags) || !b.tags.length) continue;
+    const gone = new Set(strandedRuleTags(b.tags, all));
+    if (!gone.size) continue;
+    b.tags = b.tags.filter((t) => !gone.has(t));
+    removed += gone.size;
+  }
+  return removed;
+}
+
 export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, packs?: PoIPack[], enginePack?: RulePack | null): void {
   const conf = cfg ?? get(reasonsConfig);
   const allPacks = packs ?? get(poiPacks);
@@ -361,8 +422,9 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
   // Active rules in stable order: pack order, then rule order (default pack first → identical
   // determinism to the original hardcoded list when only it is active).
   const rules = enabledPacks.flatMap((p) => p.rules.filter((r) => r.enabled !== false));
-  // Every category prefix any pack defines — so we clear stale tags even from disabled packs.
-  const catPrefixes = [...new Set(allPacks.flatMap((p) => p.categories.map((c) => CAT_PREFIX_OF(c.id))))];
+  // Every category prefix any pack defines — so we clear stale tags even from disabled packs — and
+  // every rule id, so a rule's tag is cleared wherever its key sits (ruleStripScope).
+  const stripScope = ruleStripScope(allPacks);
 
   const stars = system.nodes.filter((n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'star') as CelestialBody[];
   const ageGyr = system.age_Gyr ?? 4.6;
@@ -392,7 +454,7 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
     // player filed it under an existing category (e.g. a custom frontier/my-depot). stripRuleTags
     // also spares a PHYSICS tag sharing a rule category, which `frontier/*` now has: this pass does
     // not own every key in its namespaces, only the ones a rule emitted.
-    b.tags = stripRuleTags(b.tags, catPrefixes);
+    b.tags = stripRuleTags(b.tags, stripScope.prefixes, stripScope.ruleIds);
     if (!conf.enabled) continue;
 
     const f = buildFeatures(b, ctx);

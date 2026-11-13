@@ -1,4 +1,4 @@
-import { render } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect } from 'vitest';
 import BodyTagsTab from './BodyTagsTab.svelte';
 import type { CelestialBody } from '$lib/types';
@@ -46,5 +46,48 @@ describe('the Tags tab survives a duplicated tag key (A104)', () => {
     const keys = chips(container).map((b) => b.textContent?.trim());
     expect(chips(container).length, 'one retrograde chip, and BOTH captured chips').toBe(3);
     expect(keys.filter((k) => k?.toLowerCase().includes('captured')).length).toBe(2);
+  });
+});
+
+/**
+ * "how do I REMOVE tags that are seeded from rules no longer in the pack?" - a GM, 2026-10-23, who
+ * had to edit the starmap file by hand. A rule-seeded tag whose rule AND category are both gone is
+ * cleared by nothing (the rules pass spares it on purpose: on a map from another GM it is their
+ * tagging). It used to render as a LOCKED chip - "seeded by a rule no longer in the pack" - with no
+ * way to take it off. It is now its own group, and a click removes it.
+ *
+ * Red-first, seen 2026-11-13: with the stranded group taken out of the tab the chip is back under
+ * the rule lock with no cross, and the first two tests fail on exactly that.
+ */
+describe('a tag left behind by a vanished rule can be removed on the Tags tab', () => {
+  const stranded = { key: 'vanishedns/ruin', source: 'rule:r-nobody-has' };
+  const removable = (c: HTMLElement) => chips(c).filter((b) => b.classList.contains('active'));
+
+  it('offers it for removal instead of locking it', () => {
+    const { container } = render(BodyTagsTab, { props: { body: body([stranded]), rulePack: null } as any });
+    expect(removable(container).length).toBe(1);
+    expect(container.textContent).toContain('Left behind');
+    expect(chips(container).filter((b) => b.classList.contains('locked')).length).toBe(0);
+  });
+
+  it('a click removes it, every copy of it, and leaves a hand-added tag of the same key alone', async () => {
+    const b = body([stranded, { ...stranded }, { key: 'vanishedns/ruin', manual: true }, { key: 'spin/retrograde' }]);
+    const { container } = render(BodyTagsTab, { props: { body: b, rulePack: null } as any });
+    const chip = removable(container).find((x) => x.title.includes('no longer here'))!;
+    expect(chip, 'the stranded chip is there, once (A104: two copies, one chip)').toBeTruthy();
+    await fireEvent.click(chip);
+    expect(container.textContent).not.toContain('Left behind');
+    // The GM's own tag under the same key is still offered under "Yours".
+    expect(removable(container).some((x) => x.title.includes('Your tag'))).toBe(true);
+    expect(chips(container).length).toBe(2);   // the manual tag and the physics tag
+  });
+
+  it('does not offer a rule tag whose category still exists - the next pass clears that itself', () => {
+    // `resource` is a shipped category, so the rules pass owns `resource/*` and will strip this.
+    const { container } = render(BodyTagsTab, {
+      props: { body: body([{ key: 'resource/unobtainium', source: 'rule:r-nobody-has' }]), rulePack: null } as any
+    });
+    expect(container.textContent).not.toContain('Left behind');
+    expect(chips(container).filter((b) => b.classList.contains('locked')).length).toBe(1);
   });
 });

@@ -46,7 +46,7 @@
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
   import RealSkyImportModal from '$lib/components/RealSkyImportModal.svelte';
-  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { fillOutImported } from '$lib/import/realsky/fillout';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
   import { PIXELS_PER_LY } from '$lib/import/realsky/constants.mjs';
   import GenerationWizard from '$lib/components/GenerationWizard.svelte';
@@ -111,7 +111,7 @@
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import KeepACopyModal from '$lib/components/KeepACopyModal.svelte';
   import { shouldAskToKeepACopy, recordKeptCopy } from '$lib/map/keepACopy';
-  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig, poiPacks, countStrandedRuleTags, removeStrandedRuleTags } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
   import { foreground } from '$lib/ui/foreground';
@@ -2193,14 +2193,15 @@
   // (deterministic per star, tagged origin/generated), and runs the same
   // physics recalc every loaded map gets.
   async function handleRealSkyImport(event: CustomEvent<any>) {
-    const { systems, fillOut, name, description } = event.detail;
+    const { systems, name, description } = event.detail;
     if (!selectedRulepack && rulePacks.length) selectedRulepack = rulePacks[0];
     if (!selectedRulepack) return;
     // The catalogues carry no stellar magnetic field or spin tilt; complete
     // them from the rule pack's bands, deterministically per star, exactly as
     // the generator does for its own stars.
     completeImportedStars(systems, selectedRulepack);
-    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), selectedRulepack);
+    // The dials the GM set in the dialogue go with it - one call shared with the append door.
+    fillOutImported(event.detail, systems, selectedRulepack);
     const newStarmap: StarmapType = {
       id: `starmap-realsky-${Date.now()}`,
       name,
@@ -2454,6 +2455,26 @@
     });
     const open = get(systemStore);
     if (open) { annotateReasonsToVisit(open); systemStore.set({ ...open }); }
+  }
+
+  // TAGS LEFT BEHIND BY A VANISHED RULE - counted only while the category editor is open, which is
+  // where a GM deletes or renames the category that strands them. The rules pass never clears these
+  // by itself (it cannot tell a deleted category from one belonging to whoever made the map), so
+  // the removal is the GM's explicit act, here.
+  $: strandedRuleTagCount = showTagEditor
+    ? countStrandedRuleTags([...($starmapStore?.systems ?? []).map((n) => n?.system), $systemStore], $poiPacks)
+    : { tags: 0, bodies: 0 };
+  function cleanStrandedRuleTags() {
+    const n = strandedRuleTagCount;
+    if (!n.tags) return;
+    if (!confirm(`Remove ${n.tags} tag${n.tags === 1 ? '' : 's'} from ${n.bodies} ${n.bodies === 1 ? 'body' : 'bodies'}?\n\nOnly tags seeded by rules that are no longer here are removed. Tags you added by hand, physics tags and tags from your current rules are not touched.`)) return;
+    starmapStore.update((map) => {
+      if (!map) return map;
+      for (const node of map.systems) if (node?.system) removeStrandedRuleTags(node.system);
+      return { ...map };
+    });
+    const open = get(systemStore);
+    if (open) { removeStrandedRuleTags(open); systemStore.set({ ...open }); }
   }
 
   // G42 phase 3: the rail's Save Starmap now goes through the save screen, which states in plain
@@ -3045,7 +3066,7 @@
     />
   {/if}
   {#if showTagEditor}
-    <TagCategoryEditor existingTags={allTagKeys} on:close={() => { showTagEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
+    <TagCategoryEditor existingTags={allTagKeys} stranded={strandedRuleTagCount} on:cleanstranded={cleanStrandedRuleTags} on:close={() => { showTagEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}

@@ -386,10 +386,52 @@ export function categoriesFor(cats: TagCategory[], role: TagRole | undefined): T
 
 // --- mutators (the editor's whole API) ---
 
+// TAG-8 AT THE DOOR: A RULE ARRIVING IN THE STORE TAKES THE LAST PLACE IN THE EVALUATION ORDER.
+//
+// Every body rolls once per rule, in `seq` order, so a rule's POSITION decides which roll every
+// rule after it receives. The loaders have always respected that (the migration numbers the rules,
+// the G38 seed appends after the highest) - and the editor did not: "+ rule" made a rule with no
+// `seq`, the pack view sorts a missing one as 0, and the new rule landed SECOND of forty-six.
+// Measured on the Sol fixture: adding one rule that can never fire (chance 0) changed the
+// rule-seeded tags on 29 of 40 bodies. A GM adding a hook to one category re-rolled every other
+// category's tags across the whole starmap, with nothing to say why.
+//
+// ONLY A RULE THAT IS NEW TO ITS CATEGORY IS SEATED. One already there keeps exactly the place it
+// has - including a rule saved by an older build with no `seq` at all, which stays where it has
+// always sorted. Seating those now would be the same reshuffle, once, on a campaign nobody touched.
+//
+// `fromFile` IS FOR AN IMPORT: a file's `seq` numbers are positions in the store that EXPORTED it
+// and mean nothing in this one (an exported copy of a category carries the very numbers its
+// original still holds here, and would be dealt in between them). So a rule arriving from a file
+// is seated after everything, in the file's own order, and a rule the store already has under that
+// id keeps its place whatever the file says.
+function seatArrivingRules(cat: TagCategory, cats: TagCategory[], fromFile = false): TagCategory {
+  const here = new Map((cats.find((c) => c.id === cat.id)?.rules ?? []).map((r) => [r.id, r]));
+  let next = 0;
+  for (const c of cats) for (const r of c.rules ?? []) if (typeof r.seq === 'number' && r.seq >= next) next = r.seq + 1;
+  if (!fromFile) for (const r of cat.rules ?? []) if (typeof r.seq === 'number' && r.seq >= next) next = r.seq + 1;
+  const arriving = (cat.rules ?? []).filter((r) => !here.has(r.id) && (fromFile || typeof r.seq !== 'number'));
+  if (!arriving.length && !fromFile) return cat;
+  // The file's own order: its seq where it has one, its listing order otherwise.
+  const order = arriving.map((r, i) => ({ r, i })).sort((a, b) => (a.r.seq ?? Infinity) - (b.r.seq ?? Infinity) || a.i - b.i);
+  const seat = new Map(order.map(({ r }) => [r, next++]));
+  return {
+    ...cat,
+    rules: (cat.rules ?? []).map((r) => {
+      if (seat.has(r)) return { ...r, seq: seat.get(r) };
+      if (!fromFile) return r;
+      const was = here.get(r.id)!;
+      const { seq: _fileSeq, ...rest } = r;
+      return was.seq === undefined ? rest : { ...rest, seq: was.seq };
+    })
+  };
+}
+
 export function upsertCategory(cat: TagCategory): void {
   tagCategories.update((cs) => {
+    const seated = seatArrivingRules(cat, cs);
     const i = cs.findIndex((c) => c.id === cat.id);
-    const next = i < 0 ? [...cs, cat] : cs.map((c, j) => (j === i ? cat : c));
+    const next = i < 0 ? [...cs, seated] : cs.map((c, j) => (j === i ? seated : c));
     return normalizeTagCategories(next);
   });
 }
@@ -455,11 +497,125 @@ export function exportCategory(cat: TagCategory): string {
   return JSON.stringify({ _kind: 'sse-tag-category', _version: 1, category: cat }, null, 2);
 }
 
+// A condition that mentions a tag by key must follow that tag when it is re-keyed: `hasTag`, a
+// whole-namespace `hasTagPrefix`, and a comparison on a tag's VALUE (whose field is `tag:<key>`).
+function rekeyExpr(expr: PoIExpr, keys: Map<string, string>, prefixes: Map<string, string>): PoIExpr {
+  if (expr === true || !expr || typeof expr !== 'object') return expr;
+  const e = expr as Record<string, any>;
+  const walk = (x: PoIExpr) => rekeyExpr(x, keys, prefixes);
+  if (Array.isArray(e.all)) return { all: e.all.map(walk) };
+  if (Array.isArray(e.any)) return { any: e.any.map(walk) };
+  if ('not' in e) return { not: walk(e.not) };
+  if (typeof e.hasTag === 'string') return { hasTag: keys.get(canonicalTagKey(e.hasTag)) ?? e.hasTag };
+  if (typeof e.hasTagPrefix === 'string') return { hasTagPrefix: prefixes.get(canonicalTagKey(e.hasTagPrefix)) ?? e.hasTagPrefix };
+  for (const op of ['eq', 'gt', 'lt', 'gte', 'lte', 'between']) {
+    const args = e[op];
+    if (!Array.isArray(args) || typeof args[0] !== 'string' || !args[0].startsWith('tag:')) continue;
+    const moved = keys.get(canonicalTagKey(args[0].slice(4)));
+    if (moved) return { [op]: [`tag:${moved}`, ...args.slice(1)] } as PoIExpr;
+  }
+  return expr;
+}
+
+/**
+ * PUT A CATEGORY WHOLLY INSIDE ONE NAMESPACE: its id, every tag key, every rule's tag and category,
+ * and any condition that mentions one of its own tags.
+ *
+ * A category IS a namespace - the editor can only ever make `id/slug` keys and forces a rule's tag
+ * into its own category - but a FILE was trusted to agree with itself and nothing checked. A GM who
+ * wanted a second copy of a category renamed the `id` in an exported file, which is the obvious
+ * thing to try: the result was a category called `new` whose tags and rules were all still
+ * `old/...`, so its rules wrote into a namespace nothing owned (and piled a copy onto every body
+ * each pass - see `stripRuleTags`). Every shipped tag and rule already satisfies this, so on a
+ * well-formed file it changes nothing.
+ */
+export function rehomeCategory(cat: TagCategory, id: string): TagCategory {
+  const prefix = `${id}/`;
+  const keys = new Map<string, string>();
+  const prefixes = new Map<string, string>();
+  const rehome = (key: string): string => {
+    const k = canonicalTagKey(key);
+    if (k.startsWith(prefix)) return k;
+    const slash = k.indexOf('/');
+    if (slash >= 0) prefixes.set(k.slice(0, slash + 1), prefix);
+    const moved = prefix + (slash < 0 ? k : k.slice(slash + 1));
+    keys.set(k, moved);
+    return moved;
+  };
+  const seen = new Set<string>();
+  const tags = (cat.tags ?? [])
+    .map((t) => ({ ...t, key: rehome(t.key) }))
+    .filter((t) => !seen.has(t.key) && !!seen.add(t.key));       // two namespaces can fold onto one key
+  const rules = (cat.rules ?? []).map((r) => ({ ...r, category: id, tag: rehome(r.tag) }));
+  return { ...cat, id, tags, rules: rules.map((r) => ({ ...r, when: rekeyExpr(r.when, keys, prefixes) })) };
+}
+
 export function importCategory(json: string): TagCategory {
   const raw = JSON.parse(json);
   const cat = raw?.category ?? raw;
-  if (!cat?.id || !Array.isArray(cat.tags)) throw new Error('Not a tag category file.');
-  return { ...cat, id: tagSlugSegment(cat.id), rules: cat.rules ?? [], appliesTo: cat.appliesTo ?? ['planet', 'moon', 'belt'] };
+  const id = tagSlugSegment(cat?.id ?? '');
+  if (!id || !Array.isArray(cat.tags)) throw new Error('Not a tag category file.');
+  return rehomeCategory({ ...cat, rules: cat.rules ?? [], appliesTo: cat.appliesTo ?? ['planet', 'moon', 'belt'] }, id);
+}
+
+// IMPORTING ONTO A NAMESPACE THAT IS ALREADY IN USE - "importing a tag catagory makes the tag just
+// reset rather then actually import", and "there doesnt seem to be a way to import a COPY of a tag
+// catagory" (a GM, 2026-10-23).
+//
+// The editor used to hand whatever it read straight to `upsertCategory`, which replaces by id. So a
+// file carrying a namespace the GM already had silently OVERWROTE theirs - every tag, colour and
+// rule they had changed since the export went back to what the file said - and there was no way to
+// bring the file in beside it. Both answers are legitimate (restore from a backup; start a variant)
+// and only the GM knows which they meant, so a collision now has to be answered: `replace` takes
+// the file's definition whole, `copy` lands it under a free namespace, and with no answer this
+// THROWS rather than choosing, so no caller can overwrite by forgetting to ask.
+export type CategoryImportMode = 'replace' | 'copy';
+
+/** A namespace nothing is using yet: `faction` gives `faction-copy`, then `faction-copy-2`, and so on. */
+export function freeCategoryId(cats: TagCategory[], wanted: string): string {
+  const taken = new Set(cats.map((c) => c.id));
+  const base = `${tagSlugSegment(wanted) || 'category'}-copy`;
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
+// A copy is a NEW category that starts out identical: its own namespace, its own rule ids (two
+// rules sharing an id would be one rule to everything that looks one up by id), and none of the
+// engine's protections - `locked` and `derived` are statements about the engine's own slugs
+// (`status/adrift`), and on a copy they would only be tags the GM could never delete.
+function asCategoryCopy(incoming: TagCategory, cats: TagCategory[]): TagCategory {
+  const id = freeCategoryId(cats, incoming.id);
+  const { system: _system, ...moved } = rehomeCategory(incoming, id);
+  const named = (n: string | undefined) => `${n || incoming.id} (copy)`;
+  return {
+    ...moved,
+    shortName: named(moved.shortName),
+    longName: named(moved.longName),
+    tags: moved.tags.map(({ locked: _locked, derived: _derived, ...t }) => t),
+    rules: moved.rules.map((r) => ({ ...r, id: `${r.id}-${id}` }))
+  };
+}
+
+/**
+ * Bring an imported category into the store, and return the namespace it landed under.
+ * With no category of that namespace it is simply added; with one, `mode` is required (see above).
+ * Its rules are seated after every rule already here, so importing never re-rolls the tags the
+ * campaign already has (`seatArrivingRules`).
+ */
+export function addImportedCategory(incoming: TagCategory, mode?: CategoryImportMode): string {
+  const cats = get(tagCategories);
+  const clash = cats.some((c) => c.id === incoming.id);
+  if (clash && !mode) throw new Error(`A category with the namespace "${incoming.id}" already exists - replace it, or import as a copy.`);
+  const arriving = clash && mode === 'copy' ? asCategoryCopy(incoming, cats) : incoming;
+  // A locked category cannot be switched off by hand (setCategoryEnabled), so a file cannot do it either.
+  const cat = isLockedCategory(arriving.id) ? { ...arriving, enabled: true } : arriving;
+  const seated = seatArrivingRules(cat, cats, true);
+  tagCategories.set(normalizeTagCategories(
+    cats.some((c) => c.id === seated.id) ? cats.map((c) => (c.id === seated.id ? seated : c)) : [...cats, seated]
+  ));
+  return seated.id;
 }
 
 // --- starmap embedding: the categories travel with the map, as both old formats did ---
