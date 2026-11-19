@@ -161,6 +161,28 @@ export function rephasedM0(
 }
 
 /**
+ * WRITE A PHASE AS "THIS MEAN ANOMALY AT THIS EPOCH" - both halves of the one fact, together
+ * (engine map PHY-48). This is the editor's write: it CHOOSES where the body is rather than keeping
+ * where it was, so it does not go through `rephasedM0`; the matching READ - what the stored phase
+ * amounts to at that same epoch - is `rephasedM0(orbit, epochMs)`.
+ *
+ * A stored `t0` is whatever instant the orbit happened to be created at, and no surface shows it.
+ * An editor that displays the bare `M0_rad` therefore shows a number whose meaning differs from
+ * body to body: the same six elements typed into two bodies made at different clock times were two
+ * different orbits. Reading and writing the phase at ONE stated epoch (the system's `epochT0`) is
+ * what makes the displayed elements a complete description.
+ */
+export function setPhaseAtEpoch(
+  orbit: { t0?: number; elements: { M0_rad?: number } },
+  epochMs: number,
+  meanAnomalyRad: number
+): void {
+  if (!Number.isFinite(epochMs) || !Number.isFinite(meanAnomalyRad)) return;
+  orbit.t0 = epochMs;
+  orbit.elements.M0_rad = meanAnomalyRad;
+}
+
+/**
  * Shared elliptical Kepler solve. Returns the perifocal-frame position (m) and velocity (m/s)
  * plus the three orientation angles (ω, i, Ω). Both propagateState (the flat, ω-only projection
  * the 2D orrery uses) and propagateState3D (the full Rz(Ω)·Rx(i)·Rz(ω) rotation the holo view
@@ -170,8 +192,12 @@ export function rephasedM0(
 function solvePerifocal(node: CelestialBody | Barycenter | { orbit: any }, tMs: number): PerifocalState | null {
   if (!('orbit' in node) || !node.orbit) return null;
 
-  const { elements, hostMu, t0 } = node.orbit;
-  const { M0_rad } = elements;
+  const { elements, hostMu } = node.orbit;
+  // A phase or an epoch that is not a number (a hand-edited file, a field a control once blanked)
+  // must not NaN the whole position chain: every child of the body inherits the NaN, and one NaN in
+  // the system extent blanks the view. Zero is the honest reading of "no phase given".
+  const M0_rad = Number.isFinite(elements.M0_rad) ? elements.M0_rad : 0;
+  const t0 = Number.isFinite(node.orbit.t0) ? node.orbit.t0 : 0;
 
   // GUARD: this solver is ELLIPTICAL-ONLY — sqrt(1-e), n = sqrt(mu/a^3) and the [0,2pi) mean-anomaly
   // normalisation all silently NaN (or worse, produce finite garbage) for e >= 1 or a <= 0. Stored orbits

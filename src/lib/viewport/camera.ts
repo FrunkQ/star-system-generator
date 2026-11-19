@@ -31,12 +31,33 @@ export const AUTO_FRAME_DEADBAND = 0.02;     // ignore sub-2% corrections (stops
 // its camera DISTANCE through this same policy, and there 0.05 is not "maximum zoom-out" but a floor of
 // ~4500 Earth radii — it silently forbade ever framing a true-scale world (the ease dived in, then the
 // follow step clamped the distance back out and the planet collapsed to a marker).
-export function clampZoom(value: number, min = MIN_CAMERA_ZOOM, max = MAX_CAMERA_ZOOM): number {
+// B23: THE WIDEST VIEW FOLLOWS THE SYSTEM'S REACH, NOT THE SCREEN'S WIDTH. `MIN_CAMERA_ZOOM` is
+// pixels per AU, so on its own it shows 1000 canvas-widths of AU: a 2,000 px desktop reaches
+// exactly 1,000,000 AU either side of centre and a 500 px phone 250,000 - while the Orbit tab let a
+// body be typed out to 1,000,000 AU on both. A companion at the limit sat on the edge of the widest
+// view or beyond it. The orrery now tells this module how far the system reaches
+// (`system/systemReach.ts placementLimitAu`, the SAME number the Orbit tab clamps at) and the floor
+// becomes whatever fits that radius on this canvas - never NARROWER than the fixed floor, so no
+// device loses reach it had. This is A91's "viewport-independent extent cap" follow-up.
+// Module state on purpose: the orrery's clamp is called from a dozen sites here and in the
+// component, all meaning the same floor; the holo passes its own bounds and never reads this.
+export const WIDEST_VIEW_MARGIN = 1.25;   // the reach fills 80% of the canvas's smaller side
+let widestViewZoom = MIN_CAMERA_ZOOM;
+/** The orrery's current zoom floor, pixels per AU. */
+export function minCameraZoom(): number { return widestViewZoom; }
+/** Fit `reachAu` (a radius about the centre) into a canvas whose smaller side is `viewportMinPx`. */
+export function setWidestView(reachAu: number, viewportMinPx: number): number {
+	const fit = reachAu > 0 && viewportMinPx > 0 ? viewportMinPx / (2 * reachAu * WIDEST_VIEW_MARGIN) : NaN;
+	widestViewZoom = Number.isFinite(fit) && fit > 0 ? Math.min(MIN_CAMERA_ZOOM, fit) : MIN_CAMERA_ZOOM;
+	return widestViewZoom;
+}
+
+export function clampZoom(value: number, min = widestViewZoom, max = MAX_CAMERA_ZOOM): number {
 	if (!Number.isFinite(value)) return min;
 	return Math.max(min, Math.min(max, value));
 }
 
-export function dampedZoomStep(current: number, target: number, min = MIN_CAMERA_ZOOM, max = MAX_CAMERA_ZOOM): number {
+export function dampedZoomStep(current: number, target: number, min = widestViewZoom, max = MAX_CAMERA_ZOOM): number {
 	const safeCurrent = Math.max(current, min);
 	const safeTarget = clampZoom(target, min, max);
 	const ratio = safeTarget / safeCurrent;
@@ -69,7 +90,7 @@ export function autoFrameStep(args: {
 	const { current, ideal, userOverride, suppress = false, sinceLastMs } = args;
 	if (userOverride || suppress) return null;
 	if (sinceLastMs < (args.minUpdateMs ?? AUTO_FRAME_MIN_UPDATE_MS)) return null;
-	const mn = args.minValue ?? MIN_CAMERA_ZOOM;
+	const mn = args.minValue ?? widestViewZoom;
 	const mx = args.maxValue ?? MAX_CAMERA_ZOOM;
 	const next = dampedZoomStep(current, ideal, mn, mx);
 	const delta = Math.abs(next - current) / Math.max(current, mn);

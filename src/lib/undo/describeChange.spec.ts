@@ -26,6 +26,8 @@ describe('describeSystemChange', () => {
     expect(describeSystemChange(sys([earth()]), sys([earth({ makeup: { rock: 1 } })]))).toBe('Composition of Earth');
     expect(describeSystemChange(sys([earth()]), sys([earth({ gmNotes: 'secret' })]))).toBe('GM notes of Earth');
     expect(describeSystemChange(sys([earth()]), sys([earth({ image: { url: 'x' } })]))).toBe('Picture of Earth');
+    // G94: what is stored is a formation time; what the GM changed, in his own word, is its age.
+    expect(describeSystemChange(sys([earth()]), sys([earth({ formationTimeGyr: 4.5 })]))).toBe('Age of Earth');
   });
 
   it('lists two or three fields, and counts beyond that', () => {

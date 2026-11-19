@@ -22,7 +22,7 @@ import { starClasses, starParamsFromType, parseStellarType, UNKNOWN_STAR_CLASS }
 import { luminositySolarFrom, companionSpectralType } from './stars.mjs';
 import { deriveStarSize, FIGURE_SOURCE } from './starSize.mjs';
 import { displayStarName, systemStarName } from './starNames.mjs';
-import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
+import { defaultMakeup, estimateRadiusRe, planetDescription, planetMassFromRow } from './planets.mjs';
 import { normaliseStarRows, groupIntoSystems, projectedSeparationAu, angularSepRad, distanceLyFromParallax } from './census.mjs';
 
 // Archive hostnames already curated into the bundled Local Neighbourhood.
@@ -105,7 +105,9 @@ function starNodeFromRow(row, slug) {
 function planetNodeFromRow(row, slug, hostNode, mutualIncMax) {
   const letter = row.pl_name.trim().split(/\s+/).pop();
   const id = `${slug}-${letter.toLowerCase()}`;
-  const massMe = row.pl_bmasse;
+  // An UPPER LIMIT is not a mass (`planetMassFromRow`), and the density the archive computed from
+  // one is not evidence about what the planet is made of.
+  const { massMe, densityGcc } = planetMassFromRow(row);
   if (massMe == null) return { skip: `${row.pl_name}: no mass in the archive` };
   let aAU = row.pl_orbsmax;
   if (aAU == null && row.pl_orbper != null) {
@@ -118,7 +120,7 @@ function planetNodeFromRow(row, slug, hostNode, mutualIncMax) {
       id, parentId: hostNode.id, name: row.pl_name, kind: 'body', roleHint: 'planet',
       massKg: massMe * EARTH_MASS_KG,
       radiusKm: Math.round((row.pl_rade ?? estimateRadiusRe(massMe)) * EARTH_RADIUS_KM),
-      makeup: defaultMakeup(massMe, row.pl_dens, id, row.pl_rade),
+      makeup: defaultMakeup(massMe, densityGcc, id, row.pl_rade),
       autoClassify: true,
       orbit: {
         hostId: hostNode.id, hostMu: G * hostNode.massKg, t0: EPOCH,
@@ -477,9 +479,24 @@ export function convertRegion(
       const starId = `${slug}-${isPrimary ? 'star' : `star-${String.fromCharCode(97 + i)}`}`;
       // A matched archive row carries MEASURED parameters and always beats the class estimate.
       const archiveHost = hostsHere.find((h) => h.star === s);
-      const built = archiveHost
-        ? starNodeFromRow(archiveHost.hostRows[0], slug)
-        : starNodeFromCensus(s, starId, statTemplates, starSizes?.get?.(s.id) ?? null);
+      let built = archiveHost ? starNodeFromRow(archiveHost.hostRows[0], slug) : null;
+      // THE ARCHIVE IS AN ENRICHMENT, SO ITS GAPS MUST NOT COST THE STAR (D18). A matched host row
+      // that lacks a stellar mass, radius or temperature used to SKIP the star outright - and its
+      // planets with it, because they had nothing left to orbit. GJ 667 C is the case in the
+      // committed cache: the archive gives no `st_rad`, so a real M dwarf 24 light years away
+      // vanished from the map together with all five of its confirmed planets, while the same star
+      // with NO planets would have imported happily from the census. The census star is right
+      // there; it is used instead, on the same footing as every planet-less star, and its
+      // description says which catalogue fell short. Only a star neither source can describe is
+      // skipped.
+      const archiveGap = built?.missing ?? null;
+      if (!built || archiveGap) {
+        built = starNodeFromCensus(s, starId, statTemplates, starSizes?.get?.(s.id) ?? null);
+        if (archiveGap && built.node) {
+          built.node.description += ` The exoplanet archive lists this star as a planet host but gives no `
+            + `${archiveGap.join(' or ')} for it, so the figures above come from the star catalogue instead.`;
+        }
+      }
       if (built.missing) { skipped.push({ hostname: cleanStarName(s.id), reason: `missing ${built.missing.join(', ')} — not invented` }); return; }
       built.node.id = starId;
       built.node.name = cleanStarName(s.id);

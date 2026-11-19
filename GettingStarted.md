@@ -206,7 +206,9 @@ Click a system to drop into the **system visualiser** — a real-time orbital vi
   to a stop. **Scrubbing while time is running does not stop the clock** — you seek to wherever you
   jog to, and playback carries on from there. **Display Time** (what you are looking at) and
   **Actual Time** (the committed "now") are independent, and the red button that commits one to the
-  other asks first.
+  other asks first. To arrive somewhere exact, press **⇥** on the transport: type an amount, pick a
+  unit — the campaign calendar's own seconds, minutes, hours, days, months or years — and step
+  forwards or back by exactly that much. A month or a year lands on the same date and time of day.
 * **The floating controls.** The time transport and the picker behave identically wherever you meet
   them. A slim handle on the left moves them, and the position is remembered; the padlock on the
   right locks one open. Unlocked, a control folds away to a puck as soon as you touch something
@@ -482,12 +484,49 @@ it, and a pair forms if the masses say one should.
    gas). Oceans are modelled separately, as surface or subsurface fluid layers, not as an
    interior-makeup slider. Density emerges from the composition, and dialling density toward
    ~1 g/cc turns a terrestrial into a gas giant. Rotation period and axial tilt have their own
-   sliders — rotation snaps to tidal locking — and a world spun fast enough visibly flattens.
+   sliders on the **Orbit** tab, under *Spin and shape* — rotation snaps to tidal locking — and a
+   world spun fast enough visibly flattens. The same tab holds every orbital element in the open,
+   says which plane an inclination is measured from, and counts the mean anomaly from the system's
+   reference epoch, so the same elements always describe the same orbit.
 4. If the physics will not give you the world you want, the **Overrides** tab (the last one) lets you
    pin the figure by hand and keep everything downstream honest. See below.
+5. Give it a history. The **Temp** tab has an **Age** control — see *How old a thing is*, below.
 
 Everything recomputes live: temperature, fluids, magnetosphere, geology, habitability and tags all
 update as you edit.
+
+### How old a thing is
+
+Every system has an age, and every body in it is that old unless you say otherwise.
+
+**The system's age** is on any star's **System Info** tab: a box and a slider running from a million
+years to the age of the universe on that system's own date. Change it and everything that has not
+been given an age of its own follows — stars flare more or less, brown dwarfs and giant planets cool,
+worlds lose air, and worlds have more or less time to lock to their star. It does **not** age the
+stars themselves: a star's temperature, size and brightness stay as you set them.
+
+**A body's own age** is the **Age** control on its **Temp** tab. The scale runs from the big bang on
+the left to the system's date on the right, with a mark where the system formed, and the thumb sits
+where *this* body formed — so left is older. Leave it alone and the body is as old as its system.
+Move it, or type an age, and the body has a history of its own: older than its star if you like,
+which is a captured or ancient object and is not flagged as an error. **Use the system's age** hands
+it back. Underneath, the control says what the age actually drives on that body — the heat a giant
+still carries from its formation, how much air a world has lost — and says so plainly when, as for an
+ordinary rock today, it drives nothing yet.
+
+A body with its own age is tagged for when it formed, set against its system: **Young**, **Old**,
+**Ancient** (older by two stellar generations) or **Primordial** (formed in the universe's first
+billion years, whatever it orbits now). The bands are figures in the rule pack.
+
+**Brown dwarfs are the case this was built for.** A brown dwarf does not fuse, so its temperature is
+simply where it has got to as it cools — which is why it has no temperature control at all, on the
+star editor or anywhere else, and an Age control where one would be. Slide the age and the
+temperature moves and stays put. If what you have is a temperature, type it into **Aim for a
+temperature**: you are told how old a dwarf of that mass is at that temperature and offered that age,
+or told why no age gets there (a 37-Jupiter-mass dwarf cannot have cooled to 914 K yet; a lighter one
+could have).
+
+Sliding an age never moves the campaign clock, and running the clock never changes an age.
 
 ### Editing an atmosphere
 
@@ -533,6 +572,11 @@ its picture changes with them.
   shielding, and is called anomalous rather than reported as an ordinary dynamo.
 * **Radiogenic heat**, **thermal inflation**, and on a star its **flare activity** — the flare
   and X-ray output, which is set by the dynamo rather than by brightness.
+* On a star, its **effective temperature** — the surface temperature, set outright. The star's
+  brightness follows from it and its radius, and every world it lights warms or cools to match.
+  While it is pinned, the temperature control on the star's own tab shows the pinned figure and
+  sends you here to change it. Not offered on a brown dwarf, whose temperature is set by its age, or
+  on a black hole or neutron star, which have no surface to take the temperature of.
 
 **Nothing is refused.** Each row shows the range it expects, lets you type well past either end, and
 says in plain words what is wrong with the figure once you do — the same "kept and labelled" rule the
@@ -604,7 +648,8 @@ under you. L, T and Y dwarfs have real figures of their own in the rule pack rat
 to something Sun-like.
 
 Because it is derived, **the type follows what you edit**: drag the temperature and the star walks
-along the spectral sequence; make it hugely larger and it becomes a giant. If your numbers describe a
+along the spectral sequence; make it hugely larger and it becomes a giant. (A brown dwarf has no
+temperature to drag: its star tab has an **Age** control instead — see *How old a thing is*.) If your numbers describe a
 star that could not exist — a B-type dragged down to a hundredth of the Sun's mass, say — you still
 get it, with a red **Physically implausible** tag naming the law it breaks. The engine will never
 GENERATE such a star; it simply does not stop you making one.
@@ -659,7 +704,9 @@ There is **one** tagging system throughout. (Earlier versions had separate "Poin
 * **Secret tags** are yours alone and never reach a player view, a shared catalogue or a printed
   report.
 * **Colour and highlights.** Give a tag its own colour and light up every body carrying it, right up
-  to a roll-up on the starmap showing which systems hold what.
+  to a roll-up on the starmap showing which systems hold what. While a highlight is on, systems
+  that carry none of it fade back; the key in the corner of the starmap says what is highlighted
+  and how many systems have faded, and its **Clear** turns the highlight off.
 * **Rule packs** seed tags across a whole starmap — prison colonies on ore-rich moons, a slim chance
   of alien ruins on any terrestrial — and you can author your own.
 

@@ -13,6 +13,48 @@ export function estimateRadiusRe(massMe) {
   return 12; // giants: ~Jupiter-sized regardless of mass
 }
 
+// The same relation read the other way: Earth radii in, Earth masses out. Used ONLY when the
+// catalogue has a measured radius and no mass (see `planetMassFromRow`). Each branch is the exact
+// inverse of the one above, so a mass estimated here reproduces its radius through
+// `estimateRadiusRe` (to 0.1% at the join, where the two published branches do not quite meet). PAST THE PLATEAU THE RELATION CANNOT BE INVERTED - every giant is about
+// Jupiter-sized whatever it weighs - so a giant-sized radius answers with the mass at which the
+// plateau begins (about Saturn's), the LIGHTEST mass that explains the size.
+const MR_BREAK_RE = 1.008 * 2.04 ** 0.279;
+const MR_PLATEAU_RE = 12;
+export function estimateMassMe(radiusRe) {
+  if (!(radiusRe > 0)) return null;
+  if (radiusRe < MR_BREAK_RE) return (radiusRe / 1.008) ** (1 / 0.279);
+  return (Math.min(radiusRe, MR_PLATEAU_RE) / 0.808) ** (1 / 0.589);
+}
+
+// WHAT A ROW'S MASS FIGURE ACTUALLY IS, decided once (the Kepler-32 f report, 2026-09-24).
+//
+// `pl_bmasse` is the archive's "best mass", and `pl_bmasselim` says whether it is a VALUE or a
+// LIMIT: 1 is an UPPER limit ("lighter than this"), which is all a transit-timing or stability
+// study can say about a small planet. Kepler-32 f is 0.82 Earth radii and its only published mass
+// is "< 969 Earth masses" - three Jupiters. Read as a value, a sub-Earth imported as a
+// super-Jupiter the size of Venus.
+//
+// So an upper limit is never used as the mass while anything better exists:
+//  - with an independently MEASURED radius, the mass is estimated from that radius by the same
+//    relation the importer already trusts in the other direction, and never above the limit;
+//  - with no such radius there is nothing else to go on, so the limit stays as the figure and the
+//    description says it is a ceiling (the planet is confirmed; dropping it would be worse).
+// The archive's density for such a row was computed FROM the limit, so it is not evidence either
+// and `densityGcc` comes back null.
+//
+// Rows from the committed cache and the bundled snapshot predate the column and carry no flag;
+// an absent flag reads as "a value", which is what every one of them was already treated as.
+export const MASS_SOURCE = { VALUE: 'value', FROM_RADIUS: 'from-radius', UPPER_LIMIT: 'upper-limit' };
+export function planetMassFromRow(row) {
+  const quoted = row.pl_bmasse;
+  if (quoted == null) return { massMe: null, source: MASS_SOURCE.VALUE, densityGcc: row.pl_dens ?? null };
+  if (Number(row.pl_bmasselim) !== 1) return { massMe: quoted, source: MASS_SOURCE.VALUE, densityGcc: row.pl_dens ?? null };
+  const fromRadius = radiusIsBackFilled(quoted, row.pl_rade) ? null : estimateMassMe(row.pl_rade);
+  if (fromRadius == null) return { massMe: quoted, source: MASS_SOURCE.UPPER_LIMIT, limitMe: quoted, densityGcc: null };
+  return { massMe: Math.min(fromRadius, quoted), source: MASS_SOURCE.FROM_RADIUS, limitMe: quoted, densityGcc: null };
+}
+
 // Above this mass a planet is an ENVELOPE, whatever its bulk density says.
 // Owner, 2026-08-12: "planets that large are more likely to be gas giants than
 // terrestrial — even a super-Earth is smaller than 4 M⊕ — so just a gas giant
@@ -100,9 +142,15 @@ export function planetDescription(row, override) {
   bits.push(`Confirmed ${row.disc_year ?? ''} (${method}).`.replace('  ', ' '));
   if (row.pl_bmasse != null) {
     const isMsini = /msini/i.test(row.pl_bmassprov ?? '');
-    const m = row.pl_bmasse;
-    const mStr = m >= 100 ? `${round(m / 317.8, 2)} Jupiter masses` : `${round(m, 2)} Earth masses`;
-    bits.push(isMsini ? `Minimum mass ${mStr}.` : `Mass ${mStr}.`);
+    const massText = (m) => (m >= 100 ? `${round(m / 317.8, 2)} Jupiter masses` : `${round(m, 2)} Earth masses`);
+    const mass = planetMassFromRow(row);
+    if (mass.source === MASS_SOURCE.FROM_RADIUS) {
+      bits.push(`Mass NOT MEASURED: the archive gives only an upper limit (under ${massText(mass.limitMe)}), so the ${massText(mass.massMe)} here is estimated from its measured radius.`);
+    } else if (mass.source === MASS_SOURCE.UPPER_LIMIT) {
+      bits.push(`Mass no more than ${massText(mass.limitMe)}: an UPPER LIMIT, used here as the figure because nothing else about its mass or size is measured.`);
+    } else {
+      bits.push(isMsini ? `Minimum mass ${massText(row.pl_bmasse)}.` : `Mass ${massText(row.pl_bmasse)}.`);
+    }
   }
   if (row.pl_rade != null) bits.push(`Measured radius ${round(row.pl_rade, 2)} Earth radii.`);
   if (row.pl_orbper != null) bits.push(`Orbital period ${row.pl_orbper < 100 ? round(row.pl_orbper, 1) + ' days' : round(row.pl_orbper / 365.25, 1) + ' years'}.`);

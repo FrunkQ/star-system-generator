@@ -5,6 +5,10 @@ quasi-star, an alien construct — or a new capability the current vocabulary ca
 deliberately agent-friendly: exact files, exact gates, and the traps by name. Read
 `nonstandard-objects-design.md` for WHY the system is shaped this way; this document is HOW.
 
+ROSTER, 2026-11: eleven types - the seven of G53 plus phase 6's soletta, Shkadov thruster, Caplan
+thruster and Birch planet. The aerostat habitat is NOT built (it needs an in-atmosphere placement
+no host offers; see `docs/dev/handover-2026-11-mega.md`).
+
 CURRENT STATE: N1 declared (v3.0.236) and every RENDER seam flipped (v3.0.291): 3D attach, framing,
 labels, host-relative scale and the 2D structure all read the record. The parity gate pins the
 declarations. Every seam now reads the record (the apparent-g panel flipped 2026-09-06). The table in §4 is
@@ -71,6 +75,8 @@ convention this system exists to end: put the fact on the record and make the co
 | Labels | clearance reads `render3d.anchor` — a non-'node' exotic clears its MARKER, never its structure span (which hung "Ringworld" a ring-radius into empty sky and "Space Elevator" near its counterweight) | **FLIPPED v3.0.241** — the visibility rule was probed and was never the fault; position was | — |
 | 2D structure | `render2d.structure`: 'orbit-line' draws the node's own orbit line as the structure; 'radial' draws the beanstalk from the host's disc edge to geo and the counterweight through the same `scaleBoxCox` the moons use (`drawTetherRadial`); 'glyph' is the marker alone. The mast glyph (v3.0.251) stays as the click target | **FLIPPED v3.0.291** - the last legacy render seam | `isMegaRing` family test DELETED (it now reads the record) |
 | Apparent-g panel | `constructs/apparentG.ts` from `capabilities.apparentG`: own-rotation NET OF THE HOST (zero at orbital rate), surface = the hull's own mass, none = nothing shown; the crew tab hides the station spin section for an exotic and writes no station-shaped field onto it | **FLIPPED 2026-09-06 (close-out)** - the owner's decision was his own three-wirings sentence | the station-shaped default is no longer written onto an exotic |
+| Flux - the AMPLIFY case | `capabilities.flux.amplifies: 'target'` (the soletta). derive() publishes `starAmplification`; `physics/starlightOcclusion.ts starlightBoost` is the ONE who-lights-whom site (target = the world the mirror is stationed at: `coOrbital.hostId ?? parentId`); `receivedLuminosityWatts` takes the gain as a second, typed argument beside the transmission; `commitStarlightBoost` stamps `body.starlightBoost` and the `mega/lit-by` tag, commit-or-delete (engine map PHY-46) | **SHIPPED 2026-11 (phase 6)** - declaration, parity rows and consumer in one batch | - |
+| Star motion (Shkadov, Caplan) | NOT A CAPABILITY AXIS. derive() PUBLISHES `starThrustPhotonFrac` / `starThrustN` / `starMassLossKgPerS`; `megaPreview.megaSummaryLine` shows them. Nothing applies them: no event driver exists (board G41, engine map PHY-47) | **PUBLISHED ONLY, 2026-11** - the axis arrives with the driver that consumes it | - |
 | Flux outputs | `mega/shadowed-by` emitted beside the temperature commit from the SAME derivation as the trace (explicit physics origin inside the authored-default mega/ namespace; strip-then-emit, ghost-checked) | **SHIPPED v3.0.246** | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |
 | Docking | `capabilities.docking` ('ladder' / 'anywhere' / 'point'); the propagator's attachment pass places a docked construct from `attachedOffsetAu` in every walk; the planner offers a ladder's levels and a rim's nearest point as destinations (`arrivalDock`); the sampler and reconciler hand a ship over at arrival | **SHIPPED v3.0.298** (RENDER-S51) | — |
@@ -78,11 +84,14 @@ convention this system exists to end: put the fact on the record and make the co
 
 ## 5. Extending the SYSTEM (not just the roster)
 
-- **A new capability VALUE** (e.g. `flux.amplifies: 'target'` doing real work for the Soletta):
-  land the declaration, its parity/behaviour rows, and the CONSUMER change in one batch — a value
-  nothing consumes is a claim, not a feature (the `secretDefault` lesson, inbox row ~1862). For
-  the Soletta specifically: `receivedLuminosityWatts`'s ≤1 clamp must learn the amplify case in
-  the same commit, with a red-first gate showing a target receiving MORE than inverse-square.
+- **A new capability VALUE**: land the declaration, its parity/behaviour rows, and the CONSUMER
+  change in one batch — a value nothing consumes is a claim, not a feature (the `secretDefault`
+  lesson, inbox row ~1862). The worked example is the soletta's `flux.amplifies: 'target'`
+  (phase 6, 2026-11): record, parity rows, `starlightBoost`, the typed gain on
+  `receivedLuminosityWatts`, the tag, the trace and the physics page all landed together, and
+  the gate (`starlightOcclusion.spec.ts`, "a soletta lights its world") was seen red with the
+  gain forced back to 1. The counter-example is in the same batch: the stellar engines' thrust
+  has NO consumer (nothing moves a star), so it is a published figure and deliberately not an axis.
 - **A new AXIS**: only when TWO types disagree on it — otherwise it is a constant wearing a
   capability's name. It must be consumed by `exoticsParity.spec.ts` from the day it exists.
 - **A new consumer**: read capabilities from day one; never mint a flag.
@@ -95,7 +104,9 @@ convention this system exists to end: put the fact on the record and make the co
 
 ## 6. The traps roster for this territory (read before, not after)
 
-DATA-R31 (one chrome predicate; never test `kind === 'construct'` in new view code) ·
+PHY-46 (a mirror's gain is a second argument, never a looser clamp) · PHY-47 (a figure about the
+star is published, never performed) · RENDER-S61 (a host-centred structure's axis is its orbit
+normal) · DATA-R31 (one chrome predicate; never test `kind === 'construct'` in new view code) ·
 DATA-R33 (this system's rule) · UI-B2 (hard greys are relevance; steer cannot refuse) ·
 RENDER-S2 (a construct contributes no radius — and a CENTRED mega must not double-count) ·
 RENDER-S44 (centred on host; drawn radius IS its orbit) · RENDER-S51 (an attached construct is

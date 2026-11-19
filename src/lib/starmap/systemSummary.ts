@@ -26,7 +26,7 @@ import { megaTypeDef } from '$lib/constructs/megaTypes';
 import { systemVisualStars } from './systemStars';
 import { explainStarClass } from '$lib/system/starClassExplain';
 import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
-import { SOLAR_RADIUS_KM } from '$lib/constants';
+import { SOLAR_RADIUS_KM, SOLAR_MASS_KG } from '$lib/constants';
 
 /** One system's contents, counted once. */
 export interface SystemSummary {
@@ -108,7 +108,8 @@ export function systemSummary(
 			// Without it a supermassive hole reads as the stellar-mass band's "ball about 300 km across".
 			out.designation = explainStarClass(rulePack, key, {
 				activity: activity as string | undefined,
-				radiusSolar: primary.radiusKm ? primary.radiusKm / SOLAR_RADIUS_KM : undefined
+				radiusSolar: primary.radiusKm ? primary.radiusKm / SOLAR_RADIUS_KM : undefined,
+				massSolar: primary.massKg ? primary.massKg / SOLAR_MASS_KG : undefined
 			})?.text;
 		}
 	}

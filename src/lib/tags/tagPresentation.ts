@@ -38,6 +38,7 @@ export function registerPoiTags(tags: { key: string; label?: string; description
 // Per-namespace grouping + chip colour.
 const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boolean }> = {
   origin:       { group: 'Origin',       color: '#8a8a9a' },
+  age:          { group: 'Age',          color: '#8a8a9a' },
   orbit:        { group: 'Orbit',        color: '#9a8ac0' },
   barycenter:   { group: 'Barycentre',   color: '#9a8ac0' },
   stability:    { group: 'Stability',    color: '#b0a060' },
@@ -88,6 +89,7 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
 // Add a specific TAG_INFO entry to say more; add a line here when you introduce a whole new namespace.
 const NAMESPACE_DESC: Record<string, string> = {
   origin:       'How and where this body formed, versus where it ended up.',
+  age:          'When this body formed, set against the system it is in now. The value is its age.',
   orbit:        'A property of the body\'s orbit.',
   barycenter:   'A shared centre-of-mass balance point that two or more bodies orbit.',
   stability:    'How dynamically stable the orbit is over the long term.',
@@ -276,6 +278,26 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     description: 'This ship was pasted in from somebody else\'s campaign and its autopilot has been switched off. A route is a plan made somewhere else and most of its stops — the depot two systems over, the yard it returns to — were never copied with the ship, so leaving it running would send the planner chasing places that do not exist here. The ship itself arrived whole: hull, crew, cargo and tags. Give it a new route when you are ready.'
   },
 
+  // --- Age (WHEN the body formed; `origin/` above is WHERE it came from, and the two compose) ---
+  // G94. Only a body given an age of its own carries one of these. AGE IS WHAT WAS MEASURED: the
+  // engine tracks no metallicity, so the two oldest bands say so rather than implying a composition.
+  'age/young': {
+    label: 'Young',
+    description: 'Formed well after the system it is in: younger than its star by more than the time worlds take to assemble. A late capture, a second generation, or a world rebuilt after a collision. The value is its age.'
+  },
+  'age/old': {
+    label: 'Old',
+    description: 'Formed before the star it now orbits, so it did not form here. The value is its age.'
+  },
+  'age/ancient': {
+    label: 'Ancient',
+    description: 'Older than the star it now orbits by at least two stellar generations. Judged on its age alone: the engine does not track how poor in heavy elements a body is, which is what would confirm it. The value is its age.'
+  },
+  'age/primordial': {
+    label: 'Primordial',
+    description: 'Formed in the early universe, whatever it orbits now. Judged on its age alone: a body this old should also be poor in heavy elements, and the engine does not track that yet. The value is its age.'
+  },
+
   // --- Spin (the axis, as opposed to shape/ which is what the spin does to the body) ---
   'spin/axis-inferred': {
     label: 'Spin axis inferred',
@@ -389,6 +411,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'climate/polar-ice':          { label: 'Polar ice',        description: 'Liquid at the mean temperature, but the cold poles / night side dip below the solvent\'s freezing point — partial frozen caps.' },
   'climate/runaway-greenhouse': { label: 'Runaway greenhouse', description: 'A runaway greenhouse has taken hold — trapped heat has driven surface volatiles into a thick, self-reinforcing hothouse atmosphere (Venus).' },
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
+  'structure/overdense':        { label: 'Overdense giant',  description: 'Denser than a hydrogen-helium body of this mass packs down to under its own gravity, so it is smaller than degeneracy pressure should let it be. Heavy giants and brown dwarfs are legitimately very dense (CoRoT-3b: 26 g/cc at 22 Jupiter masses, denser than iron) and this one is past even that. It is still treated as a fluid giant, not a rock: nothing this massive is solid, so its density only sets its size.' },
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere. The value names what it is made of and how completely it covers the sky — wisps, scattered, broken, overcast or a total veil. A world can carry several decks at once, stacked by the temperature each substance condenses at.' },
   'weather/precipitation':      { label: 'Precipitation',    description: 'What falls out of a cloud deck, and whether it survives the trip down: rain where the drops reach the ground, snow where they freeze, and virga where they evaporate on the way (Venus\'s sulphuric-acid rain never lands).' },
   'surface/age':                { label: 'Surface age',       description: 'How long the visible surface has been sitting there exposed — young, moderate, old or ancient. A world that resurfaces itself keeps wiping the slate clean, so this is not the body\'s age: it is how much time the craters, weathering and irradiation have had to accumulate on what you can actually see.' },
@@ -415,6 +438,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'stellar/anomalous':          { label: 'Anomalous star',   description: 'This star\'s readings do not agree with each other, which is the thing worth investigating rather than any one of them alone. Its spectrum says one class, its brightness says another, and something is pouring out infrared that a star of that class has no way to produce. The value says which story the numbers tell: dimming with NO change of colour cannot be dust - dust scatters blue out of the beam first and would redden it - so it is something solid standing between you and the star, which is the real technosignature astronomers look for. Reddened dimming is the other case and dust is the ordinary explanation for it.' },
   'stellar/dimmed':             { label: 'Dimmed',           description: 'This star reads fainter than a star of its class and distance should, because something is intercepting its light. The value is how many magnitudes fainter, as measured by an observer the obstruction actually covers - for a shell or a whole-sky swarm that is everyone, for a ringworld only observers near its plane. Crucially it is NOT redder: flat attenuation cuts the flux and leaves the colour and the absorption lines exactly where they were, so a spectrum still reads the star it always was. Dust is the case that reddens as well, because extinction goes as 1/wavelength.' },
   'mega/eclipsed':              { label: 'Eclipsed',         description: "The shadow a megastructure casts on this world, as an eclipse: a band it crosses twice an orbit for the stated hours, or - for a world sharing a solid ring's plane beyond it - permanently. The same time-free geometry that sets its temperature; the technical block's Structure Shadow row says the same thing in the same words." },
+  'mega/lit-by':                { label: 'Lit by',           description: 'An orbital mirror stationed at this world is turning extra starlight onto it, and the temperature above already says so - the value names the mirror and how much more light arrives than the bare distance would give. Emitted by the engine every pass from the same derivation the trace shows, and it leaves with the mirror. It lights this world only: its moons and its neighbours are untouched.' },
   'mega/shadowed-by':           { label: 'Shadowed by',      description: 'A megastructure stands between this world and its star, and the temperature above already says so - the value names what. Emitted by the engine every pass from the same derivation the trace shows, and it leaves with the structure. Set it anonymous (G54) and players learn that SOMETHING dims this world without learning what.' },
   'stellar/ir-excess':          { label: 'Infrared excess',  description: 'Far-infrared output no star of this class should produce: the light an intervening structure took out of the beam has to go somewhere, and it comes back out as waste heat at the structure\'s own equilibrium temperature - about 400 K for a shell at 1 AU, peaking near 7,400 nm. The value is the excess as a fraction of the star\'s own bolometric output. Taken with the dimming and an unchanged spectrum, this is the real technosignature: three measurements that cannot all be describing an ordinary star.' },
   // G26: the two outflow decorations, derived in physics/stellarOutflows and DRAWN by both starmaps

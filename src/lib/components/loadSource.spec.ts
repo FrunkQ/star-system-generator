@@ -98,7 +98,7 @@ describe('the paste field only fires on something that names a map', () => {
 	});
 });
 
-describe('the welcome screen no longer carries the sharing route', () => {
+describe('the welcome screen carries no PASTE route - but it does list Explorers maps now', () => {
 	it('has no paste field, no parser and no openHub event', () => {
 		// Owner, 2026-09-06: "This is not the place for the site import". Nobody arrives at the app
 		// already holding a map code — they arrive by clicking a link, which the `?hub=` / `?open=`
@@ -108,6 +108,15 @@ describe('the welcome screen no longer carries the sharing route', () => {
 		expect(WELCOME).not.toContain('openHub');
 		expect(WELCOME).not.toContain('hub-open');
 		expect(ROUTE, 'the dead handler must go with the feature').not.toContain('on:openHub={(e) => openHubBySlug(e.detail)}\r\n        ');
+	});
+
+	it('lists the starter maps from Explorers, and hands up an address rather than a code', () => {
+		// Owner, 2026-09-11 - a LATER decision, and a different thing from the paste field above:
+		// "the load/new map modals are going to link to those available on the Explorers site RATHER
+		// than default ones shipped". A list is not a code somebody has to be holding; it is the
+		// examples, hosted somewhere else. So the screen gets the list and still gets no parser.
+		expect(WELCOME).toContain('<HubMapPanel startWithStarters on:open={openListed} />');
+		expect(WELCOME).toContain("dispatch('openFromExplorers', event.detail.downloadUrl)");
 	});
 
 	it('still offers its own plain file route, which is not the same thing', () => {

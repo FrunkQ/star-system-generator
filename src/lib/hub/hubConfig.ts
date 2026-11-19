@@ -21,6 +21,31 @@ export interface HubConfig {
   /** Where a GM goes to browse. The funnel's other direction. */
   browseUrl: string;
   /**
+   * R-20: the map LIST, as JSON, for the panel inside the load screens. No account, CORS open,
+   * cached 60 s at the hub's edge. The contract is the hub's
+   * `docs/prompt-for-sse-2026-09-11-map-list-api.md`, read where it lives.
+   */
+  listPath: string;
+  /**
+   * R-18: ONE map's details, as JSON. Read for a single system that arrived by an "Add System to SSE"
+   * link, because a link names a download and nothing else - and a system placed in somebody's
+   * campaign is credited to its cartographer. Only `title` and `by` are read.
+   */
+  mapPath: (slug: string) => string;
+  /**
+   * The tag the owner puts on the maps that stand in for the ones this app used to ship (G98,
+   * 2026-09-11). The New Starmap screen asks the list for it first. The hub's to spell, so it is
+   * spelt once, here.
+   */
+  starterTag: string;
+  /**
+   * The pill the hub puts in a map's `auto_tags` when it read something wrong in the file - often
+   * something that stops this app opening it (hub D-88/D-89, R-20 reply of 2026-09-11). The hub
+   * sorts those maps last; the list shows them and SAYS so rather than hiding them, which is the
+   * hub's own rule ("last, not hidden").
+   */
+  needsFixTag: string;
+  /**
    * UPLOAD IS OFF UNTIL THE HUB SIDE EXISTS. Two things are owed and neither may be invented: the
    * device-code pairing endpoint, and the exact attestation wording (it must be shown verbatim and
    * must never be pre-ticked, so a placeholder would defeat its entire purpose). The request for
@@ -56,6 +81,10 @@ export const HUB: HubConfig = {
   // GM should be the real one rather than a redirect (hub note, 2026-09-03).
   pagePath: (slug) => `/s/${encodeURIComponent(slug)}`,
   browseUrl: HUB_ORIGIN,
+  listPath: '/api/maps',
+  mapPath: (slug) => `/api/maps/${encodeURIComponent(slug)}`,
+  starterTag: 'default',
+  needsFixTag: 'needs-a-fix',
   uploadEnabled: false
 };
 

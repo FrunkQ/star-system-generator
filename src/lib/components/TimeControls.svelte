@@ -14,6 +14,7 @@
   import FloatEdgeMenu from './FloatEdgeMenu.svelte';
   import { updateDisplayBySeconds } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
+  import { clockStepUnits, stepClockSeconds } from '$lib/temporal/step';
 
   type Temporal = NonNullable<Starmap['temporal']>;
 
@@ -151,6 +152,47 @@
     if (!confirm('Set the campaign’s current time ("now") to the time you are viewing?\n\nThis moves the authoritative clock for everyone and cannot be undone.')) return;
     setPlaying(false);
     dispatch('setactual');
+  }
+
+  // STEP BY AN EXACT AMOUNT (UI-C24). The transport could play and jog but not ARRIVE: a user asked
+  // for "a forward ticker that moves the time forward by X amount then stops ... exactly one
+  // month". The units are the ACTIVE CALENDAR's own (`temporal/step`), so a day here is that
+  // calendar's day and a month is a date, not thirty of anything.
+  //
+  // A step SEEKS, exactly as the jog does (A60): it moves the displayed time and leaves playback in
+  // whatever state it was in. With the clock paused - the case the request describes - that is
+  // "move by X, then stop".
+  let stepOpen = false;
+  let stepCount: number | null = 1;
+  let stepUnitId = 'day';
+  let stepNote = '';
+  $: stepCalendar = temporal.temporal_registry?.[temporal.activeCalendarKey];
+  $: stepUnits = clockStepUnits(stepCalendar);
+  // The pick follows the calendar: switching to one with no such unit falls back to its day, or
+  // to the first unit it does have.
+  $: if (stepUnits.length && !stepUnits.some((u) => u.id === stepUnitId)) {
+    stepUnitId = (stepUnits.find((u) => u.id === 'day') ?? stepUnits[0]).id;
+  }
+  $: stepUnit = stepUnits.find((u) => u.id === stepUnitId);
+  function toggleStep() { stepOpen = !stepOpen; if (stepOpen) expanded = false; stepNote = ''; }
+  function toggleDanger() { expanded = !expanded; if (expanded) stepOpen = false; }
+  function stepBy(direction: 1 | -1) {
+    const count = Number(stepCount);
+    if (stepCount == null || !Number.isFinite(count) || count <= 0) {
+      stepNote = 'Type how many to step by: a number above zero.';
+      return;
+    }
+    const from = parseClockSeconds(temporal.displayTimeSec, 0n);
+    const to = stepClockSeconds(from, stepCalendar, stepUnitId, direction * count);
+    if (to === null) {
+      // Steer, do not stop: say why nothing moved rather than moving somewhere invented.
+      stepNote = stepUnit && stepUnit.kind !== 'fixed' && !Number.isInteger(count)
+        ? `A step in ${stepUnit.label} takes a whole number.`
+        : 'This calendar cannot be stepped by that amount.';
+      return;
+    }
+    stepNote = '';
+    scrubDisplay(to - from);
   }
 
   function scrubRateFromControl(value: number): number {
@@ -355,8 +397,34 @@
     <button class="tt-step" on:click={faster} disabled={rateIndex === RATE_STEPS.length - 1} title="Faster" aria-label="Faster">+</button>
   </div>
 
-  <button class="tt-btn tt-more tt-warn" class:on={expanded} on:click={() => (expanded = !expanded)} title="Danger: rewrite the campaign's current time" aria-label="Set current time (danger)">⚠</button>
+  <button class="tt-btn tt-stepper" class:on={stepOpen} on:click={toggleStep} aria-expanded={stepOpen}
+    title="Step the time by an exact amount" aria-label="Step the time by an exact amount">⇥</button>
+  <button class="tt-btn tt-more tt-warn" class:on={expanded} on:click={toggleDanger} title="Danger: rewrite the campaign's current time" aria-label="Set current time (danger)">⚠</button>
   <FloatPin ctl={float} what="the time controls" />
+
+  {#if stepOpen}
+    <div class="tt-panel tt-step-panel">
+      {#if stepUnits.length}
+        <div class="tt-step-row">
+          <button class="tt-action tt-step-go" on:click={() => stepBy(-1)} title="Step back by this much" aria-label="Step back">◀</button>
+          <input class="tt-step-n" type="number" min="0" step="1" bind:value={stepCount} aria-label="How many"
+            on:keydown={(e) => { if (e.key === 'Enter') stepBy(1); }} />
+          <select class="tt-step-unit" bind:value={stepUnitId} aria-label="Unit of time">
+            {#each stepUnits as u (u.id)}<option value={u.id}>{u.label}</option>{/each}
+          </select>
+          <button class="tt-action tt-step-go" on:click={() => stepBy(1)} title="Step forward by this much" aria-label="Step forward">▶</button>
+        </div>
+        <div class="tt-prow"><span class="tt-k">Display</span><span class="tt-v">{displayClockLabel}</span></div>
+        {#if stepNote}<p class="tt-warn-note tt-step-note" role="status">{stepNote}</p>{/if}
+        <p class="tt-warn-note">
+          Moves the displayed time by exactly this much, then stops.
+          {#if stepUnit?.kind === 'fixed'}These are this calendar's own {stepUnit.label}.{:else}Lands on the same date and time of day; a day the month does not have becomes its last.{/if}
+        </p>
+      {:else}
+        <p class="tt-warn-note">This calendar defines no unit to step by.</p>
+      {/if}
+    </div>
+  {/if}
 
   {#if expanded}
     <div class="tt-panel">
@@ -523,6 +591,22 @@
     border: 1px solid var(--border, #2a2d36);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
   }
+  /* The step panel: back, how many, of what, forward - one row, in the transport's own chrome. */
+  .tt-stepper.on { background: var(--bg-control-hover, #232733); border-color: var(--accent, #ff5a1f); color: var(--accent, #ff5a1f); }
+  .tt-step-row { display: flex; align-items: stretch; gap: 6px; }
+  .tt-step-go { flex: 0 0 auto; padding: 6px 10px; text-align: center; }
+  .tt-step-n, .tt-step-unit {
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #2a2d36);
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    font: inherit;
+  }
+  .tt-step-n { flex: 1 1 60px; width: 60px; text-align: right; font-variant-numeric: tabular-nums; }
+  .tt-step-unit { flex: 1 1 90px; }
+  .tt-step-note { color: var(--status-warn, #e0a24a); }
   .tt-prow { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; }
   .tt-k { color: var(--text-faint, #8a8f9a); }
   .tt-v { color: var(--text, #e8e8e8); }

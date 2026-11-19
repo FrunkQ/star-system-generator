@@ -53,9 +53,20 @@ function walkPositions<V>(
   if (!system) return out;
   const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
 
+  // THE WALK MUST TERMINATE ON ANY DATA. It recurses along `parentId` and `attachedTo`, and both are
+  // authored references: a file can make either one circular. Unbounded, that is a stack overflow on
+  // every frame in every view - the whole app freezes on one bad node. A node met again while it is
+  // still being resolved answers the origin for that one link, and the walk carries on.
+  const resolving = new Set<string>();
   function resolve(nodeId: string): V {
     const cached = out.get(nodeId);
     if (cached !== undefined) return cached;
+    if (resolving.has(nodeId)) return ops.zero;
+    resolving.add(nodeId);
+    try { return place(nodeId); } finally { resolving.delete(nodeId); }
+  }
+
+  function place(nodeId: string): V {
     const node = nodesById.get(nodeId) as any;
     if (!node) return ops.zero;
 
@@ -117,9 +128,16 @@ function walkPositions<V>(
         const host = hostId ? nodesById.get(hostId) : undefined;
         const off = host ? attachedOffsetAu(att, structure, host, timeMs, system ?? undefined) : null;
         // A hull (point docking) has no offset of its own: the structure's position IS the answer.
-        const v = off && hostId ? ops.add(resolve(hostId), ops.attach(off)) : resolve((structure as any).id);
-        out.set(nodeId, v);
-        return v;
+        // BUT A STRUCTURE ATTACHED TO ITSELF HAS NO OTHER POSITION TO ASK FOR. A ladder with nothing
+        // to stand on - an elevator whose world lost its geostationary to a rotation edit, or one
+        // re-homed onto a star - got no offset and then asked for ITS OWN position, forever. It
+        // falls through to its own orbit instead, which is a finite place to draw it.
+        const selfAnchored = (structure as any).id === nodeId;
+        if ((off && hostId) || !selfAnchored) {
+          const v = off && hostId ? ops.add(resolve(hostId), ops.attach(off)) : resolve((structure as any).id);
+          out.set(nodeId, v);
+          return v;
+        }
       }
     }
     const parentPos = resolve(node.parentId);

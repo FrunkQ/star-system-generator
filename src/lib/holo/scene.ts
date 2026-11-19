@@ -17,7 +17,7 @@ import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
 import type { ExoticCapabilities } from '$lib/constructs/exotics';
-import { buildMegaGeometry, tetherLayout } from '$lib/constructs/megaGeometry';
+import { buildMegaGeometry, tetherLayout, hostCentredAxisScene, hostCentredQuaternion } from '$lib/constructs/megaGeometry';
 import { effectiveAttachment } from '$lib/constructs/docking';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
@@ -322,6 +322,10 @@ interface BodyVisual {
    *  ordinary constructs AND on a mega that fell back to the hull (parity with the old flags:
    *  a blob behaves like a blob). */
   exotic?: ExoticCapabilities;
+  /** RENDER-S61: the axis a host-centred structure is built about, in scene space - the normal of
+   *  its own orbit (`hostCentredAxisScene`), stamped at attach. Present exactly when the record's
+   *  anchor is 'host-centred'; the per-frame orientation keeps the structure's +Y on it. */
+  megaAxis?: { x: number; y: number; z: number };
   // G53: a space elevator. Its geometry is already built in the HOST's drawn currency and stood up
   // by `updateSurfaceConstructs`, so the per-frame hull scaling must not touch it, and the
   // surface-construct model suppression must not hide it - a tether is the one surface construct
@@ -3005,6 +3009,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // A sphere-section mega ENCLOSES its host: `updateConstructs` re-centres and re-sizes it every
       // frame from the host's own drawn position, so it cannot disagree with its own orbit line.
       v.exotic = def.capabilities;
+      if (def.capabilities.render3d.anchor === 'host-centred') {
+        // ITS PLANE IS ITS ORBIT'S (RENDER-S61): the same elements, the same host-equator frame
+        // and the same axis swap its orbit line is drawn through. Posed here so a paused clock
+        // shows the tilt at once; the per-frame heading only turns it ABOUT this axis.
+        v.megaAxis = hostCentredAxisScene(node?.orbit?.elements, satelliteTiltRad(node, host));
+        const q = hostCentredQuaternion(v.megaAxis);
+        g.quaternion.set(q[0], q[1], q[2], q[3]);
+      }
       v.shipPrev = v.mesh.position.clone();
       return true;
     } catch (e) {
@@ -3544,7 +3556,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // course-tangent fallback, which does not know a brake from a burn.
             if (burn.braking && !thrustAimed) _shipDelta.negate();
             _shipDelta.multiplyScalar(b.noseSign ?? 1);
-            b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
+            if (b.megaAxis) {
+              // A structure round its host turns WITH its node but stays IN its orbit's plane:
+              // the generic lookAt keeps "up" on the scene's +Y, which could not follow an
+              // inclined orbit (RENDER-S61). Same pose as lookAt for an uninclined one, by gate.
+              // The heading is what lookAt was always handed here: from where the structure is
+              // DRAWN (its host) to its node - so the turn about the axis is unchanged.
+              _shipLook.copy(b.mesh.position).add(_shipDelta).sub(b.shipModel.position);
+              const q = hostCentredQuaternion(b.megaAxis, _shipLook);
+              b.shipModel.quaternion.set(q[0], q[1], q[2], q[3]);
+            } else {
+              b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
+            }
           }
           // Drive plume: length and light scale with the fraction of the ship's OWN drive in use -
           // quadratic so a station-keeping puff whispers and a 100% torch burn is SUPER bright and

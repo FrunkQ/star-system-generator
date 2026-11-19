@@ -15,6 +15,8 @@
   import { blackbodySpectrum, gridShare, GRID_NM } from '$lib/physics/spectrum';
   import AbsorptionBandsEditor from './AbsorptionBandsEditor.svelte';
   import { foreground } from '$lib/ui/foreground';
+  // G99: a morphology or pigment this GM made can be copied into another campaign.
+  import CopyDefinitionButton from './CopyDefinitionButton.svelte';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -185,6 +187,8 @@
             <input class="label-in" bind:value={m.label} aria-label="Label" />
             <code class="key">{m.key}</code>
             <span class="spacer"></span>
+            <CopyDefinitionButton section="morphologies" id={m.key} definition={m} pack={rulePack}
+              overrides={starmap.rulePackOverrides} campaignName={starmap.name} />
             {#if baseByKey[m.key]}<button class="mini" on:click={() => resetMorph(i)}>Reset</button>{/if}
             <button class="mini danger" on:click={() => removeMorph(i)}>Remove</button>
           </div>
@@ -286,6 +290,8 @@
               <code class="key">{pg.key}</code>
               {#if pv}<span class="score" title="score under the preview star — several are always viable">{pv.score.toFixed(3)}{pv.viable ? '' : ' (outclassed)'}</span>{/if}
               <span class="spacer"></span>
+              <CopyDefinitionButton section="pigments" id={pg.key} definition={pg} pack={rulePack}
+                overrides={starmap.rulePackOverrides} campaignName={starmap.name} />
               {#if basePigments.some((b) => b.key === pg.key)}<button class="mini" on:click={() => resetPigment(i)}>Reset</button>{/if}
               <button class="mini danger" on:click={() => removePigment(i)}>Remove</button>
             </div>

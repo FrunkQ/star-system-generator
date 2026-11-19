@@ -6,15 +6,19 @@
   import { unitBodyTypeFor, unitFromSI } from '$lib/units';
   import UnitValue from './UnitValue.svelte';
   import UnitInput from './UnitInput.svelte';
+  import AgeControl from './AgeControl.svelte';
+  import { ageOf, type AgeFrame } from '$lib/physics/bodyAge';
 
   export let body: CelestialBody;
   export let rulePack: RulePack;
   export let rootStar: CelestialBody | null = null;
   export let parentBody: CelestialBody | null = null;
   export let nodes: (CelestialBody | Barycenter)[] = [];
-  // A giant's internal heat is age-dependent (it is still cooling from formation), so the live
-  // preview needs the system's age or it would quote a 4.6 Gyr answer for a young world.
-  export let systemAgeGyr: number = 4.6;
+  // G94/G96: THE AGE CONTROL LIVES ON THIS TAB for a planet or moon, because what a body's age
+  // drives (the heat left from its formation, the air it has lost, a brown dwarf's cooling) is what
+  // this tab shows. The tab is handed the SYSTEM rather than an age so there is one answer to "how
+  // old is this body" - `ageOf` - for the control, for the live preview below and for the processor.
+  export let system: Partial<AgeFrame> | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -50,7 +54,9 @@
       // Greenhouse and Tidal are derived, but we need to ensure the props exist for display.
       if (body.greenhouseTempK === undefined) body.greenhouseTempK = 0;
       if (body.tidalHeatK === undefined) body.tidalHeatK = 0;
-      body.internalHeatK = estimateInternalHeatK(body, rulePack, systemAgeGyr);
+      // A giant is still cooling from its formation, so this needs the body's age or it would quote
+      // a 4.6 Gyr answer for a young world.
+      body.internalHeatK = estimateInternalHeatK(body, rulePack, ageOf(body, system));
 
       const eq = calculateEquilibrium();
       // Compose through the shared helper (reads greenhouse/tidal/radiogenic/internal AND the
@@ -158,6 +164,12 @@
             <span class="value">{Math.round(body.radiogenicHeatK || 0)} K{#if radiogenicOverridden} <span class="where">Overrides tab</span>{/if}</span>
         </div>
         
+        <hr />
+
+        <!-- G96: the age slider, on the tab whose figures it moves. The processor re-derives on the
+             update; this tab does not compute anything from the new age itself. -->
+        <AgeControl {body} {system} {rulePack} on:update={() => dispatch('update')} />
+
         <hr />
         
         <!-- The MEAN is the average of this world's day and night surface temperatures, which is not

@@ -4,7 +4,9 @@
 // Precedent: `modelViewer.spec.ts` builds meshes and measures their bounding boxes.
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { buildMegaGeometry, tetherAltitudesKm, tetherLayout, equatorialAnchor } from './megaGeometry';
+import { buildMegaGeometry, tetherAltitudesKm, tetherLayout, equatorialAnchor, hostCentredAxisScene, hostCentredQuaternion } from './megaGeometry';
+import { propagateState3D } from '$lib/physics/orbits';
+import { toParentEquator } from '$lib/system/satelliteFrame';
 import { megaTypeDef, defaultMegaParams, type MegaTypeDef } from './megaTypes';
 import { readFileSync } from 'fs';
 import type { CelestialBody } from '$lib/types';
@@ -260,5 +262,92 @@ describe('a node created from the shipped pack builds geometry', () => {
     const template = packMega.find((t) => t.megaType === 'death-star')!;
     const def = megaTypeDef(template.megaType)!;
     expect(buildMegaGeometry(def.shape(defaultMegaParams(def, earth()), earth()), 0.5)).toBeNull();
+  });
+});
+
+// RENDER-S61: AN INCLINED RING LIES IN ITS OWN ORBIT'S PLANE. The propagator, the docking maths and
+// the occlusion chain already honoured inclination; the drawn structure did not (it was oriented by
+// the generic ship lookAt, which keeps "up" on the scene's +Y). The canvas cannot be checked (E7),
+// so the claim is held as numbers: the axis the structure is built about must be perpendicular to
+// EVERY position the propagator gives the same orbit, through the same frame and the same axis
+// swap the orbit line is drawn with. Seen RED first by returning +Y from hostCentredAxisScene (the
+// old behaviour): the 30-degree ring's rim then stood up to 0.5 of its radius off its orbit line.
+describe('a host-centred structure is oriented to its orbit normal', () => {
+  const orbitNode = (i_deg: number, Omega_deg: number, a_AU = 1, hostMu = 1.327e20) =>
+    ({ orbit: { hostId: 'sol', hostMu, t0: 0, elements: { a_AU, e: 0, i_deg, Omega_deg, omega_deg: 0, M0_rad: 0 } } });
+  const periodMs = (a_AU: number, hostMu: number) => 2 * Math.PI * Math.sqrt(Math.pow(a_AU * 1.495978707e11, 3) / hostMu) * 1000;
+  /** A propagated point of the orbit, in SCENE axes, through the satellite frame - the orbit line's own pipeline. */
+  const scenePoint = (node: any, u: number, tiltRad: number) => {
+    const el = node.orbit.elements;
+    const r = propagateState3D(node, u * periodMs(el.a_AU, node.orbit.hostMu)).r;
+    const f = toParentEquator(r.x, r.y, r.z, tiltRad, { x: 0, y: 0, z: 0 });
+    return new THREE.Vector3(f.x, f.z, f.y);
+  };
+  const quat = (q: [number, number, number, number]) => new THREE.Quaternion(q[0], q[1], q[2], q[3]);
+
+  it('an uninclined ring round a star keeps the ground plane it always drew in', () => {
+    const a = hostCentredAxisScene({ i_deg: 0, Omega_deg: 0 });
+    expect(a.x).toBeCloseTo(0, 12); expect(a.y).toBeCloseTo(1, 12); expect(a.z).toBeCloseTo(0, 12);
+    const q = hostCentredQuaternion(a);
+    expect(q.map((c) => c + 0)).toEqual([0, 0, 0, 1]);   // + 0 folds a signed zero
+  });
+
+  it('the axis is perpendicular to every propagated position, at any inclination, node and host tilt', () => {
+    for (const [i, O, tiltDeg] of [[30, 0, 0], [30, 70, 0], [75, 200, 0], [120, 45, 0], [20, 130, 25.19], [0, 0, 97.77]] as const) {
+      const node = orbitNode(i, O);
+      const tilt = (tiltDeg * Math.PI) / 180;
+      const axis = hostCentredAxisScene(node.orbit.elements, tilt);
+      expect(Math.hypot(axis.x, axis.y, axis.z)).toBeCloseTo(1, 12);
+      for (let k = 0; k < 16; k++) {
+        const p = scenePoint(node, k / 16, tilt).normalize();
+        // ABSOLUTE: a unit rim point's distance off the orbit plane, in ring radii.
+        expect(Math.abs(p.x * axis.x + p.y * axis.y + p.z * axis.z), `i ${i} O ${O} tilt ${tiltDeg} u ${k / 16}`).toBeLessThan(1e-9);
+      }
+    }
+  });
+
+  it('the built ring, turned by the quaternion, lies ON its own orbit - every rim vertex within a millionth of a radius', () => {
+    const d = megaTypeDef('ringworld')!;
+    const built = buildMegaGeometry(d.shape({ ...defaultMegaParams(d, sol()), widthKm: 1 }, sol()), 0.5)!;
+    const node = orbitNode(30, 70);
+    const axis = hostCentredAxisScene(node.orbit.elements);
+    const q = quat(hostCentredQuaternion(axis));
+    const pos = built.geometry.getAttribute('position');
+    const n = new THREE.Vector3(axis.x, axis.y, axis.z);
+    const v = new THREE.Vector3();
+    let worst = 0;
+    for (let k = 0; k < pos.count; k++) {
+      v.fromBufferAttribute(pos, k).applyQuaternion(q);
+      worst = Math.max(worst, Math.abs(v.dot(n)) / 0.5);
+    }
+    expect(worst).toBeLessThan(1e-6);
+    // And the inclination is really there: the ring's highest point stands sin(30 deg) of a radius above the ground plane.
+    let top = 0;
+    for (let k = 0; k < pos.count; k++) top = Math.max(top, v.fromBufferAttribute(pos, k).applyQuaternion(q).y / 0.5);
+    expect(top).toBeCloseTo(Math.sin((30 * Math.PI) / 180), 3);
+  });
+
+  it('with a heading it is the pose lookAt gave a flat ring, so a part-built shell still turns with its node', () => {
+    for (const h of [[1, 0, 0], [0, 0, 1], [-0.3, 0, 0.8], [0.6, 0, -0.2]] as const) {
+      const o = new THREE.Object3D();
+      o.lookAt(new THREE.Vector3(h[0], h[1], h[2]));
+      const q = quat(hostCentredQuaternion({ x: 0, y: 1, z: 0 }, { x: h[0], y: h[1], z: h[2] }));
+      expect(Math.abs(q.dot(o.quaternion)), `heading ${h}`).toBeCloseTo(1, 9);
+    }
+  });
+
+  it('with a heading on an inclined orbit the axis still wins: +Y on the normal, +Z along the motion in the plane', () => {
+    const node = orbitNode(40, 110);
+    const axis = hostCentredAxisScene(node.orbit.elements);
+    const p0 = scenePoint(node, 0.20, 0), p1 = scenePoint(node, 0.2001, 0);
+    const heading = p1.clone().sub(p0);
+    const q = quat(hostCentredQuaternion(axis, heading));
+    const y = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+    const z = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    expect(y.distanceTo(new THREE.Vector3(axis.x, axis.y, axis.z))).toBeLessThan(1e-9);
+    expect(z.angleTo(heading)).toBeLessThan(1e-3);
+    // A heading with nothing in the plane (straight up the axis) falls back to the shortest turn.
+    const fallback = hostCentredQuaternion(axis, axis);
+    expect(new THREE.Vector3(0, 1, 0).applyQuaternion(quat(fallback)).distanceTo(new THREE.Vector3(axis.x, axis.y, axis.z))).toBeLessThan(1e-9);
   });
 });

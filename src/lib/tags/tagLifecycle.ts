@@ -209,15 +209,40 @@ export function stripForReprocess(tags: Tag[] | undefined, targets: readonly str
   return (tags ?? []).filter((t) => !matchesTarget(t.key, targets) || survivesRederive(t));
 }
 
+/** The id of the rule that seeded this tag (`source: 'rule:<id>'`), or null if no rule did. */
+export function ruleIdOf(t: Tag): string | null {
+  return typeof t.source === 'string' && t.source.startsWith('rule:') ? t.source.slice(5) : null;
+}
+
 /**
  * Clear tags emitted by tagging RULES in the given categories, ahead of re-rolling them. Separate
  * from `stripForReprocess` because the rules pass owns a whole category namespace at a time, and
  * because a `physics` tag that happens to sit in a rule category is not the rules pass's to delete.
+ *
+ * `liveRuleIds` IS THE SECOND WAY A TAG IS THE PASS'S OWN: IT NAMES A RULE THE PASS IS ABOUT TO RUN.
+ * The namespace test alone assumes a rule only ever writes inside its own category, and nothing
+ * enforced that on a category FILE: rename the `id` in an exported file and import it, and its
+ * rules go on writing `old/...` from a category called `new`. Nothing owned `old/` any more, so
+ * the pass never cleared what it was about to write again and the body gained ANOTHER copy of the
+ * tag on every pass - the duplicated key that took the Tags tab down (A104). A tag carrying the id
+ * of a rule the caller holds is re-rolled wherever its key sits.
+ *
+ * WHAT IS STILL SPARED, DELIBERATELY: a rule-seeded tag whose rule AND category are both unknown
+ * here. On the GM's own map that is a leftover from a category they deleted - but a map opened
+ * from someone else carries exactly the same thing, because rules do not travel in a save, and
+ * there it is the author's own tagging. The pass cannot tell the two apart, so it deletes neither;
+ * `strandedRuleTags` in reasonsToVisit names them and the GM clears them by choice.
  */
-export function stripRuleTags(tags: Tag[] | undefined, categoryPrefixes: readonly string[]): Tag[] {
+export function stripRuleTags(
+  tags: Tag[] | undefined,
+  categoryPrefixes: readonly string[],
+  liveRuleIds?: ReadonlySet<string>
+): Tag[] {
   return (tags ?? []).filter((t) => {
-    if (!categoryPrefixes.some((p) => t.key.startsWith(p))) return true;
-    return tagOrigin(t) !== 'rule';
+    if (tagOrigin(t) !== 'rule') return true;
+    if (categoryPrefixes.some((p) => t.key.startsWith(p))) return false;
+    const id = ruleIdOf(t);
+    return !(id != null && liveRuleIds?.has(id));
   });
 }
 

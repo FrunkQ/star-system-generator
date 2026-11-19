@@ -29,6 +29,7 @@
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
   import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
+  import { orbitBandAtAltitude } from '$lib/constructs/placements';
   import { effectiveMegaRequires, megaSteerNotes } from '$lib/constructs/megaPlacement';
   import { calculateGoldilocksZone } from '$lib/physics/zones';
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
@@ -48,7 +49,7 @@
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { starmapStore } from '$lib/starmapStore';
   import { interstellarConstructIds, adriftFromSystemExit } from '$lib/transit/interstellar';
-  import { rootStarHillAu } from '$lib/physics/twoBodyCoast';
+  import { systemEdgeAu } from '$lib/system/systemReach';
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -65,8 +66,9 @@
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
   import { classifySaveFile } from '$lib/io/classify';
+  import { landCarriedRules, takeCarriedRules, withCampaignRules } from '$lib/io/systemRules';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
-  import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
+  import { fixUpImportedSystem, stripSystemForExport, inferMissingAxialTilt } from '$lib/system/importFixup';
   import ImportModal from './ImportModal.svelte';
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
   import { generateId, toRoman } from '$lib/utils';
@@ -92,6 +94,13 @@
 
   export let system: System;
   export let rulePack: RulePack;
+  /**
+   * The pack WITHOUT this campaign's overrides. `rulePack` above is the effective one, which is what
+   * everything here derives with; this is needed for exactly one thing - folding the rules a loaded
+   * system file brings into the campaign (`io/systemRules.ts`), whose delta sections are written
+   * back against the shipped lists.
+   */
+  export let shippedRulePack: RulePack | undefined = undefined;
   export let exampleSystems: string[];
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
 
@@ -337,7 +346,11 @@
     if (!$systemStore || !node?.id) return;
     // Credits ride along, so a body pasted in from somebody's map keeps its attribution when it is
     // copied on again. This is where a credit would otherwise quietly evaporate.
-    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    // AND SO DO THE CAMPAIGN'S CUSTOM RULES (R-19 / G99). `buildClip` has accepted them since
+    // v3.1.45, and the record said "it now carries the campaign's overrides" - but no Copy ever
+    // passed them, so a planet copied into another campaign still arrived without its custom liquid.
+    // Within one campaign every definition compares identical and is discarded, so this costs nothing.
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [], rulePackOverrides: $starmapStore?.rulePackOverrides });
     if (!clip) return;
     putClip(clip, String(node.name ?? 'object'));
     showSummaryContextMenu = false;
@@ -347,7 +360,7 @@
   function handleCutNode(e: CustomEvent<any>) {
     const node = e.detail;
     if (!$systemStore || !node?.id) return;
-    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [], rulePackOverrides: $starmapStore?.rulePackOverrides });
     if (!clip) return;
     putClip(clip, String(node.name ?? 'object'), true);
     // The SAME delete the delete action uses - `deleteNode` already takes the whole subtree, so a
@@ -820,12 +833,24 @@
 
   // §4c: the GM picked a type from the location-aware picker — generate a matching body, drop it at
   // the clicked orbit, and let the full processor derive the rest.
-  function placeBodyOfType(event: CustomEvent<{ fp: any }>) {
+  // `stackOn` is set only when the GM picked a MODIFIER (a rubble pile, a contact binary): the
+  // menu chooses a base for it from the types viable HERE, and `generateBodyOfType` lays that
+  // base's bands down first. The body then arrives with an EMPTY class list on purpose, so the
+  // processor names it from the composition actually drawn rather than from the card clicked.
+  function placeBodyOfType(event: CustomEvent<{ fp: any; stackOn?: any }>) {
       showAddTypeModal = false;
       const ctx = pendingAdd; pendingAdd = null;
       if (!ctx || !$systemStore) return;
       const host = $systemStore.nodes.find(n => n.id === ctx.hostId);
       if (!host) return;
+
+      // B21: EVERY BODY THIS ROUTE BUILDS GETS A SPIN AXIS BEFORE IT IS PROCESSED. It used to hand
+      // back a world with no tilt at all - this is the fourth body-creation route and the one-model
+      // rule (`physics/axialTilt.ts`) had not reached it - and the editor that opens next then showed
+      // 90 degrees, the resting midpoint of its slider. Same model, same provenance tag as the other
+      // three routes; a world this orbit will have despun draws the small tidally-eroded tilt (A70).
+      const seedSpinAxis = (b: CelestialBody, hostMassKg: number) => inferMissingAxialTilt(b, rulePack,
+          predictTidalLock(b.orbit?.elements.a_AU ?? 0, b.radiusKm ?? 0, b.massKg ?? 0, hostMassKg, ctx.ageGyr ?? 4.6));
 
       // G43: a trojan placement — the body is a sibling of its secondary (both orbit the star),
       // carries the coOrbital marker, and gets its orbit from the one convention module. The
@@ -841,7 +866,7 @@
       if (ctx.trojan) {
           const secondary = $systemStore.nodes.find(n => n.id === ctx.trojan!.secondaryId) as CelestialBody | undefined;
           if (!secondary) return;
-          const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
+          const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK, stackOn: event.detail.stackOn });
           const starMassKg = ((host as any).kind === 'barycenter' ? (host as any).effectiveMassKg : (host as any).massKg) || 0;
           const placement = placeBodyAtCoOrbitalPoint($systemStore, secondary.id, ctx.trojan.point, starMassKg);
 
@@ -890,6 +915,7 @@
                   orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
               } as CelestialBody;
           }
+          seedSpinAxis(trojanBody, trojanBody.orbit?.hostMu ? trojanBody.orbit.hostMu / G : starMassKg);
           systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, trojanBody] }, rulePack) });
           updateFocus(trojanBody.id);
           isEditing = true;
@@ -897,7 +923,7 @@
       }
 
       const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
-      const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
+      const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK, stackOn: event.detail.stackOn });
       // Some moons are CAPTURED rogues (irregular satellites): eccentric, inclined, often retrograde —
       // a Triton/irregular-moon flavour, distinct from the flat regular satellites that formed in place.
       const captured = ctx.role === 'moon' && Math.random() < 0.18;
@@ -926,6 +952,7 @@
               }
           }
       } as CelestialBody;
+      seedSpinAxis(newBody, ctx.hostMassKg);
       systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, newBody] }, rulePack) });
       updateFocus(newBody.id);
       isEditing = true;
@@ -1082,12 +1109,10 @@
           // Planet/Moon Logic
           const boundaries = (host as CelestialBody).orbitalBoundaries;
           if (boundaries) {
-              // Robust checks for placement
-              if (altitudeKm <= (boundaries.minLeoKm || 100)) placement = 'Low Orbit';
-              else if (altitudeKm <= boundaries.leoMoeBoundaryKm) placement = 'Low Orbit';
-              else if (altitudeKm <= boundaries.meoHeoBoundaryKm) placement = 'Medium Orbit';
-              else if (boundaries.geosynchronousOrbit && boundaries.geoStationaryKm && Math.abs(altitudeKm - boundaries.geoStationaryKm) < 1000) placement = 'Geosynchronous Orbit';
-              else placement = 'High Orbit';
+              // The one band rule (constructs/placements.ts). A 'Geosynchronous Orbit' branch stood
+              // here on `boundaries.geosynchronousOrbit`, which nothing produces - it never ran, and
+              // its word was one no Zone select offers.
+              placement = orbitBandAtAltitude(boundaries, altitudeKm);
           }
       }
 
@@ -1765,7 +1790,15 @@
     } else {
         // GM save: strip derived physics from a clone (the load path re-derives it), so the file is small
         // and carries only authored inputs — never stale baked-in data.
-        systemToSave = stripSystemForExport($systemStore, rulePack);
+        //
+        // 3.1.1: AND THE CAMPAIGN'S CUSTOM DEFINITIONS GO IN BESIDE THE NODES (`io/systemRules.ts`).
+        // They live on the starmap, so a system saved on its own used to leave every custom gas,
+        // liquid, drive and sensor behind - the worlds came back naming definitions that no longer
+        // existed anywhere. Owner: "it may be worth duplicating at save time." Not on a Player save.
+        systemToSave = withCampaignRules(
+            stripSystemForExport($systemStore, rulePack),
+            $starmapStore?.rulePackOverrides
+        );
     }
 
     // 2. Filter Constructs if requested
@@ -1864,6 +1897,8 @@
         return;
       }
       if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
+      // Taken OFF the document here, loadable or not: the rules belong on the campaign, never on a system.
+      const carried = takeCarriedRules(classified);
       let newSystem: any = classified.doc;
       if (isLoadableSystem(newSystem)) {
         // Keep the old ID to preserve starmap link
@@ -1872,10 +1907,22 @@
             newSystem.id = oldId;
         }
 
+        // 3.1.1: THE RULES THE FILE BROUGHT, folded into this campaign BEFORE the system is derived -
+        // added where the campaign lacks them, dropped where it has them identically, renamed (and
+        // these nodes repointed) where it uses the name differently, never overwritten. Then the
+        // system is processed against the pack that knows them. See `io/systemRules.ts`.
+        let pack = rulePack;
+        if (carried && shippedRulePack) {
+          const landed = landCarriedRules(carried, $starmapStore?.rulePackOverrides, shippedRulePack, newSystem.nodes);
+          pack = landed.pack;
+          if (landed.merge.changed) starmapStore.update((m) => (m ? { ...m, rulePackOverrides: landed.overrides } : m));
+          if (landed.note) dispatch('notice', `Loaded ${newSystem.name}. ${landed.note}`);
+        }
+
         // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
         // cleanly (v1 imports otherwise carry stale physics that shadows the model).
-        newSystem = fixUpImportedSystem(newSystem, rulePack);
-        systemStore.set(systemProcessor.process(newSystem, rulePack));
+        newSystem = fixUpImportedSystem(newSystem, pack);
+        systemStore.set(systemProcessor.process(newSystem, pack));
         currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
       } else {
@@ -2059,10 +2106,9 @@
 
       // C1 — a construct that has coasted BEYOND the system edge has left the local system. The edge is a
       // configurable AU distance (Settings → Starmap → System edge), or the root star's Hill limit by default.
-      const rootNode: any = sys.nodes.find((n) => (n as any).parentId == null);
-      const rootMass = (rootNode?.massKg ?? rootNode?.effectiveMassKg ?? 0) as number;
-      const edgeAu = get(starmapStore)?.systemEdgeAu;
-      const hillLimitAu = (edgeAu && edgeAu > 0) ? edgeAu : (rootMass > 0 ? rootStarHillAu(rootMass) : Infinity);
+      // ONE reading of that setting (system/systemReach.ts) - the Orbit tab's placement ceiling and the
+      // orrery's widest view are derived beside it, so the three cannot drift apart again (B23).
+      const hillLimitAu = systemEdgeAu(sys, get(starmapStore)?.systemEdgeAu);
       const exitAtSec = String(Math.floor(Number(unixMsToMasterSeconds(actualMs))));
 
       const nodes = sys.nodes.map((node) => {
@@ -2961,6 +3007,7 @@
                     system={$systemStore}
                     hostBody={parentBody}
                     {rulePack}
+                    {shippedRulePack}
                     {isShipLogOpen}
                     {isEditing}
                     {isPlanning}

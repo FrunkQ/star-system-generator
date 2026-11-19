@@ -143,6 +143,20 @@
         (0.12 g/cc). Bulk density is volume-additive, <code>1⁄ρ = Σ fᵢ⁄ρᵢ</code>, and radius follows from mass +
         density — so <em>density and radius are derived, not dialled in</em>. A body with no explicit makeup gets one
         inferred from its density (mass-aware, so a low-density heavyweight reads as a gas giant, not "icy").</p>
+      <p><strong>Past about two Jupiter masses, mass decides and density stops being asked.</strong> Electron
+        degeneracy holds a hydrogen body near one Jupiter radius however much mass is piled on, so a heavy giant's
+        density simply climbs with its mass: a five-Jupiter-mass planet is around 8 g/cc and the brown dwarf CoRoT-3b
+        is a measured 26 g/cc at 22 Jupiter masses, denser than iron and not a rock. So above the mass where even
+        an ordinary gas body would be denser than the 2.5 g/cc "this is a giant" ceiling, a body with no stated
+        makeup is read as fluid whatever its density, and changing its density changes its <em>size</em>, never its
+        makeup. One squeezed past what hydrogen manages on its own is tagged <code>structure/overdense</code> and
+        left as you made it. A makeup you set yourself always stands.</p>
+      <p><strong>The density control's ceiling follows the mass for the same reason.</strong> For anything up to
+        about six Jupiter masses the box and its slider stop at 30 g/cc, which is twice as dense as solid iron gets
+        in this model. Above that the stop is twice the densest a hydrogen body of that mass packs down to: about
+        54 g/cc at ten Jupiter masses, 72 at thirteen (the lightest brown dwarf), 116 at twenty and about 400 at
+        sixty. It is a limit of that one control and not of the engine: a body saved or imported with a higher
+        density keeps it, and the Overrides tab pins any density at all.</p>
       <p>The composition classes (iron, silicate, coreless, carbon) key on these fractions, and makeup feeds the
         fluid layers, magnetism and geology below.</p>
     </section>
@@ -193,6 +207,36 @@
         edge that a structure's shadow steps right over is pinned at the structure itself: beyond a solid
         ringworld, in its plane, there is no more habitable zone to draw. (For zones a band counts in full —
         the zone circles live in the system plane, which is exactly where a band's shadow falls.)</p>
+
+      <h3>A mirror lights the world it is stationed at</h3>
+      <p>The opposite case, and the one thing in this engine that delivers <strong>more</strong> than the
+        inverse square: a soletta — an orbital mirror array — turns starlight that would have missed a world
+        back onto it. The added share is plain geometry: the mirror's reflectivity times its area, over the
+        area of the world's own disc. A mirror with a fifth of the disc's effective area gives the world
+        <code>1.2×</code> the light its distance alone would, and since equilibrium temperature goes as the
+        fourth root of the light, it warms by <code>1.2^¼</code>, about 4.7%. From there it is the ordinary
+        chain — albedo, greenhouse, weather, the habitability score — with nothing special-cased, so widening
+        the mirror is terraforming you can watch. Mirrors add; a mirror and a shadow multiply (a world behind
+        a 30% swarm under that mirror receives <code>0.7 × 1.2</code>). The limits are stated rather than
+        hidden: every reflected photon is assumed to land on the world, which holds for a mirror stationed
+        close (a low orbit out to the inner or outer Lagrange point, and nowhere further is offered); the
+        mirror's own shadow is not traced; it lights its one world and not that world's moons; and the
+        star's <strong>zones do not move</strong> — they describe the star's light, and one lit world is
+        not a brighter star.</p>
+
+      <h3>Stellar engines state their thrust, and do not move their star</h3>
+      <p>A <strong>Shkadov thruster</strong> is a mirror cap held over a star: the star's whole output then
+        leaves through the open part of its sky, and the net momentum of that lopsided light is a push of
+        <code>(L / 2c) × (1 − cos ψ)</code> for a cap of half-angle ψ — a hemisphere gives half the star's
+        light pressure, about 6.4×10¹⁷ N on the Sun, or ten metres a second after a million years. (A figure
+        twice that is often quoted; it turns every photon straight back, where a real cap meets most of its
+        light at an angle.) A <strong>Caplan thruster</strong> is a rocket instead: it lifts the star's own
+        material, fuses it, and throws a jet, so its push is simply the jet's mass flow times its speed —
+        thousands of times a mirror's at the top of its range — and the star is lighter by that flow every
+        second. Both figures are <strong>published, not performed</strong>: the structure's summary states
+        the push, what a million years of it would do, and how long the star lasts, and the star stays
+        exactly where it is on the map with its mass untouched. Nothing in the engine yet drives a slow
+        change through time, and a star drifting on a clock nobody wound would be an invented fact.</p>
     </section>
 
     <section id="albedo">
@@ -271,6 +315,9 @@
         and the lever is <strong>age</strong>. A young giant is genuinely hot. The planets we have photographed
         directly, like the HR 8799 family, sit at roughly 1000&ndash;1200 K at 30 million years old, glowing in
         the infrared entirely on their own account.</p>
+      <p>The age is the <em>giant's own</em>: a giant given an age of its own on its Temp tab &mdash; one
+        captured young into an old system, say &mdash; carries the heat that age implies, and one that has
+        none is as old as its system.</p>
       <p>We model that as a cooling curve in age, scaled up (never down) for giants heavier than Jupiter, and
         anchored on today's solar system: whatever the curve does when young, it must still reproduce Jupiter's
         real excess at 4.6 billion years. That anchoring is the guard rather than a decoration — it caught a
@@ -385,7 +432,11 @@
         temperature</strong>, added as an absolute σ·T⁴ term (not a delta) on top of the negligible starlight —
         typically hundreds to a couple of thousand K, far above the equilibrium temperature a distant star would
         give. It <strong>cools with age</strong> (L-dwarf → T → Y, floored near ~250 K — no brown dwarf is colder),
-        and — crucially — it becomes a genuine <strong>heat and radiation source for its own moons</strong>: a satellite
+        and the age is <strong>its own</strong>: every body can be given one, and a brown dwarf has an Age control
+        where a temperature control would be, because its temperature is a consequence and its age is the cause.
+        Type a temperature there and you are offered the age that gives it &mdash; the same cooling law, asked the
+        other way round &mdash; or told that no age does at that mass.
+        And — crucially — it becomes a genuine <strong>heat and radiation source for its own moons</strong>: a satellite
         of a young brown dwarf is warmed and (lacking a magnetosphere) heavily irradiated by it, just as a moon of a
         star would be. Tagged <code>thermal/self-luminous</code> (value = its Teff); the effective temperature and
         luminosity show in the Newton panel.</p>
@@ -491,6 +542,14 @@
         editor shows the warning in amber and <strong>keeps whatever you typed</strong>: alien engineering,
         a reality breakdown and a plot device are all legitimate reasons, and the engine cannot tell one of
         those from a typo.</p>
+      <p>A hole is <strong>named for its mass</strong>, because that is the only thing that says which kind
+        it is: a plain <em>black hole</em> up to the top of the stellar-mass band (what a collapsing star
+        leaves, about 100 solar masses), an <em>intermediate-mass black hole</em> above that, and a
+        <em>supermassive black hole</em> from a million solar masses up. The upper line is a convention
+        with real spread &mdash; 100,000 is often quoted, and the few-hundred-thousand holes found in dwarf
+        galaxies are called intermediate by the people who find them &mdash; so the wider reading is used.
+        It is a word and not a class: the body is the same kind of object throughout, and a heavy hole is
+        never marked implausible for being heavier than the stellar band.</p>
       <p>Finally, a catalogue designation sometimes carries <strong>annotations after the class</strong>
         &mdash; <code>m</code> for metallic-line, <code>e</code> for emission, <code>n</code> for broad
         lines, <code>p</code> for peculiar, and so on. These are read and kept rather than treated as part
@@ -683,7 +742,8 @@
         <tbody>
           <tr><td>Main-sequence star</td><td>Rotation-driven convective dynamo</td><td>Spectral class times an age
             factor. M&nbsp;0.85, K&nbsp;0.55, G&nbsp;0.35, F&nbsp;0.22, A&nbsp;0.16, B/O&nbsp;0.12, because deep
-            convection is what flares and low-mass dwarfs are convective throughout. Age spins the star down: a
+            convection is what flares and low-mass dwarfs are convective throughout. Age &mdash; the star's own,
+            where it has been given one &mdash; spins the star down: a
             young M dwarf runs to 0.85 and an old one to 0.07, which is the whole of the
             quiescent-versus-active distinction for a star.</td></tr>
           <tr><td>Giant or supergiant</td><td>None worth the name &mdash; <strong>0.05</strong></td><td>An evolved star
@@ -1703,7 +1763,9 @@
           −25 (runaway-greenhouse risk); <strong>tidal-volcanic</strong> −20 (resurfaced too fast); <strong>inactive</strong>
           −10 (no outgassing / nutrient recycling); <strong>plutonic</strong> −10 (intrusive only, so the same
           loss with a different cause).</li>
-        <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).</li>
+        <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).
+          A field you pin with the magnetosphere override is the field: pinned above zero it counts as a
+          magnetosphere here even on a world with no dynamo, and pinned to zero it counts as none.</li>
         <li>A <strong>subsurface ocean</strong> (cryovolcanic or under-ice) floors the score at 35 with a
           <code>habitability/subsurface</code> tier — sub-ice life is a separate axis from the surface Goldilocks zone.</li>
       </ul>

@@ -233,3 +233,123 @@ describe('the strip’s chrome — what the picture says', () => {
     expect(Math.abs(name.x - 420 / 2)).toBeCloseTo(slot.spanPx / 2 + CHROME.labelGapPx, 6);
   });
 });
+
+// "THE SIZE COMPARISON IN ORBIT'S PUTS THE MOON'S NAME ON TOP OF THE PLANET'S NAME" (Discord, 10-03:
+// a GM mislabelled his own planet and moon in a post because of it). In the orbit order a planet's
+// moons hang off one side of it, and both names used to point into the gap between the planet and
+// its first moon: the planet's hung down onto the moon, the moon's stood up onto the planet. The
+// thinning rule was also one-dimensional, and a column of moons shares one position along the strip,
+// so only the FIRST moon of each planet was ever named at all.
+describe('the orbit order names a planet and its moons without one covering the other', () => {
+  // A planet with a readable train of moons, one of which has a moon of its own.
+  const FAMILY: ComparisonItem[] = [
+    { id: 'host', name: 'Hostworld', diameterKm: 12000, role: 'planet', parentId: null, orbitAu: 1 },
+    { id: 'm1', name: 'Firstmoon', diameterKm: 3000, role: 'moon', parentId: 'host', orbitAu: 0.001 },
+    { id: 'm2', name: 'Secondmoon', diameterKm: 2600, role: 'moon', parentId: 'host', orbitAu: 0.002 },
+    { id: 'm3', name: 'Thirdmoon', diameterKm: 2200, role: 'moon', parentId: 'host', orbitAu: 0.003 },
+    { id: 'sub', name: 'Submoon', diameterKm: 900, role: 'moon', parentId: 'm2', orbitAu: 0.0001 },
+    { id: 'lone', name: 'Loneworld', diameterKm: 9000, role: 'planet', parentId: null, orbitAu: 2 }
+  ];
+  const SCALE = 0.02; // 240 px planet, 60/52/44 px moons: every one of them readable, none a dot
+
+  function orbitSpec(axis: 'x' | 'y', over: Partial<StripChromeSpec> = {}): StripChromeSpec {
+    const layout = layoutStrip(FAMILY, SCALE, { axis, order: 'orbit' });
+    const host = layout.slots.find((s) => s.id === 'host')!;
+    const vw = axis === 'x' ? 1200 : 800, vh = axis === 'x' ? 800 : 1200;
+    return {
+      layout, info: new Map(FAMILY.map((i) => [i.id, { role: i.role, diameterKm: i.diameterKm }])),
+      arcs: [], scrollPx: host.centrePx - (axis === 'x' ? vw : vh) / 2, crossScrollPx: 0,
+      vw, vh, axis, selectedId: null, hoveredId: null, prefs: undefined, ...over
+    };
+  }
+
+  /** The box a recorded string occupies, from the alignment and baseline it was drawn with. */
+  const boxOf = (t: { text: string; x: number; y: number; textAlign: string; textBaseline: string }) => {
+    const w = t.text.length * 6, h = CHROME.lineHeightPx;
+    const x0 = t.textAlign === 'center' ? t.x - w / 2 : t.textAlign === 'right' ? t.x - w : t.x;
+    const y0 = t.textBaseline === 'top' ? t.y : t.textBaseline === 'bottom' ? t.y - h : t.y - h / 2;
+    return { text: t.text, x0, x1: x0 + w, y0, y1: y0 + h };
+  };
+  const overlap = (a: ReturnType<typeof boxOf>, b: ReturnType<typeof boxOf>) =>
+    a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+  for (const axis of ['x', 'y'] as const) {
+    it(`names every readable moon, and no two strings share ground (${axis === 'x' ? 'desktop' : 'phone'})`, () => {
+      const s = orbitSpec(axis);
+      const ctx = draw(s);
+      const names = ctx.texts.filter((t) => t.font === CHROME.nameFont).map((t) => t.text);
+      // ABSOLUTE: more than one moon is named. With the one-dimensional lane only the first ever was.
+      // On a desktop the moons stack down the screen and every one of them has a line to itself; on
+      // a phone they run ACROSS it, side by side, so a name wider than the room between two moons is
+      // thinned out exactly as it is on the flat strip - and the middle one here is.
+      const want = axis === 'x' ? ['Hostworld', 'Firstmoon', 'Secondmoon', 'Thirdmoon'] : ['Hostworld', 'Firstmoon', 'Thirdmoon'];
+      for (const n of want) expect(names, n).toContain(n);
+      const boxes = ctx.texts.map(boxOf);
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        expect(overlap(boxes[i], boxes[j]), `"${boxes[i].text}" over "${boxes[j].text}"`).toBe(false);
+      }
+    });
+
+    it(`keeps each name off the rest of its own family (${axis === 'x' ? 'desktop' : 'phone'})`, () => {
+      const s = orbitSpec(axis);
+      const ctx = draw(s);
+      const slotOf = (id: string) => s.layout.slots.find((x) => x.id === id)!;
+      const disc = (id: string) => { const sl = slotOf(id); return { ...slotScreenPos(sl, s), r: sl.spanPx / 2 }; };
+      const hits = (b: ReturnType<typeof boxOf>, d: { x: number; y: number; r: number }) => {
+        const cx = Math.max(b.x0, Math.min(d.x, b.x1)), cy = Math.max(b.y0, Math.min(d.y, b.y1));
+        return Math.hypot(cx - d.x, cy - d.y) < d.r;
+      };
+      const family = ['host', 'm1', 'm2', 'm3'];
+      for (const id of family) {
+        const sl = slotOf(id);
+        const mine = ctx.texts.filter((t) => t.font === CHROME.nameFont && t.text === sl.name).map(boxOf);
+        if (axis === 'y' && id === 'm2') { expect(mine.length).toBe(0); continue; } // thinned: see above
+        expect(mine.length, `${sl.name} is named once`).toBe(1);
+        for (const other of family) if (other !== id) {
+          expect(hits(mine[0], disc(other)), `${sl.name}'s name on ${slotOf(other).name}`).toBe(false);
+        }
+      }
+      // The planet's name is on the side its moons are NOT, measured rather than read off a flag.
+      const host = disc('host'), moon = disc('m1');
+      const hostName = boxOf(ctx.texts.find((t) => t.font === CHROME.nameFont && t.text === 'Hostworld')!);
+      if (axis === 'x') { expect(moon.y).toBeGreaterThan(host.y); expect(hostName.y1).toBeLessThanOrEqual(host.y - host.r); }
+      else { expect(moon.x).toBeGreaterThan(host.x); expect(hostName.x1).toBeLessThanOrEqual(host.x - host.r); }
+    });
+  }
+
+  it('leaves a planet with no moons named where every flat order names it', () => {
+    const s = orbitSpec('x', { scrollPx: 0 });
+    s.scrollPx = s.layout.slots.find((x) => x.id === 'lone')!.centrePx - s.vw / 2;
+    const lone = s.layout.slots.find((x) => x.id === 'lone')!;
+    expect(lone.labelSide).toBe('start');
+    const p = slotScreenPos(lone, s);
+    const name = draw(s).texts.find((t) => t.font === CHROME.nameFont && t.text === 'Loneworld')!;
+    expect(name.y).toBeCloseTo(p.y + lone.spanPx / 2 + CHROME.labelGapPx, 6);
+  });
+
+  it('thins a column of specks box against box, and never starts a name above its own moon', () => {
+    // Twelve dots under one planet, a few pixels apart: the names cannot all fit, and the ones that
+    // are drawn must not climb back onto the planet the dots hang from.
+    const specks: ComparisonItem[] = [
+      { id: 'host', name: 'Hostworld', diameterKm: 12000, role: 'planet', parentId: null, orbitAu: 1 },
+      ...Array.from({ length: 12 }, (_, i): ComparisonItem => ({ id: `s${i}`, name: `Speck${i}`, diameterKm: 40, role: 'moon', parentId: 'host', orbitAu: 0.001 * (i + 1) }))
+    ];
+    const layout = layoutStrip(specks, SCALE, { axis: 'x', order: 'orbit' });
+    const host = layout.slots.find((x) => x.id === 'host')!;
+    const s: StripChromeSpec = {
+      layout, info: new Map(specks.map((i) => [i.id, { role: i.role, diameterKm: i.diameterKm }])),
+      arcs: [], scrollPx: host.centrePx - 600, crossScrollPx: 0, vw: 1200, vh: 800, axis: 'x',
+      selectedId: null, hoveredId: null, prefs: undefined
+    };
+    const ctx = draw(s);
+    const names = ctx.texts.filter((t) => t.font === CHROME.nameFont && t.text.startsWith('Speck'));
+    expect(names.length).toBeGreaterThanOrEqual(2);
+    expect(names.length).toBeLessThan(12);
+    const hostBottom = slotScreenPos(host, s).y + host.spanPx / 2;
+    for (const n of names) expect(boxOf(n).y0).toBeGreaterThanOrEqual(hostBottom);
+    const boxes = ctx.texts.map(boxOf);
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      expect(overlap(boxes[i], boxes[j]), `"${boxes[i].text}" over "${boxes[j].text}"`).toBe(false);
+    }
+  });
+});

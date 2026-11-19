@@ -1,0 +1,25 @@
+# chart 1
+<svg aria-label="System diagram" class="overview-svg" role="img" viewBox="0 0 760 156">
+  <circle cx="-26" cy="76" fill="none" r="38" stroke="#111" stroke-width="2">
+  <text class="label" x="28" y="80">TRAPPIST-1
+  <ellipse cx="118" cy="76" fill="#111" rx="8.120795762262276" ry="8.120795762262276">
+  <text class="orbit-label" transform="rotate(-45 128.12079576226228 67.87920423773772)" x="128.12079576226228" y="67.87920423773772">TRAPPIST-1 b
+  <text class="au-label" text-anchor="end" x="118" y="65.87920423773772">1,726,359 km
+  <ellipse cx="220.85495257229417" cy="76" fill="#111" rx="8.097686625468857" ry="8.097686625468857">
+  <text class="orbit-label" transform="rotate(-45 230.95263919776303 67.90231337453115)" x="230.95263919776303" y="67.90231337453115">TRAPPIST-1 c
+  <text class="au-label" text-anchor="end" x="220.85495257229417" y="65.90231337453115">2,363,646 km
+  <ellipse cx="333.23987963470455" cy="76" fill="#111" rx="7.621255385998137" ry="7.621255385998137">
+  <text class="orbit-label" transform="rotate(-45 342.8611350207027 68.37874461400186)" x="342.8611350207027" y="68.37874461400186">TRAPPIST-1 d
+  <text class="au-label" text-anchor="end" x="333.23987963470455" y="66.37874461400186">3,331,545 km
+  <ellipse cx="422.5235866480553" cy="76" fill="#111" rx="7.860712336283017" ry="7.860712336283017">
+  <text class="orbit-label" transform="rotate(-45 432.38429898433833 68.13928766371698)" x="432.38429898433833" y="68.13928766371698">TRAPPIST-1 e
+  <text class="au-label" text-anchor="end" x="422.5235866480553" y="66.13928766371698">4,375,738 km
+  <ellipse cx="512.4313430786688" cy="76" fill="#111" rx="8.03236575154401" ry="8.03236575154401">
+  <text class="orbit-label" transform="rotate(-45 522.4637088302128 67.967634248456)" x="522.4637088302128" y="67.967634248456">TRAPPIST-1 f
+  <text class="au-label" text-anchor="end" x="512.4313430786688" y="65.967634248456">5,758,022 km
+  <ellipse cx="576.668525479824" cy="76" fill="#111" rx="8.136234004048035" ry="8.136234004048035">
+  <text class="orbit-label" transform="rotate(-45 586.804759483872 67.86376599595197)" x="586.804759483872" y="67.86376599595197">TRAPPIST-1 g
+  <text class="au-label" text-anchor="end" x="576.668525479824" y="65.86376599595197">7,005,668 km
+  <ellipse cx="668" cy="76" fill="#111" rx="7.594649736758878" ry="7.594649736758878">
+  <text class="orbit-label" transform="rotate(-45 677.5946497367589 68.40535026324112)" x="677.5946497367589" y="68.40535026324112">TRAPPIST-1 h
+  <text class="au-label" text-anchor="end" x="668" y="66.40535026324112">0.06189 AU

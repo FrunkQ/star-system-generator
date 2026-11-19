@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { LIQUIDS as FALLBACK_LIQUIDS } from '$lib/constants';
-  import { liquidsLiquidInRange, phaseAtP, phaseReason } from '$lib/physics/liquids';
+  import { allLiquids, liquidsLiquidInRange, phaseAtP, phaseReason } from '$lib/physics/liquids';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatPref, unitBodyTypeFor } from '$lib/units';
 
@@ -31,6 +31,29 @@
   $: validLiquids = liquidsLiquidInRange(surfaceMinK, surfaceMaxK, rulePack);
   // Live phase of every liquid at THIS temperature & pressure — drives the per-option phase hints.
   $: phaseOf = (name: string) => phaseAtP(name, currentTemp, surfPbar, rulePack);
+
+  // EVERY OTHER SOLVENT, WITH THE REASON IT IS NOT ONE HERE. Owner, 2026-09-08: the list was
+  // truncated to the viable ones, so a GM could not see what had been ruled out or why. A menu that
+  // silently omits its rejects teaches nobody anything; one that says "ammonia — frozen, melts at
+  // 195 K" teaches the physics on the way past.
+  //
+  // THEY ARE SHOWN BUT NOT SELECTABLE, and the reason is the DATA MODEL rather than the physics -
+  // owner, 2026-09-08, overruling an earlier version of this that left them pickable: *"they can't be
+  // selected there as it would break other stuff like atmospheres as they are connected now. An option
+  // under Overrides can allow it - but adding one there should fire the anomaly engine."*
+  //
+  // That is NOT a breach of steer-don't-stop, and the distinction is worth keeping straight: the rule
+  // forbids a PHYSICS CRITERION refusing an author's choice, and the escape hatch it demands may live
+  // in ONE place rather than in every control. Here the hydrosphere and the atmosphere are coupled, so
+  // an impossible solvent chosen in this menu corrupts a neighbour rather than merely being wrong -
+  // and the honest escape is an override, which announces itself as an anomaly. See [[A103]]: that
+  // override does not exist yet, so this menu explains and does not yet point anywhere.
+  // The CURRENT selection is excluded even when it is rejected: it already has its own group below,
+  // with its own wording, and the same value in a <select> twice is a duplicate option a GM can see.
+  $: rejectedLiquids = allLiquids(rulePack)
+    .filter((l) => !validLiquids.some((v) => v.name === l.name))
+    .filter((l) => l.name !== body.hydrosphere?.composition)
+    .map((l) => ({ def: l, why: phaseReason(l.name, currentTemp, surfPbar, rulePack) }));
 
   // Check if the current selection is actually liquid here (pressure-aware, not a ±20 K fudge).
   $: currentLiquidDef = body.hydrosphere ? liquids.find(l => l.name === body.hydrosphere!.composition) : null;
@@ -110,6 +133,14 @@
                     {#each validLiquids as comp}
                         {@const ph = phaseOf(comp.name)}
                         <option value={comp.name}>{comp.label}{ph === 'liquid' ? '' : ` — ${PHASE_LABEL[ph] ?? ph} at the mean`}</option>
+                    {/each}
+                </optgroup>
+            {/if}
+
+            {#if rejectedLiquids.length > 0}
+                <optgroup label="Not liquid here — and why">
+                    {#each rejectedLiquids as r}
+                        <option value={r.def.name} disabled>{r.def.label}{r.why ? ` (${r.why})` : ''}</option>
                     {/each}
                 </optgroup>
             {/if}

@@ -47,6 +47,29 @@ export function magneticShieldingTag(magnetism: Magnetism, field?: MagneticField
   return 'magnetic/dynamo';
 }
 
+// DOES THIS WORLD LACK A MAGNETOSPHERE? The one answer, for the consumers that ask it as a yes/no -
+// today the long-term habitability term ("No magnetosphere (atmosphere stripping)").
+//
+// It reads the RESOLVED field and not the interior model alone, which is the whole reason it exists
+// (using-sharing B-3): the habitability term asked only `magnetism.source === 'none'`, so a GM who
+// pinned an anomalous field onto a world with no dynamo saw the shielding tag, the magnetopause and
+// the radiation dose all honour the pin while habitability went on deducting the points for having
+// no field. A pin is the GM's statement of what the field IS, so it decides in BOTH directions: any
+// pinned field above zero is a magnetosphere, and a field pinned to zero is the lack of one.
+// With nothing pinned the answer is exactly what it always was - the interior has no source at all
+// (a suppressed or induced field is weak, but it is not "none") - so no un-pinned world moves.
+// (Typed structurally: the committed field is not declared on CelestialBody, so a Pick would not compile.)
+export function lacksMagnetosphere(body: {
+  magnetism?: Pick<Magnetism, 'intrinsic' | 'source'>;
+  magneticField?: { strengthGauss?: number };
+  overrides?: { magneticFieldGauss?: number };
+}): boolean {
+  const pinned = body.overrides?.magneticFieldGauss;
+  if (typeof pinned === 'number' && Number.isFinite(pinned)) return !((body.magneticField?.strengthGauss ?? pinned) > 0);
+  const m = body.magnetism;
+  return !!m && !m.intrinsic && m.source === 'none';
+}
+
 // Rotation support for a dynamo: fast spin organises convection into a strong, ordered field;
 // very slow / tidally-locked spin (Venus 5832 h) barely sustains one. Earth (24 h) ≈ 1.
 function rotationFactor(body: CelestialBody): number {

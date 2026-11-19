@@ -42,9 +42,18 @@
 // from a COMPANION star is not intercepted by this star's occluders (a real geometry the engine
 // does not yet trace); and a partial Dyson SPHERE counts as isotropic because its strip orbits —
 // longitude coverage time-averages, latitude coverage never does.
-import type { CelestialBody, Barycenter, Kepler } from '../types';
+//
+// THE OTHER SIGN (phase 6, the soletta). A MIRROR stationed at a world turns extra starlight onto
+// it, so that one world receives MORE than inverse-square - the case `receivedLuminosityWatts`'s
+// dims-only clamp used to rule out. `starlightBoost` below is the ONE place who-lights-whom is
+// computed, the twin of `starOccluders`/`starlightTransmission`, and it keeps their disciplines:
+// derived FRESH from authored data every ask (megaType, the instance's knobs, where it is
+// stationed, the target's radius), so no pass order exists to get wrong; and it reads the record's
+// DECLARED capability (`flux.amplifies`), never a type key (DATA-R33).
+import type { CelestialBody, Barycenter, Kepler, Tag } from '../types';
 import { AU_KM } from '../constants';
 import { megaTypeDef, instanceMegaParams } from '../constructs/megaTypes';
+import { stripForReprocess, emit } from '../tags/tagLifecycle';
 
 /** One structure between a star and the system, reduced to what the flux chain needs. */
 export interface StarOccluder {
@@ -162,4 +171,84 @@ export function starlightTransmission(
 	}
 	if (dimmedBy.length === 0) return CLEAR;
 	return { frac, bestFrac, worstFrac, dimmedBy };
+}
+
+// ── THE AMPLIFY CASE: who LIGHTS whom (phase 6) ──────────────────────────────────────────────────
+
+/** The tag a mirror-lit world carries: physics origin, re-earned every pass, gone with the mirror. */
+export const STARLIGHT_BOOST_TAG = 'mega/lit-by';
+
+export interface StarlightBoost {
+	/** What the body's received starlight is multiplied by: 1 + every mirror's added share. */
+	gain: number;
+	/** Who added what - each a fraction of the light the body's own disc intercepts unaided. */
+	mirrors: { id: string; name: string; addedFrac: number }[];
+}
+
+const NO_BOOST: StarlightBoost = { gain: 1, mirrors: [] };
+
+/**
+ * The extra starlight orbital mirrors turn onto `body`. A mirror's TARGET is the world it is
+ * stationed at: the body it orbits, or - at a Lagrange point, where its gravitational parent is
+ * the star - the world whose point it rides (`coOrbital.hostId`). Mirrors ADD (each delivers its
+ * own light), so the gain is 1 + the sum.
+ *
+ * STATED APPROXIMATIONS: every reflected photon lands on the target (the record only offers close
+ * stations, where that holds); the mirror sees the same sky its world does, so the gain multiplies
+ * the light of EVERY luminous source and rides behind whatever shades the world; the mirror's own
+ * shadow on its world is not traced; and the world's moons are not lit - the mirror is aimed.
+ */
+export function starlightBoost(
+	body: Pick<CelestialBody, 'id' | 'radiusKm'>,
+	allNodes: (CelestialBody | Barycenter)[]
+): StarlightBoost {
+	let mirrors: StarlightBoost['mirrors'] | null = null;
+	let added = 0;
+	for (const n of allNodes) {
+		const node = n as CelestialBody;
+		if (!node.megaType || node.id === body.id) continue;
+		if ((node.coOrbital?.hostId ?? node.parentId) !== body.id) continue;
+		const def = megaTypeDef(node.megaType);
+		if (def?.capabilities.flux?.amplifies !== 'target') continue;
+		const host = body as CelestialBody;
+		const frac = def.derive(instanceMegaParams(node, def, host), host).starAmplification ?? 0;
+		if (!Number.isFinite(frac) || !(frac > 0)) continue;
+		added += frac;
+		(mirrors ??= []).push({ id: node.id, name: node.name ?? node.megaType, addedFrac: frac });
+	}
+	return mirrors ? { gain: 1 + added, mirrors } : NO_BOOST;
+}
+
+/** The stamp the trace reads (`body.starlightBoost`), or null when no mirror lights the body. */
+export function deriveStarlightBoost(
+	body: CelestialBody,
+	allNodes: (CelestialBody | Barycenter)[]
+): NonNullable<CelestialBody['starlightBoost']> | null {
+	const b = starlightBoost(body, allNodes);
+	if (b.mirrors.length === 0) return null;
+	return { gain: b.gain, mirrors: b.mirrors.map((m) => ({ name: m.name, addedFrac: m.addedFrac })) };
+}
+
+/**
+ * COMMIT OR DELETE, field and tag together - the processor's one call, beside the dimming commit
+ * it mirrors. A removed mirror takes its stamp and its `mega/lit-by` tag with it on the next pass
+ * (idempotence would catch the ghost). Explicit physics origin for the same reason as
+ * `mega/shadowed-by`: the mega/ namespace defaults to authored provenance and this tag is the
+ * engine's own.
+ */
+export function commitStarlightBoost(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]): void {
+	const boost = deriveStarlightBoost(body, allNodes);
+	if (boost) body.starlightBoost = boost;
+	else delete body.starlightBoost;
+	const had = (body.tags ?? []).some((t) => t.key === STARLIGHT_BOOST_TAG);
+	if (!boost && !had) return;   // a system with no mirrors never grows an empty tags array
+	body.tags = stripForReprocess(body.tags ?? [], [STARLIGHT_BOOST_TAG]);
+	if (boost) {
+		const names = [...new Set(boost.mirrors.map((m) => m.name))].join(', ');
+		emit(body.tags, {
+			key: STARLIGHT_BOOST_TAG,
+			value: `${names} - ${Math.round((boost.gain - 1) * 100)}% more starlight`,
+			origin: 'physics'
+		} as Tag);
+	}
 }

@@ -17,6 +17,7 @@
   } from '$lib/player/presetStore';
   import { liveOverrides, runningPresetId } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { describeHighlightRef } from '$lib/tags/mapHighlights';
   import PlayerPresetEditor from './PlayerPresetEditor.svelte';
 
   export let sessionId: string | null = null;
@@ -78,20 +79,7 @@
     setOverride({ mapHighlights: $liveOverrides.mapHighlights.filter((h) => h.ref !== ref) });
   }
   /** A chip renders in the colour the marker will actually be, so the picker previews the map. */
-  function hlStyle(ref: string): { label: string; color: string; textColor: string } {
-    const cats = $tagCategories;
-    if (!ref.includes('/')) {
-      const c = cats.find((x) => x.id === ref);
-      return { label: c?.longName || ref, color: c?.color || '#888', textColor: c?.textColor || '#fff' };
-    }
-    const c = cats.find((x) => ref.startsWith(`${x.id}/`));
-    const t = c?.tags.find((x) => x.key === ref);
-    return {
-      label: t?.label || ref.split('/').slice(1).join(' '),
-      color: t?.color || c?.color || '#888',
-      textColor: t?.textColor || c?.textColor || '#fff'
-    };
-  }
+  const hlStyle = (ref: string) => describeHighlightRef(ref, $tagCategories);
 
   // --- Branding: the in-universe letterhead every player view wears -------------------------------
   // A42: this moved here from the Field Guide launcher when that was removed. It is NOT part of a

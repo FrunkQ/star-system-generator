@@ -3,7 +3,7 @@
 // two forgiveness rules: an unknown clause passes, and inHabitableZone promoted to hard is demoted.
 import { describe, it, expect } from 'vitest';
 import type { CelestialBody } from '$lib/types';
-import { megaHardCheck, megaSteerNotes, effectiveMegaRequires, hostHasSurface } from './megaPlacement';
+import { megaHardCheck, megaSteerNotes, effectiveMegaRequires, hostHasSurface, megaPlacementAllowed, filterMegaPlacements, megaIsSurfaceOnly } from './megaPlacement';
 import { megaTypeDef, type MegaTypeDef } from './megaTypes';
 
 const mk = (over: Partial<CelestialBody>): CelestialBody =>
@@ -64,6 +64,17 @@ describe('hard clauses — relevance greys, with a sentence a GM can read', () =
     expect(megaHardCheck(ds.requires, earth()).ok).toBe(true);
     expect(megaHardCheck(ds.requires, sol()).ok).toBe(true);
     expect(megaHardCheck(ds.requires, mk({ name: 'Kuiper', roleHint: 'belt' })).ok).toBe(false);
+  });
+
+  it('a Birch planet is offered round a black hole and greyed round anything else, by name', () => {
+    const birch = megaTypeDef('birch-planet')!;
+    const hole = { id: 'bh', name: 'Gargantua', kind: 'body', roleHint: 'star', parentId: null, tags: [], classes: ['star/BH'], massKg: 2e37 } as unknown as CelestialBody;
+    const sun = { id: 's', name: 'Sol', kind: 'body', roleHint: 'star', parentId: null, tags: [], classes: ['star/G2V'], massKg: 1.989e30 } as unknown as CelestialBody;
+    expect(megaHardCheck(birch.requires, hole, birch.explain).ok).toBe(true);
+    const refused = megaHardCheck(birch.requires, sun, birch.explain);
+    expect(refused.ok).toBe(false);
+    expect(refused.reason).toContain('Sol');
+    expect(megaHardCheck(birch.requires, { ...hole, classes: ['star/BH_active'] } as CelestialBody).ok).toBe(true);
   });
 
   it('an unknown hard clause PASSES — greying on a rule this build cannot state refuses for an unreadable reason', () => {
@@ -132,5 +143,34 @@ describe('effective requires — the pack wins, the registry is the default', ()
     expect(effectiveMegaRequires({} as CelestialBody, d)).toBe(d.requires);
     // A template naming a type this build does not know, with no requires: nothing gates it.
     expect(effectiveMegaRequires({} as CelestialBody, undefined)).toEqual({});
+  });
+});
+
+// THE TYPE'S HALF OF THE AXIS, ONE ANSWER FOR BOTH SURFACES. The create dialog narrowed by
+// `allowedPlacements` and the Orbit tab did not, which is how a standing elevator was sent to L2.
+describe('allowed placements - the same narrowing wherever a placement is offered', () => {
+  const TAB = ['Surface', 'Low Orbit', 'Medium Orbit', 'High Orbit', 'Geostationary Orbit', 'L1', 'L2', 'L3', 'L4', 'L5'];
+  it('an elevator is Surface or nothing: no orbit band and no Lagrange point survives', () => {
+    expect(filterMegaPlacements(def('space-elevator'), TAB)).toEqual(['Surface']);
+    for (const p of ['L1', 'L2', 'L3', 'L4', 'L5', 'Low Orbit', 'AU Distance']) {
+      expect(megaPlacementAllowed(def('space-elevator'), p)).toBe(false);
+    }
+    expect(megaIsSurfaceOnly(def('space-elevator'))).toBe(true);
+  });
+  it("the vocabularies fold onto the record: an old save's Mid reads as Medium, and a named gap about a star is an AU distance", () => {
+    const torus = def('planetary-torus');
+    expect(megaPlacementAllowed(torus, 'Medium Orbit')).toBe(true);
+    expect(megaPlacementAllowed(torus, 'Mid Orbit')).toBe(true);
+    expect(megaPlacementAllowed(torus, 'Surface')).toBe(false);
+    expect(megaPlacementAllowed(torus, 'L4')).toBe(false);
+    const ringworld = def('ringworld');
+    expect(filterMegaPlacements(ringworld, ['Inner System', 'Earth - Mars', 'Outer System', 'AU Distance'])).toHaveLength(4);
+    expect(megaPlacementAllowed(ringworld, 'L2')).toBe(false);
+    expect(megaIsSurfaceOnly(ringworld)).toBe(false);
+  });
+  it('a Death Star goes anywhere but the ground, and an ordinary construct is never narrowed', () => {
+    expect(filterMegaPlacements(def('death-star'), TAB)).toEqual(TAB.filter((p) => p !== 'Surface'));
+    expect(filterMegaPlacements(undefined, TAB)).toEqual(TAB);
+    expect(megaIsSurfaceOnly(undefined)).toBe(false);
   });
 });

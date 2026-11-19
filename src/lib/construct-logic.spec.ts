@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { drainFuelMassKg, calculateFullConstructSpecs } from './construct-logic';
 import type { CelestialBody, RulePack } from './types';
+import { calculateOrbitalBoundaries } from './physics/orbits';
 
 // 1 unit of 'h2' weighs 2 kg.
 const rulePack = {
@@ -65,12 +66,18 @@ describe('drainFuelMassKg', () => {
 // The rule now: a semi-major axis only describes an altitude above the host it was measured from.
 // ===============================================================================================
 
+// THE HOST CARRIES THE BOUNDARIES THE PROCESSOR REALLY STAMPS (`calculateOrbitalBoundaries`). This
+// fixture used to carry `hasSurface / surface / lowOrbit / mediumOrbit / geosynchronousOrbit /
+// highOrbit` - a shape nothing in the engine has ever produced - and the code read the same six, so
+// the suite was green while every real host fell through to "Far Orbit". The shape is now pinned to
+// the producer below, so the fixture cannot drift from it again.
+const EARTH_BOUNDARIES = {
+  minLeoKm: 200, leoMoeBoundaryKm: 2000, meoHeoBoundaryKm: 35786,
+  heoUpperBoundaryKm: 1.47e6, geoStationaryKm: 35786, isGeoFallback: false
+};
 const EARTH = {
   id: 'earth', name: 'Earth', kind: 'body', roleHint: 'planet', radiusKm: 6371,
-  orbitalBoundaries: {
-    hasSurface: true, surface: { max: 0 }, lowOrbit: { max: 2000 }, mediumOrbit: { max: 35000 },
-    geosynchronousOrbit: { max: 36000 }, highOrbit: { max: 100000 }
-  }
+  orbitalBoundaries: EARTH_BOUNDARIES
 } as unknown as CelestialBody;
 
 const SUN = { id: 'sun', name: 'Sol', kind: 'body', roleHint: 'star', radiusKm: 696000 } as unknown as CelestialBody;
@@ -119,7 +126,27 @@ describe('an orbit band is only claimed when the axis and the host describe each
   });
 
   it('a genuinely far orbit is still called far - the band did not just get switched off', () => {
-    // 500,000 km above Earth: past every boundary, and this time the axis really is Earth's.
-    expect(orbitOf(shipOrbiting('earth', 506371 / 149597870.7), EARTH)).toBe('Earth: Far Orbit');
+    // 2,000,000 km above Earth: past the edge of Earth's gravitational reach, and this time the
+    // axis really is Earth's. (500,000 km is beyond the Moon and still inside the well: High Orbit.)
+    expect(orbitOf(shipOrbiting('earth', 2006371 / 149597870.7), EARTH)).toBe('Earth: Far Orbit');
+    expect(orbitOf(shipOrbiting('earth', 506371 / 149597870.7), EARTH)).toBe('Earth: High Orbit');
+  });
+
+  it('a navigation satellite between the low band and geostationary reads Medium Orbit', () => {
+    // 20,200 km up. RED before the fix against this real-shaped host: "Earth: Far Orbit".
+    expect(orbitOf(shipOrbiting('earth', 26571 / 149597870.7), EARTH)).toBe('Earth: Medium Orbit');
+  });
+
+  it("an old save's 'Mid Orbit' placement is spoken in today's word", () => {
+    const old = { ...shipOrbiting('earth', 26571 / 149597870.7), placement: 'Mid Orbit' } as CelestialBody;
+    expect(orbitOf(old, EARTH)).toBe('Earth: Medium Orbit');
+  });
+
+  it('THE FIXTURE IS THE PRODUCER\'S SHAPE: the same fields calculateOrbitalBoundaries returns, no others', () => {
+    const produced = calculateOrbitalBoundaries({
+      gravity: 9.81, surfaceTempKelvin: 288, molarMassKg: 0.029, surfacePressurePa: 101325, massKg: 5.972e24,
+      rotationPeriodSeconds: 86164, distanceToHost_km: 1.496e8, hostMass_kg: 1.989e30, radiusKm: 6371
+    } as any, {} as any);
+    expect(Object.keys(EARTH_BOUNDARIES).sort()).toEqual(Object.keys(produced).sort());
   });
 });

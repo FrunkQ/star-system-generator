@@ -141,3 +141,26 @@ describe('AddConstructModal — the mega tab (G53 phase 1)', () => {
     expect(options).toEqual(['AU Distance']);
   });
 });
+
+// ONE SPELLING OF THE MIDDLE BAND (constructs/placements.ts). This dialog wrote 'Mid Orbit' and
+// the Orbit tab offered 'Medium Orbit', so a station made here opened there on an empty Zone
+// select. Seen RED first: the option list read 'Mid Orbit' and the created node carried it.
+describe('AddConstructModal — a station made at the middle band is stored in the word the Orbit tab offers', () => {
+  it('offers Medium Orbit, writes it, and puts the station between the low band and geostationary', async () => {
+    const world = earth();
+    systemStore.set({ nodes: [sun(), world] } as unknown as System);
+    const { container } = render(AddConstructModal, { props: { rulePack: megaPack(), hostBody: world, orbitalBoundaries: world.orbitalBoundaries } });
+    await pickOption(container.querySelectorAll('select')[0]!, 'Station');
+    await pickOption(container.querySelectorAll('select')[1]!, 'Test Station');
+    const placement = container.querySelectorAll('select')[2]!;
+    const offered = Array.from(placement.options).filter((o) => !o.disabled).map((o) => o.text.trim());
+    expect(offered).toContain('Medium Orbit');
+    expect(offered).not.toContain('Mid Orbit');
+    await pickOption(placement, 'Medium Orbit');
+    await fireEvent.click(Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Add Construct')!);
+    const made = (get(systemStore)!.nodes as CelestialBody[]).find((n) => n.name === 'Test Station')!;
+    expect(made.placement).toBe('Medium Orbit');
+    const altKm = made.orbit!.elements.a_AU * 149597870.7 - 6371;
+    expect(altKm).toBeCloseTo((2000 + 50000) / 2, 3);
+  });
+});

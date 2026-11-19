@@ -2,17 +2,17 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { unitPrefs, cycleUnitPref } from '$lib/unitPrefsStore';
-  import { resolveUnitPref, unitFromSI, unitToSI, unitIdLabel, unitBodyTypeFor } from '$lib/units';
+  import { resolveUnitPref, resolveAutoUnit, unitFromSI, unitToSI, unitIdLabel, unitIdName, unitBodyTypeFor, RADIUS_RATIO_STOPS, type RadiusRatioId } from '$lib/units';
   import UnitValue from './UnitValue.svelte';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, JUPITER_MASS_KG, G } from '$lib/constants';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
-  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
-  import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
+  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity, isFluidByMass } from '$lib/physics/makeup';
   import CustomImageBlock from './CustomImageBlock.svelte';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
-    trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored,
+    trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored, denserThanFluid,
+    densityCeiling,
     type EditLock, type BodyEditState
   } from '$lib/physics/bodyEdit';
   import { bandFit } from '$lib/system/classification';
@@ -171,7 +171,11 @@
   // asteroid/comet scale (log mapping keeps the bottom decades finely tunable).
   const pMassMin = 1e-12, pMassMax = 1e5;  // Earth masses (small comet -> past brown dwarf)
   const pRadMin = 5e-5,  pRadMax = 40;      // Earth radii (~0.3 km up)
-  const pDenMin = 0.1,   pDenMax = 30;      // g/cc
+  // Density has a floor here and NO top of its own: the top is `densityCeiling` (bodyEdit.ts), the
+  // same figure the number box is clamped to, so the two cannot disagree. It depends on the mass - a
+  // brown dwarf is allowed to be far denser than a rock (engine map PHY-49) - so it is read into
+  // `denSpan` below rather than written here.
+  const pDenMin = 0.1;                      // g/cc
   const logPos = (v: number, lo: number, hi: number) =>
       clamp((Math.log(clamp(v, lo, hi)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)), 0, 1);
   const logVal = (pos: number, lo: number, hi: number) =>
@@ -190,28 +194,35 @@
   // units and only the number field's display unit changes (G28's two edit-finished boundaries are
   // untouched). G34: the MASS cycle is the campaign-wide mass pref for this body type (units.ts owns
   // the ladder), so this field, the technical panel and the catalogue flip together. RADIUS keeps its
-  // local R⊕/R♃ stops (ratio units, deliberately not on the global ladder); its third stop follows
+  // local R☾/R⊕/R♃ stops (ratio units, deliberately not on the global ladder); its last stop follows
   // the campaign's radius pref (km or mi).
   const M_JUP_ME = JUPITER_MASS_KG / EARTH_MASS_KG;  // Jupiter mass in Earth masses — one source
-  const M_SOL_ME = SOLAR_MASS_KG / EARTH_MASS_KG;    // Sun mass in Earth masses
-  const R_JUP_RE = 11.209;   // Jupiter radius in Earth radii
   $: ubt = unitBodyTypeFor(body);
-  $: massUnit = ({ 'M-Earth': 'earth', 'M-Jup': 'jupiter', 't': 'tonnes', 'M-Sol': 'sol' } as Record<string, 'earth' | 'jupiter' | 'tonnes' | 'sol'>)[resolveUnitPref($unitPrefs, 'mass', ubt)] ?? 'earth';
-  let radUnit: 'earth' | 'jupiter' | 'dist' = 'earth';
+  // THE MASS FIELD READS THROUGH THE LADDER, not through a table of its own. It used to map four of
+  // the ladder's stops by hand (M⊕, M♃, M☉, t) and fall back to M⊕ for the rest - so with the
+  // campaign on kt, Mt, Gt or auto this field said "M⊕" while every other panel said the real unit,
+  // and a new stop (the lunar mass) would have needed a fifth branch in four expressions. `massStop`
+  // is the concrete unit the pref resolves to for THIS body's mass, exactly as <UnitValue> resolves it.
+  $: massStop = resolveAutoUnit(resolveUnitPref($unitPrefs, 'mass', ubt), body.massKg ?? 0, 'mass');
+  // Radius: the ratio stops (R☾, R⊕, R♃ - data in units.ts), then the campaign's own km or mi.
+  const RAD_CYCLE: Array<RadiusRatioId | 'dist'> = [...RADIUS_RATIO_STOPS.map((s) => s.id), 'dist'];
+  let radUnit: RadiusRatioId | 'dist' = 'earth';
+  const radRatioOf = (u: RadiusRatioId | 'dist') => RADIUS_RATIO_STOPS.find((s) => s.id === u) ?? null;
   const cycleMassUnit = () => cycleUnitPref('mass', ubt);
-  const cycleRadUnit = () => { radUnit = radUnit === 'earth' ? 'jupiter' : radUnit === 'jupiter' ? 'dist' : 'earth'; };
+  const cycleRadUnit = () => { radUnit = RAD_CYCLE[(RAD_CYCLE.indexOf(radUnit) + 1) % RAD_CYCLE.length]; };
   $: distRadUnit = resolveUnitPref($unitPrefs, 'radius', ubt); // 'km' | 'mi'
-  $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : massUnit === 'sol' ? 'M☉' : 't';
-  $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : unitIdLabel(distRadUnit);
+  $: radRatio = radRatioOf(radUnit);
+  $: massUnitSym = unitIdLabel(massStop);
+  $: radUnitSym = radRatio ? radRatio.symbol : unitIdLabel(distRadUnit);
   // Tooltip: what the CURRENT unit means, then a "click to change" line below it.
-  $: massUnitName = massUnit === 'earth' ? 'Earth masses' : massUnit === 'jupiter' ? 'Jupiter masses' : massUnit === 'sol' ? 'solar masses' : 'tonnes';
-  $: radUnitName = radUnit === 'earth' ? 'Earth radii' : radUnit === 'jupiter' ? 'Jupiter radii' : (distRadUnit === 'mi' ? 'miles' : 'kilometres');
+  $: massUnitName = unitIdName(massStop);
+  $: radUnitName = radRatio ? radRatio.name : unitIdName(distRadUnit);
   $: massUnitTitle = `${massUnitName} (${massUnitSym})\nClick to change units`;
   $: radUnitTitle = `${radUnitName} (${radUnitSym})\nClick to change units`;
-  $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : massUnit === 'sol' ? pMassMe / M_SOL_ME : (body.massKg ?? 0) / 1000;
-  $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : unitFromSI(distRadUnit, body.radiusKm ?? 0);
-  const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : massUnit === 'sol' ? v * M_SOL_ME : (v * 1000) / EARTH_MASS_KG;
-  const radReFromDisp = (v: number) => radUnit === 'earth' ? v : radUnit === 'jupiter' ? v * R_JUP_RE : unitToSI(distRadUnit, v) / EARTH_RADIUS_KM;
+  $: massDisp = unitFromSI(massStop, body.massKg ?? 0);
+  $: radDisp = radRatio ? pRadiusRe / radRatio.re : unitFromSI(distRadUnit, body.radiusKm ?? 0);
+  const massMeFromDisp = (v: number) => unitToSI(massStop, v) / EARTH_MASS_KG;
+  const radReFromDisp = (v: number) => { const r = radRatioOf(radUnit); return r ? v * r.re : unitToSI(distRadUnit, v) / EARTH_RADIUS_KM; };
 
   // Read the live state straight from the body (NOT the reactive pMassMe/pMakeup vars, which are
   // stale within a synchronous edit batch — so consecutive edits chain off fresh values).
@@ -301,10 +312,28 @@
 
   const onMassSlider = (e: Event)  => { const p = +(e.target as HTMLInputElement).value; applyMass(logVal(p, massSpan[0], massSpan[1])); checkEdge(p, 'mass'); };
   const onRadSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyRadius(logVal(p, radSpan[0], radSpan[1])); checkEdge(p, 'radius'); };
-  const onDenSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyDensity(logVal(p, denSpan[0], denSpan[1])); checkEdge(p, 'density'); };
+  const onDenSlider = (e: Event)   => {
+      const p = +(e.target as HTMLInputElement).value;
+      applyDensity(logVal(p, denSpan[0], denSpan[1]));
+      checkEdge(p, 'density');
+      if (p >= 0.995) edgeHint = densityCeilingHint(denSpan[1]) ?? edgeHint;
+  };
   const onMassNum = (e: Event)     => { applyMass(massMeFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('mass_Me'); };
   const onRadNum = (e: Event)      => { applyRadius(radReFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('radius_Re'); };
-  const onDenNum = (e: Event)      => { applyDensity(parseFloat((e.target as HTMLInputElement).value)); reselectAfterTyped('density'); };
+  const onDenNum = (e: Event)      => {
+      const el = e.target as HTMLInputElement;
+      const asked = parseFloat(el.value);
+      const cap = densityCeiling(pState(), lock);   // before the edit: it is this state's ceiling the value meets
+      applyDensity(asked);
+      reselectAfterTyped('density');
+      if (!Number.isFinite(asked)) return;
+      // THE BOX SHOWS WHAT THE BODY HAS. A value typed past the ceiling is limited to it, and when
+      // the body was already sitting there nothing changes, so Svelte leaves the typed text in the
+      // field: the box would read 500 over a body of 72. Write the real figure back, and say why.
+      const s = pState();
+      el.value = String(r4(densityGcc(s.massMe, s.radiusRe)));
+      if (asked > cap) edgeHint = densityCeilingHint(cap) ?? edgeHint;
+  };
   const onMkSlider = (k: keyof Makeup, e: Event) => applyMakeupComp(k, +(e.target as HTMLInputElement).value);
   const onMkNum = (k: keyof Makeup, e: Event)    => applyMakeupComp(k, parseFloat((e.target as HTMLInputElement).value) || 0);
 
@@ -335,6 +364,11 @@
       if (r <= 0 || l >= 1 || r <= l) return null;
       return { left: l * 100, width: Math.max(0.8, (r - l) * 100) };
   }
+  // B18: above ~1.9 Jupiter masses the density no longer says what a body is made of (a brown dwarf
+  // is denser than iron and still hydrogen), so a density edit there moves the size and holds the
+  // makeup. Both lines below only EXPLAIN that - nothing is refused and nothing is corrected.
+  $: pMassDecides = isPlanetMoon && isFluidByMass(pMassMe);
+  $: pOverdense = isPlanetMoon && denserThanFluid(pMassMe, pRadiusRe, pMakeup);
   // Only DENSITY carries the trim band now — see the radius slider's markup.
   $: denTrimBand = pEnv ? clipBand(pEnv.denLo, pEnv.denHi, denSpan) : null;
 
@@ -421,7 +455,8 @@
   $: isUnknown = body.classes?.[0] === UNKNOWN_CLASS;
   // Per-slider full-range toggles (Alex): each of mass/radius can independently expand from the
   // pinned type's zoomed band to its full span (<-> to open, >-< to collapse). Density is ALWAYS
-  // full range — its span (0.1–30 g/cc) is small enough that zooming buys nothing.
+  // full range — its span (0.1 g/cc to the ceiling for this mass, 30 for most worlds) is small
+  // enough that zooming buys nothing.
   let massFull = false;
   let radFull = false;
   // Only offer the expand/collapse toggle (and the funnel) when the current type actually has a
@@ -433,7 +468,7 @@
   $: radZoom = radHasRange && !radFull;
   $: massSpan = massZoom ? sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax) : [pMassMin, pMassMax];
   $: radSpan = radZoom ? sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax) : [pRadMin, pRadMax];
-  $: denSpan = [pDenMin, pDenMax];
+  $: denSpan = [pDenMin, densityCeiling({ massMe: pMassMe, radiusRe: pRadiusRe }, lock)];
 
   // Overview strip under a zoomed mass/radius slider: the FULL log scale with the current window
   // shaded, so you always see where the zoomed slider sits in the whole range.
@@ -471,6 +506,14 @@
 
   // Edge hint: released at a span end → nudge toward the type list (never auto-switch).
   let edgeHint: string | null = null;
+  // The TOP of the density control is not a type's edge, it is the editor's ceiling for this mass, so
+  // it gets its own sentence: what the figure is, why it is there, and the way past it. Said only
+  // where the mass is what sets it; with the radius locked the density is the mass, and the limit
+  // met there is the mass limit.
+  function densityCeilingHint(cap: number): string | null {
+      if (lock === 'radius') return null;
+      return `Density stops at ${fmtEnd(cap)} g/cc for a body of this mass - at least twice as dense as one gets on its own. To go further, pin Bulk density on the Overrides tab, which has no ceiling.`;
+  }
   function checkEdge(pos: number, axis: string) {
       edgeHint = (!isUnknown && bandFp && (pos >= 0.995 || pos <= 0.005))
           ? `End of ${liveType}'s ${axis} range — pick another type below, or type a value`
@@ -494,85 +537,9 @@
       pinType((e.target as HTMLSelectElement).value); // an explicit pick is end-state
   }
 
-  function handleUpdate() { dispatch('update'); }
-
-  // A44 / B10. `spin/axis-inferred` and `spin/period-inferred` say "this number was invented, not
-  // measured" — a promise to the reader that an inferred value is distinguishable from a real one.
-  // The moment the GM types a real one in, that claim stops being true, and a tag asserting it is
-  // simply wrong. Nothing re-derives these (they are `authored`), so nothing would ever clear them:
-  // retiring the claim is the edit's job.
-  function clearSpinProvenance(which: 'axis' | 'period') {
-    const key = which === 'axis' ? 'spin/axis-inferred' : 'spin/period-inferred';
-    if (!body.tags?.some((t) => t.key === key)) return;
-    body.tags = body.tags.filter((t) => t.key !== key);
-    body = body;
-  }
-  function onTiltInput() { clearSpinProvenance('axis'); handleUpdate(); }
-
-  // Rotational deformation (E4): the bulk density sets a hard BREAK-UP spin — spin any faster and the
-  // equator sheds mass into a ring. Derived live from density + the day length, so it tracks composition
-  // edits too. We surface the shape and hard-clamp the day length at the break-up period.
-  $: rotDensity = isPlanetMoon ? pDensity : densityValue;
-  $: breakupHours = breakupPeriodHours(rotDensity || 0);
-  $: rotDeform = rotationalDeform(body.rotation_period_hours ?? 0, rotDensity || 0);
-  const SHAPE_LABEL: Record<RotationalShape, string> = {
-    spherical: 'Spherical', oblate: 'Oblate (flattened)', ellipsoid: 'Ellipsoid',
-    'near-breakup': 'Near break-up', unstable: 'Would fly apart → ring'
-  };
-
-  // Day-length slider: one LOG-scaled control from the break-up limit (fast, left) to very slow (right),
-  // its track coloured by the shape zone. Spin DIRECTION is a separate retrograde flag (the stored period's
-  // sign), and the synchronous (tidally-locked) period sits on the track as a snap notch — no checkbox.
-  const SNAP_FRAC = 0.03;           // how close (in slider units) to the notch you must be to snap-lock
-  $: rotMagHours = Math.abs(body.rotation_period_hours ?? 0);
-  $: isRetrograde = (body.rotation_period_hours ?? 0) < 0;
-  $: syncPeriodHours = Math.max(0, (body.orbital_period_days ?? 0) * 24); // locked ⇒ day = orbit
-  $: pMin = Math.max(0.01, breakupHours);
-  $: pMax = Math.max(pMin * 4, syncPeriodHours * 1.5, 20000);
-  $: logSpan = Math.log(pMax / pMin) || 1;
-  const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-  $: periodToPos = (p: number) => clamp01(Math.log(Math.min(pMax, Math.max(pMin, p || pMin)) / pMin) / logSpan);
-  $: posToPeriod = (s: number) => pMin * Math.pow(pMax / pMin, clamp01(s));
-  $: rotPos = periodToPos(rotMagHours || pMax); // no spin ⇒ park at the slow end
-  $: syncPos = syncPeriodHours >= pMin ? periodToPos(syncPeriodHours) : -1;
-  // Colour-zone track. Boundaries are spin FRACTIONS (period = breakup / fraction): near-breakup 0.8,
-  // ellipsoid 0.5, oblate 0.25. Fast (small period) = left = red; slow = right = green.
-  $: rotTrack = (() => {
-    const pct = (x: number) => (periodToPos(x) * 100).toFixed(1) + '%';
-    const s08 = pct(pMin / 0.8), s05 = pct(pMin / 0.5), s025 = pct(pMin / 0.25);
-    return `linear-gradient(to right,` +
-      `var(--rot-unstable) 0%, var(--rot-unstable) ${s08},` +
-      `var(--rot-ellipsoid) ${s08}, var(--rot-ellipsoid) ${s05},` +
-      `var(--rot-oblate) ${s05}, var(--rot-oblate) ${s025},` +
-      `var(--rot-spherical) ${s025}, var(--rot-spherical) 100%)`;
-  })();
-
-  function writePeriod(magHours: number, opts: { locked: boolean }) {
-    let mag = Math.abs(magHours) || 0;
-    if (mag > 0 && mag < breakupHours) mag = +breakupHours.toFixed(2); // hard break-up floor
-    body.rotation_period_hours = +(isRetrograde ? -mag : mag).toFixed(2);
-    body.tidallyLocked = opts.locked;
-    (body as any).tidalLockManual = true; // any hand-set rate/lock is a manual pin
-    clearSpinProvenance('period');          // a typed period is no longer an inferred one (A44)
-    body = body;
-    dispatch('update');
-  }
-  function onRotSlider(e: Event) {
-    const s = parseFloat((e.currentTarget as HTMLInputElement).value);
-    if (syncPos >= 0 && Math.abs(s - syncPos) <= SNAP_FRAC) { writePeriod(syncPeriodHours, { locked: true }); return; }
-    writePeriod(posToPeriod(s), { locked: false });
-  }
-  function onRotMagInput(e: Event) {
-    writePeriod(parseFloat((e.currentTarget as HTMLInputElement).value) || 0, { locked: false });
-  }
-  function lockTidally() { if (syncPeriodHours >= pMin) writePeriod(syncPeriodHours, { locked: true }); }
-  function toggleRetrograde(e: Event) {
-    const retro = (e.currentTarget as HTMLInputElement).checked;
-    body.rotation_period_hours = (retro ? -1 : 1) * Math.abs(body.rotation_period_hours ?? 0);
-    body = body;
-    dispatch('update');
-  }
-  function resetTidalLockAuto() { delete (body as any).tidalLockManual; dispatch('update'); }
+  // A105: the SPIN controls (Day Length, Retrograde spin, Lobes, Axial Tilt) moved to the Orbit tab,
+  // with their script and styles - `BodySpinEditor.svelte`, mounted by `BodyOrbitTab`. This tab keeps
+  // mass, radius, density, composition and Type / Image.
   function toggleAutoClassify(e: Event) { body.autoClassify = (e.currentTarget as HTMLInputElement).checked; dispatch('update'); }
 
   // F2 — custom body image. Upload a picture that replaces the derived type image; the processor leaves
@@ -703,7 +670,7 @@
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} on:change={finalizeEdit} disabled={lock === 'density'} />
             <div class="sc-ends"><span>{fmtEnd(denSpan[0])}</span><span>{fmtEnd(denSpan[1])} g/cc</span></div>
         </div>
-        <div class="sub-label">{lock === 'density' ? 'composition held' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}{#if pPorosity > 0.02}<span class="sc-porosity" title="Void fraction this size implies for the mix (ceiling {Math.round(pPorosityMax * 100)}% at this mass — self-gravity crushes the rest). High porosity at low mass reads as a rubble pile."> · porosity ~{Math.round(pPorosity * 100)}%</span>{/if}</div>
+        <div class="sub-label">{lock === 'density' ? 'composition held' : pMassDecides && lock !== null ? 'the makeup holds: this massive, density says nothing about what it is made of' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}{#if pPorosity > 0.02}<span class="sc-porosity" title="Void fraction this size implies for the mix (ceiling {Math.round(pPorosityMax * 100)}% at this mass — self-gravity crushes the rest). High porosity at low mass reads as a rubble pile."> · porosity ~{Math.round(pPorosity * 100)}%</span>{/if}</div>
     </div>
 
     <!-- Composition breakdown: the interior mix at a glance, segmented by mass fraction. -->
@@ -719,6 +686,9 @@
 
     {#if edgeHint}
         <div class="sc-edge-chip" role="status">{edgeHint}</div>
+    {/if}
+    {#if pOverdense && pEnv}
+        <div class="sc-edge-chip" role="status">Denser than hydrogen packs on its own at this mass (about {fmtEnd(pEnv.denLo)}–{fmtEnd(pEnv.denHi)} g/cc). Kept as a giant: nothing this massive is solid, so the density only makes it smaller.</div>
     {/if}
     {#if pendingFlowThrough}
         <div class="sc-morph-chip" role="status">Outside this mix's envelope — recomposing; the type re-reads on release</div>
@@ -858,54 +828,6 @@
 
     <hr/>
 
-    <div class="rot-editor">
-        <div class="rot-head">
-            <label for="rotation">Day Length</label>
-            <div class="rot-num">
-                <input type="number" id="rotation" step="0.1" min={breakupHours.toFixed(2)}
-                       value={rotMagHours ? +rotMagHours.toFixed(2) : ''} on:input={onRotMagInput} />
-                <span class="unit">h</span>
-            </div>
-        </div>
-        {#if (rotDensity || 0) > 0}
-            <div class="rot-slider-wrap">
-                <input class="rot-slider" type="range" min="0" max="1" step="0.001"
-                       value={rotPos} on:input={onRotSlider} style="--rot-track: {rotTrack};"
-                       aria-label="Day length — log scale from the break-up limit (fast) to slow" />
-                {#if syncPos >= 0}
-                    <button type="button" class="rot-lock-notch" class:on={body.tidallyLocked}
-                            style="left: {(syncPos * 100).toFixed(1)}%;" on:click={lockTidally}
-                            title="Tidally locked — the day equals the orbit. Click, or drag the slider onto this notch, to lock.">🔒</button>
-                {/if}
-            </div>
-            <div class="rot-scale"><span>fast · break-up</span><span>slow</span></div>
-            <span class="sub-label shape-note shape-{rotDeform.shape}" title="Faster spin (shorter day) flattens the body; below the break-up period the equator sheds mass and it would become a ring. The limit is set by the bulk density (composition).">
-                {SHAPE_LABEL[rotDeform.shape]}{#if body.tidallyLocked} · tidally locked{/if} · break-up {breakupHours < 1 ? breakupHours.toFixed(2) : breakupHours.toFixed(1)} h{#if rotDeform.shape !== 'spherical'} · f {rotDeform.oblateness.toFixed(2)}{/if}
-            </span>
-        {/if}
-        <div class="rot-flags">
-            <label class="inline-check" title="Spin direction. Retrograde bodies (like Venus) turn opposite their orbit; stored as a negative day length.">
-                <input type="checkbox" checked={isRetrograde} on:change={toggleRetrograde} />
-                Retrograde (spins backwards)
-            </label>
-            {#if (body as any).tidalLockManual}
-                <button type="button" class="link-btn" on:click={resetTidalLockAuto}>Reset spin to auto</button>
-            {/if}
-        </div>
-    </div>
-
-    <div class="form-group">
-        <label for="tilt">Axial Tilt: {(body.axial_tilt_deg ?? 0).toFixed(0)}°</label>
-        <div class="tilt-row">
-            <input class="tilt-slider" type="range" id="tilt" min="0" max="180" step="1"
-                   bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
-            <input class="tilt-num" type="number" step="0.1" min="0" max="180"
-                   bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
-        </div>
-    </div>
-
-    <hr/>
-
     <div class="form-group">
         <label>Type / Image</label>
         <select value={body.classes?.[0] || 'planet/terrestrial'} on:change={updateVisualType}>
@@ -956,47 +878,7 @@
       color: var(--text-muted); cursor: default; font-family: monospace;
   }
   .sub-label { font-size: 0.75em; color: var(--text-faint); }
-  .shape-note { font-variant-numeric: tabular-nums; }
 
-  /* --- Day-length slider (E4 shape-aware) --- */
-  .rot-editor {
-    --rot-unstable: #c0392b; --rot-ellipsoid: #e07b39; --rot-oblate: #d6b53c; --rot-spherical: #3c9a5f;
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .rot-head { display: flex; align-items: center; justify-content: space-between; }
-  .rot-head label { margin: 0; color: var(--text-muted); font-size: 0.9em; }
-  .rot-num { display: flex; align-items: center; gap: 4px; }
-  .rot-num input { width: 90px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
-  .rot-num .unit { color: var(--text-faint); font-size: 0.85em; }
-  .rot-slider-wrap { position: relative; padding: 2px 0; }
-  .rot-slider { width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
-  .rot-slider::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: var(--rot-track); border: 1px solid rgba(0,0,0,0.25); }
-  .rot-slider::-moz-range-track { height: 10px; border-radius: 5px; background: var(--rot-track); border: 1px solid rgba(0,0,0,0.25); }
-  .rot-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -4px; border-radius: 50%; background: #fff; border: 2px solid #222; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
-  .rot-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #222; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
-  .rot-lock-notch {
-    position: absolute; top: -3px; transform: translateX(-50%); z-index: 2;
-    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px;
-    padding: 0 2px; font-size: 0.8em; line-height: 1.4; cursor: pointer; opacity: 0.7;
-  }
-  .rot-lock-notch:hover { opacity: 1; }
-  .rot-lock-notch.on { opacity: 1; border-color: var(--accent, #ff5a1f); box-shadow: 0 0 0 1px var(--accent, #ff5a1f); }
-  .rot-scale { display: flex; justify-content: space-between; font-size: 0.7em; color: var(--text-faint); }
-  .rot-flags { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .inline-check { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); font-size: 0.85em; }
-  .inline-check input { width: auto; }
-  .tilt-row { display: flex; align-items: center; gap: 8px; }
-  .tilt-slider { flex: 1; }
-  .tilt-num { width: 70px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
-  .shape-oblate { color: #6aa0d8; }
-  .shape-ellipsoid { color: #e0a24a; }
-  .shape-near-breakup { color: #e06a4a; font-weight: 600; }
-  .shape-unstable { color: #e0483c; font-weight: 700; }
-  .link-btn {
-      background: none; border: none; padding: 2px 0; margin-top: 2px;
-      color: var(--link, #6aa0d8); font-size: 0.75em; cursor: pointer; text-align: left;
-  }
-  .link-btn:hover { text-decoration: underline; }
   .row-spaced { display: flex; justify-content: space-between; }
   .category-badge { color: #4da6ff; font-weight: bold; }
 
@@ -1122,7 +1004,4 @@
   .sc-derived-val { min-width: 90px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
   .sc-derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
   .sc-ovr-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
-  .link-btn { background: none; border: none; padding: 0; color: var(--link, #6aa0d8); font-size: 0.9em; cursor: pointer; }
-  .link-btn.inline { margin-left: 4px; }
-  .link-btn:hover { text-decoration: underline; }
 </style>

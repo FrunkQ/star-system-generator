@@ -70,3 +70,18 @@ export function fillOutAll(
   for (const entry of entries) report[entry.id] = fillOutSystem(entry.system, rulePack, opts);
   return report;
 }
+
+// THE ONE PLACE AN IMPORT EVENT BECOMES A FILL-OUT. The dialogue dispatches `fillOut` and the dials
+// it showed (`infillKnobs`); two doors receive that event - a NEW starmap (routes/+page.svelte) and
+// an APPEND onto an open one (Starmap.svelte) - and each used to spell the call out for itself. They
+// drifted: the append door passed the dials (G33), the new-map door did not, so the sliders a GM
+// set while building a map from the sky did nothing at all and every system was filled at defaults.
+// Both doors call this now, so there is no second copy to forget.
+export function fillOutImported(
+  detail: { fillOut?: boolean; infillKnobs?: GenerationKnobs },
+  systems: { id: string; system: System }[],
+  rulePack: RulePack
+): Record<string, FillOutResult> | null {
+  if (!detail.fillOut) return null;
+  return fillOutAll(systems.map((s) => ({ id: s.id, system: s.system })), rulePack, { knobs: detail.infillKnobs });
+}

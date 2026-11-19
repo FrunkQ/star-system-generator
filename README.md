@@ -17,6 +17,7 @@ the ideas still hold and almost every screen in it has changed since. Read
 ## Table of Contents
 
 * [What is it for?](#what-is-it-for)
+* [What's new in V3.2](#whats-new-in-v32)
 * [What's new in V3.1](#whats-new-in-v31)
 * [What's new in V3](#whats-new-in-v3)
 * [Features](#features)
@@ -48,6 +49,31 @@ subsector import fetches from travellermap.com (both carry what you typed, not y
 the hosted site records one anonymous visit event per browser per day through Vercel Web Analytics,
 keeping a single timestamp in your browser under `sse-analytics-last-sent` so it does not count you
 more often than that. Player views connect peer-to-peer between your device and your players'.
+
+## What's new in V3.2
+
+Everything you already do still works and your saved starmaps still load. V3.2 is two months of bug
+reports answered, plus the features that were half-built when 3.1 went out.
+
+- **Your custom creations stay put.** Custom gases, liquids, mixes, fuels, drives, sensors and
+  biospheres no longer vanish, and a saved system or an exported construct carries the custom things
+  it is built from.
+- **Reloads that do not lose your work.** A reload brings back your last edit and puts you back in
+  the system you were in; Cancel on the update prompt cancels.
+- **Every body has an age of its own.** Planets, moons and brown dwarfs get an Age control; a brown
+  dwarf's temperature follows its age; a system's age can be changed after it is made.
+- **More megastructures, and they tilt.** A soletta, a Birch planet, and the Shkadov and Caplan
+  stellar engines; rings, swarms, shells and stations can be inclined.
+- **Small bodies.** Contact binaries, rubble piles and lobed bodies.
+- **Worlds that read right.** Warm ice giants, dense giants and brown dwarfs that stay giants, no
+  more 90-degree tilts on new worlds, a magnetosphere override that counts towards habitability.
+- **Player views.** "Observed from a distance only" hides what a ship could not measure from afar.
+- **Editor, clock and calendars.** Spin controls on the Orbit tab, orbital elements always shown,
+  an exact time step, and custom calendars that no longer lock up the app.
+- **Tags and the real sky.** Safer tag-category import, clearable leftover rule tags, and a sky
+  importer that no longer reads an upper-limit mass as the mass.
+
+The full list is in [changelog.md](changelog.md).
 
 ## What's new in V3.1
 

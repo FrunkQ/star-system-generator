@@ -19,6 +19,7 @@
   import { loadBodyImage, type LoadedBodyImage } from '$lib/catalogue/document/bodyImage';
   import { starsOf, isRinged, isBary, dominantOf } from '$lib/catalogue/document/systemTopology';
   import { buildPortraitSystem } from '$lib/catalogue/document/portraitSystem';
+  import { discloseBody, discloseSystem, graphicModeFor, type BodyDisclosure } from '$lib/catalogue/bodyDisclosure';
   import BodyGraphic from './BodyGraphic.svelte';
   import ConstructModelGraphic from './ConstructModelGraphic.svelte';
 
@@ -55,6 +56,8 @@
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
   // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
   export let liveReadings = false;
+  // How much of a natural body this panel may print (bodyDisclosure.ts). Preset-driven.
+  export let disclosure: BodyDisclosure = 'full';
 
   let wrap: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -71,6 +74,10 @@
     if (!n) return null;
     return isBary(n) ? (dominantOf(system!, n) as any) : n;
   })();
+  // THE VEIL: the picture is drawn from the same allow-listed copy the document prints from, in the
+  // mode the one shared rule gives - so the globe cannot show what the rows withhold.
+  $: shownBody = discloseBody(subjectBody, disclosure);
+  $: gfxImagery = graphicModeFor(imagery, shownBody !== subjectBody);
   $: subjectRinged = subjectBody && system ? isRinged(system, subjectBody.id) : false;
   $: starHex = system ? ((starsOf(system)[0] as any)?.apparentColorHex ?? null) : null;
   $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
@@ -79,7 +86,7 @@
 
   // A46: the ONE portrait-system builder - see catalogue/document/portraitSystem.ts for why the
   // synthetic root exists. FilteredDocumentView consumes the same builder, so the two cannot drift.
-  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? buildPortraitSystem(subjectBody, system) : null;
+  $: bodyGfxSystem = (shownBody && gfxImagery === 'sphere') ? buildPortraitSystem(shownBody, system) : null;
 
   // Body photo via the shared loader (same-origin rule + auto-centre focus in one place).
   let loaded: LoadedBodyImage | null = null;
@@ -88,17 +95,19 @@
   // switching Body graphics to 'photo' with the same body already selected never fired the loader --
   // the non-photo branch had stamped imgForId with that id -- so nothing appeared until you left the
   // tab and came back, which remounts the panel and clears it. The key IS the subject-when-in-photo.
-  $: photoKey = imagery === 'photo' && selectedId ? selectedId : null;
+  // ...and the DISCLOSURE level rides the key too: which picture a body may show changes with it, so
+  // a preset edited live must reload rather than keep the picture the old level allowed.
+  $: photoKey = imagery === 'photo' && selectedId ? `${disclosure}:${selectedId}` : null;
   $: if (photoKey !== imgForId) {
     imgForId = photoKey;
     loaded = null;
-    if (photoKey) loadBodyImage(system, photoKey, (l) => { if (imgForId === photoKey) { loaded = l; render(); } });
+    if (photoKey) loadBodyImage(discloseSystem(system, disclosure), selectedId!, (l) => { if (imgForId === photoKey) { loaded = l; render(); } });
   }
 
   function render() {
     if (!canvas || w <= 0 || !system) return;
     const blocks = buildGuideDocument(system, selectedId, {
-      panel: true, noHeading: !showHeading, prefs, imagery, tagStyle, photoFrame, rulePack, liveReadings,
+      panel: true, noHeading: !showHeading, prefs, imagery, tagStyle, photoFrame, rulePack, liveReadings, disclosure,
       highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
       nowMs: nowMs ?? undefined, formatDate,
       image: loaded?.img ?? null, imageAspect: loaded?.aspect, imageFocus: loaded?.focus ?? null
@@ -133,22 +142,22 @@
   onDestroy(() => ro?.disconnect());
 
   // Redraw on any data/appearance change.
-  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; prefs; loaded; nowMs; render(); }
+  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; prefs; loaded; nowMs; disclosure; render(); }
 </script>
 
 <div class="doc-panel" bind:this={wrap} style="height:{contentH}px">
   <canvas bind:this={canvas} style="width:{w}px; height:{contentH}px"></canvas>
   {#if gfxOn && gfxRect && subjectBody}
-    <div class="dp-gfx" class:interactive={interactive && (imagery === 'sphere' || !!subjectModel)}
+    <div class="dp-gfx" class:interactive={interactive && (gfxImagery === 'sphere' || !!subjectModel)}
          style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
       {#if subjectModel}
         <ConstructModelGraphic model={subjectModel} tint={(subjectBody as any).icon_color || '#ffd24d'}
           iconType={(subjectBody as any).icon_type} seed={subjectBody.id} {mono} {interactive} />
       {:else}
-        <BodyGraphic body={subjectBody} system={bodyGfxSystem}
-          mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
+        <BodyGraphic body={shownBody} system={bodyGfxSystem}
+          mode={gfxImagery === 'sphere' ? 'sphere' : gfxImagery === 'flat' ? 'flat' : 'disc'}
           ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle}
-          bg={resolveDocColors(theme).bg} {starHex} interactive={interactive && imagery === 'sphere'} />
+          bg={resolveDocColors(theme).bg} {starHex} interactive={interactive && gfxImagery === 'sphere'} />
       {/if}
     </div>
   {/if}

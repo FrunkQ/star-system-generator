@@ -8,23 +8,47 @@
 //
 // Callers must keep the literal specifier inside the callback — `importOrReload(() =>
 // import('$lib/x'))` — so Vite's static analysis still sees it and the chunk still splits.
+//
+// B-1: THE RELOAD WAITS FOR THE AUTOSAVE (`settleBeforeReload`), because this is a reload the GM
+// did not ask for and must not cost them their last edit. And it happens ONLY when the guard could
+// be written down: with sessionStorage unavailable there is no way to know a reload was already
+// tried, so "one best-effort reload" was really a reload on every failure - an endless refresh for
+// as long as the module kept failing to load. No guard, no reload: the caller's error path runs.
+import { settleBeforeReload } from './beforeReload';
+
 const GUARD_KEY = 'sse-skew-reload-at';
 const GUARD_WINDOW_MS = 60_000;
 
-export async function importOrReload<T>(load: () => Promise<T>): Promise<T> {
+/** The browser pieces this touches. Defaulted; named so the gate can stand in for them. */
+export interface ReloadEnv {
+  session: () => Pick<Storage, 'getItem' | 'setItem'>;
+  reload: (() => void) | null;
+}
+const BROWSER: ReloadEnv = {
+  session: () => sessionStorage,
+  reload: typeof location === 'undefined' ? null : () => location.reload()
+};
+
+export async function importOrReload<T>(load: () => Promise<T>, env: ReloadEnv = BROWSER): Promise<T> {
   try {
     return await load();
   } catch (err) {
-    let recentlyTried = false;
+    let mayReload = false;
     try {
-      recentlyTried = Date.now() - Number(sessionStorage.getItem(GUARD_KEY) || 0) < GUARD_WINDOW_MS;
-      if (!recentlyTried) sessionStorage.setItem(GUARD_KEY, String(Date.now()));
+      const session = env.session();
+      const recentlyTried = Date.now() - Number(session.getItem(GUARD_KEY) || 0) < GUARD_WINDOW_MS;
+      if (!recentlyTried) {
+        session.setItem(GUARD_KEY, String(Date.now()));
+        // Read it back: some private modes accept the write and keep nothing.
+        mayReload = session.getItem(GUARD_KEY) !== null;
+      }
     } catch {
-      /* storage unavailable (private mode) — fall through to a single best-effort reload */
+      /* storage unavailable (private mode): the guard cannot be kept, so there is no reload */
     }
-    if (recentlyTried || typeof location === 'undefined') throw err;
+    if (!mayReload || !env.reload) throw err;
     console.warn('A module failed to load — likely a new version was deployed. Reloading to pick it up.', err);
-    location.reload();
+    await settleBeforeReload();
+    env.reload();
     // The reload takes it from here; never resolve, so the caller cannot run half-initialised.
     return new Promise<never>(() => {});
   }

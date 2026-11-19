@@ -27,6 +27,7 @@ const PHRASE: Record<string, string> = {
   scheduled_journeys: 'flight plan',
   flight_log: 'flight log',
   radiationOutput: 'luminosity',
+  formationTimeGyr: 'age',
   ui_parentId: 'host',
   parentId: 'host',
   isNameUserDefined: 'name',

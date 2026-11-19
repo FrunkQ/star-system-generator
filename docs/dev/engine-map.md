@@ -220,6 +220,11 @@ WHERE: `src/lib/tags/tagLifecycle.ts`
 RULE: `stripForReprocess` / `stripRuleTags` are the ONLY ways engine code removes a tag by
 provenance or namespace. Removing by exact key in response to a user action is not covered and is
 allowed (`tagCategories.ts` edit ops, `coi.ts` toggle).
+AMENDED (2026-11-13, the 3.1.1 tag reports): `stripRuleTags` takes a THIRD argument, the ids of
+the rules the caller holds, and clears a rule-seeded tag that names one of them whatever namespace
+its key sits in (TAG-26). `reasonsToVisit.removeStrandedRuleTags` also removes by provenance, but only on a GM's
+explicit act, and it is DEFINED THROUGH `stripRuleTags` (whatever a rule seeded that the strip
+leaves standing) rather than beside it - so it is the user-action class above, not a second owner.
 WHY: the rule used to be restated at 34 call sites and 25 of them deleted hand-added tags, so a GM
 override could not exist. `importFixup` also deleted one on save.
 BLAST: adding a strip anywhere → route it here. Grep `tags.filter` before assuming a site is new.
@@ -281,7 +286,7 @@ WHY: they were shown under a red "derived from the physics, recomputed every run
 false in every clause (A44). `spin/axis-inferred` is a promise that an inferred value is
 distinguishable from a measured one (B10, C3c).
 BLAST: an edit that makes an inferred value real must RETIRE the claim — typing an obliquity clears
-`spin/axis-inferred` (`BodyBasicsTab.clearSpinProvenance`). Same applies to any future `*-inferred`.
+`spin/axis-inferred` (`BodySpinEditor.clearSpinProvenance`). Same applies to any future `*-inferred`.
 
 ### TAG-6 A namespace is cleared by the pass that owns it, ONCE
 BUCKET: ARCHITECTURE - one clear per namespace, at the top of the owning pass, never per branch.
@@ -324,14 +329,25 @@ AFTER the legacy strip or you launder every V1 tag into a valid-looking user tag
 ### TAG-8 Rule evaluation order is load-bearing
 BUCKET: ARCHITECTURE - an authored rule list whose evaluation advances a seeded stream has an ORDER
 that is output, not presentation. Named by the carry-forward criterion.
-WHERE: `TagRule.seq`, consumed in `reasonsToVisit.poiPacks`
+WHERE: `TagRule.seq`, consumed in `reasonsToVisit.poiPacks`; assigned to an arriving rule by
+`tagCategories.seatArrivingRules` (called from `upsertCategory` and `addImportedCategory`)
 RULE: each body rolls a seeded random number PER RULE and the sequence advances every time. Changing
 the ORDER rules run in changes which tags every world gets. `seq` preserves the authored order across
 storage changes.
+AMENDED (2026-11-13, the 3.1.1 tag reports): A RULE ARRIVING IN THE STORE IS SEATED LAST. A rule
+new to its category takes `max(seq) + 1`; a rule already there keeps the place it has, INCLUDING one saved by an older
+build with no `seq` at all, which is never re-seated (that would be the same reshuffle, once, on a
+campaign nobody touched). A FILE'S `seq` IS NEVER TRUSTED: it is a position in the store that
+exported it, and an exported copy carries the very numbers its original still holds here.
 WHY: moving rules onto their categories grouped them by category and re-rolled the entire bundled
 starmap. Caught only by the derived baseline moving.
+AND THE EDITOR WAS THE DOOR THAT DID NOT RESPECT IT: "+ rule" made a rule with no `seq`, `poiPacks`
+sorts a missing one as 0, and the new rule landed SECOND of forty-six. Measured on the Sol fixture:
+adding one rule with a 0% chance changed the rule-seeded tags on 29 of 40 bodies.
 BLAST: anything that re-orders, filters, or re-groups the rule list. Diff
-`tests/output/solar-system-derived.json` after.
+`tests/output/solar-system-derived.json` after. A new writer of rules into `tagCategories` goes
+through `upsertCategory` or `addImportedCategory`, or seats its rules itself; `tagCategories.update`
+with a seq-less rule puts it at the front. Gated in `tagCategories.spec.ts` against the live store.
 
 ### TAG-9 Player redaction happens at exactly one point
 BUCKET: ARCHITECTURE - audience redaction happens at exactly ONE point. A second site is how a leak
@@ -655,6 +671,29 @@ BLAST: `ionisingOutputSolar` returns MULTIPLES OF THE QUIET SUN'S ionising outpu
 the first version of the replacement card got that wrong too and printed "1.61e+0 L(sol)" for the
 Sun. State what a figure measures and in what units before you put a suffix on it.
 
+### OVR-8 A YES/NO CONSUMER OF A PINNABLE QUANTITY ASKS THE RESOLVED VALUE, THROUGH ONE PREDICATE
+BUCKET: ARCHITECTURE - a pin is honoured by every consumer or it is not a pin, and the consumer that
+reads the MODEL instead of the resolved value is the one that silently ignores it.
+WHERE: `physics/magnetism.lacksMagnetosphere`; its callers `SystemProcessor` (the long-term
+habitability term and its breakdown line, asked once for both) and `physicsTrace` (the habitability
+layer). Gate: `system/habitability-magnetosphere-override.test.ts`.
+RULE: when a quantity can be pinned, a consumer that needs a yes/no about it asks ONE predicate that
+reads the pin first and the model second. It never tests the model's own fields (`magnetism.source`,
+`magnetism.intrinsic`) directly. The pin decides in BOTH directions: a field pinned above zero is a
+magnetosphere on a world with no dynamo, and a field pinned to zero is the lack of one on a world
+that has a dynamo.
+WHY: using-sharing B-3. `overrides.magneticFieldGauss` moved the committed field, the shielding tag,
+the magnetopause and the dose, while habitability went on deducting 8 points "for lacking a
+magnetosphere", because that term asked `magnetism.source === 'none'` - the interior model the pin
+exists to overrule. Measured: the score was identical with and without a 0.5 G pin. The condition
+was also written twice, once for the score and once for the line that explains it.
+BLAST: with nothing pinned the predicate IS the old expression, so no un-pinned world moves. That
+also means a slow rotator with a suppressed dynamo (source `suppressed`, field 0, tagged
+`magnetic/unshielded`) is still not deducted - a separate question for the habitability overhaul,
+left alone on purpose. `physicsTrace`'s AURORA layer still prints the interior model's word and was
+not checked against the pin. OVR-6 is the other half of this rule: a pin also suppresses the model
+that would reconcile it.
+
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
 BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a pin whose target is AUTHORED input needs a commit
 at edit time, and a pin on a DERIVED field must not have one. Which pin it happens to be is this
@@ -894,7 +933,10 @@ RULE: a regular satellite's elements are quoted in its PARENT'S EQUATOR, and `co
 applies that rotation itself. So the difference of two world positions is already the framed offset —
 a consumer must NOT apply `toParentEquator` to it. `satelliteTiltRad(node, parent)` is the ONLY
 spelling of the gate (star parent → 0; `orbit.frame: 'ecliptic'` → 0, which is the real Laplace
-handover, not a data error). The flat `computeWorldPositions` deliberately does NOT frame: it
+handover, not a data error) - and the decision inside it has a NAME,
+`orbitReferencePlane(node, parent)` (`parent-equator` / `system-declared` / `system`), which is what
+a surface that has to SAY the plane asks: the Orbit tab's hint under Inclination reads it, and
+`BodyOrbitTab.plane.spec.ts` requires the words and `satelliteTiltRad` to agree case by case. The flat `computeWorldPositions` deliberately does NOT frame: it
 propagates ω-only in the reference plane, 2D is the plan view, and there is no out-of-plane axis to
 tilt into.
 WHY: C9. The rotation lived only in `holo/scene.ts`, so the propagator and the renderer answered
@@ -1989,19 +2031,36 @@ BLAST: any new load stage → add a `perfStage` call and a `loadGuardStage` labe
 another invisible place to hang. Anything that reads "the bar was at N%" as a diagnosis.
 
 ### UI-L2 A load guard must clear on a TIMER as well as on a painted frame
-BUCKET: PLATFORM (browser: a hidden or non-compositing tab paints no frames) + ARCHITECTURE - a
-guard needs TWO independent clears, and a timer cannot mask the fault it exists for, because a
-genuinely hung render blocks both paths.
-WHERE: `routes/+page.svelte:handleLoadStarmap` (double-rAF `clearOnce('painted')` + 15s `clearOnce('alive')`)
+BUCKET: PLATFORM (browser: a hidden or non-compositing tab paints no frames; a page can be unloaded,
+frozen or discarded in the middle of a load) + ARCHITECTURE - a guard needs TWO independent clears,
+and a timer cannot mask the fault it exists for, because a genuinely hung render blocks both paths.
+The same argument governs withdrawal: only an event handler may withdraw the stamp, and a hung
+thread runs none.
+WHERE: `lib/loadGuard.ts` (`createLoadGuard`: the stamp, `withdraw`, `reinstate`) +
+`routes/+page.svelte:handleLoadStarmap` (double-rAF `clearOnce('painted')` + 15s `clearOnce('alive')`);
+pinned by `lib/loadGuard.spec.ts` and two cases in `routes/page.spec.ts`.
 RULE: a guard that arms before an auto-load and blocks the next startup if unfinished MUST have two
 independent clears: a painted frame AND a wall-clock timer. Never the paint alone.
+**AMENDED 2026-11 (B2): THE STAMP STANDS ONLY WHILE THE PAGE IS WATCHED.** It is withdrawn on
+`pagehide`, on `visibilitychange` to hidden and on component teardown, and reinstated on `pageshow`
+or on becoming visible if the load is still running. Never withdraw it from anything but an event
+handler.
 WHY: a hidden or non-compositing tab paints NO frames, so a load that completed perfectly in a
 background tab left the guard armed and the safe-mode screen appeared on the next visit — the guard
 locking out the app it exists to protect. Found live within minutes of building it. A timer can only
 fire if the main thread is alive, so it cannot mask the real fault: a genuinely hung render blocks
 both paths, which is exactly the case the guard is for.
+B2: the two clears only ever fire on a load that FINISHED, so the stamp could not tell a load that
+hung from one whose page went away - a reload part way through (including the update prompt's forced
+reload, UI-L9, which landed inside the physics pass after every push), a closed tab, a phone
+discarding a backgrounded tab. Each brought up safe mode on a healthy map, and "Try loading again"
+always worked. A handler that ran proves the main thread was alive, so a real hang or an
+out-of-memory kill still leaves its stamp.
 BLAST: any other "did this finish?" flag keyed on rendering. Note the symmetric trap in UI-L3 — a
 hidden tab also changes TIMING, not just painting.
+A hang that begins AFTER the tab was hidden is caught one visit late. Do not fix that by stamping
+while hidden: it brings back the mobile false trips. `destroy()` withdraws AND makes the guard inert,
+because the tail of a load still running in a dead component must not remove a newer page's stamp.
 
 ### UI-L3 A per-item yield in a loop costs 1s per item in a hidden tab
 BUCKET: PLATFORM (browser: setTimeout clamped to ~1 Hz in a background tab) - a per-item repaint
@@ -2048,6 +2107,63 @@ class change that animates. **NEVER `await requestAnimationFrame` in a hidden pa
 resolves and the tool call times out at 45 s; use `setTimeout`. Screenshots still need the pane
 DISPLAYED; this only makes DOM geometry trustworthy while it is not.
 
+### UI-L9 A CONTROLLER CHANGE IS NOT CONSENT
+BUCKET: PLATFORM (service workers: `skipWaiting()` plus `clients.claim()` fires `controllerchange`
+on every open page, and on a first visit) + ARCHITECTURE (product contract) - DATA-R23 again: a
+control that ends a conversation must record something.
+WHERE: `lib/util/swUpdate.ts` (`wireServiceWorkerUpdates`), the install handler in `static/sw.js`,
+`lib/util/beforeReload.ts` (`settleBeforeReload`); pinned by `lib/util/swUpdate.spec.ts`, which
+executes the shipped `sw.js`, and `lib/util/beforeReload.spec.ts`.
+RULE: the page reloads itself only for a yes given to the update prompt ON THAT PAGE. The worker
+never calls `skipWaiting()` of its own accord; it waits for the `SKIP_WAITING` message. A no is
+remembered for the tab, a page under 60 s old is not asked, and an "update" found within 60 s of an
+accepted one is not offered. Every app-initiated reload first awaits `settleBeforeReload`.
+WHY: B3 and B2. The worker skipped its wait at install and the layout reloaded on every
+`controllerchange`, so Cancel reloaded the page exactly as OK did, nothing recorded the answer, and
+a first-time visitor was reloaded when the first worker claimed the page. `npm run manifest`
+restamps `sw.js` on every version, so every beta push did this to every open tab - mid-edit, and
+mid-load, which tripped the load guard (UI-L2).
+BLAST: restoring `skipWaiting()` at install, or an unconditional reload on `controllerchange`,
+brings all of it back. A declined or unasked worker stays waiting until every tab has closed; that
+is intended, because the worker is a network-first cache and not the app. `importOrReload` (A68) is
+the other app-initiated reload: it takes the same wait, and does not reload at all when its
+sessionStorage guard cannot be stored. The comment at
+`scripts/shipped-manifest/build-shipped-manifest.mjs:157` ("prompt fires on every release") is now
+true only of tabs that were already open.
+
+### UI-L10 AN AUTOMATIC RE-OPEN IS A ONE-SHOT: DISARM BEFORE THE ATTEMPT, RE-ARM ONLY ONCE IT HAS STAYED UP
+BUCKET: ARCHITECTURE (product contract) - anything start-up does BY ITSELF with what the last visit
+left behind can turn one crash into a crash loop, and removes the reload as the way out. UI-L2 is
+the same law for the campaign load; this is it for the VIEW. + PLATFORM (SvelteKit: `page.state` is
+empty on every reload by design; sessionStorage is per tab and survives a reload and a discarded tab).
+WHERE: `lib/viewRestore.ts` (`createViewRestore`, `decideStartupView`) +
+`routes/+page.svelte` (`restoreViewAfterStartup`, `noteSystemOpen`, `enterSystem`, and the
+`viewRestore.forget()` in the reactive block that watches `currentSystemId`). Pinned by
+`lib/viewRestore.spec.ts` and the "after a reload" block in `routes/page.spec.ts`.
+RULE: the tab remembers the campaign id, the system's map-node id and whether that open SETTLED -
+nothing else. Every open is written UNSETTLED, the GM's own click included. It settles after
+`VIEW_SETTLE_MS` of VISIBLE time counted from the first timer after the open, with the system view
+actually bound and no `webglcontextlost` seen; the GM using a system they opened themselves settles
+it sooner, but an open the APP made is never settled by a tap. Start-up re-opens a settled record
+only, rewrites it as unsettled BEFORE the attempt, and forgets it on every other path. An unsettled
+record found at start-up means the last open did not survive: starmap, one line, forgotten.
+Nothing is restored behind the safe-mode screen or a stopped load, for a `?hub=` / `?open=` link,
+for a record from another campaign, or for a system that is gone (those last two silently).
+WHY: owner's yes, 2026-11, to the item the v3.1.78 bug run left for him. A phone that reloaded
+mid-edit kept its edit (DATA-R54, UI-L9) and lost its place every time. The guard is why it needed
+his word: a huge system on a phone, a lost graphics context or a save that throws would otherwise
+be re-entered on every start, and the app's own advice for a lost context is "reload".
+BLAST: sessionStorage, NOT localStorage - two tabs share one stored campaign and one must not drag
+the other into a system. The restore enters with `replaceState`, because the reload left the page
+ON the system's history entry; `pushState` there stacks a second one and Back needs two presses.
+The restore names a load-guard stage (`re-opening <name>`) because the guard is still armed when it
+runs (UI-L1): a hang in the open shows on the safe-mode screen under its own name. Any new exit
+from a system that does not go through `$page.state` must call `forget()`; `handleDeleteSystem`
+set `currentSystemId` alone and left the id in the state until this entry. KNOWN LIMIT: a system
+that kills the tab LATER than the dwell is indistinguishable from an ordinary reload and is
+re-entered; the GM has those seconds to press "<- Starmap", which forgets it. A reload inside the
+dwell of the GM's own open lands on the starmap with the line - quiet, and the price of the rule.
+
 ### UI-L7 A loop sized in MAP units is unbounded, because zoom is fitted to the map's own extent
 BUCKET: ARCHITECTURE - durable and general: a loop that steps in WORLD units under a FITTED zoom is
 bounded by the DATA's extent, not by anything on screen. And a GATE and a CAP are two different
@@ -2073,6 +2189,13 @@ drawing, the cap is a guarantee no future gate change can reintroduce an unbound
 MUST SIT ABOVE HONEST USE or it silently truncates real grids instead of catching runaways. The
 first pair tried here (3 px / 40,000) failed exactly that way: the densest legible hex view genuinely
 wants 82,112 cells. The spec asserts the two constants against EACH OTHER for that reason.
+BLAST: THE 2D SYSTEM VIEW HAD THE SAME LOOP (found 2026-11, 3.1.1 fix batch). `SystemVisualizer
+drawSystemOverlay` steps a PINNED cell (`gridScaleAu`, e.g. 1 AU hexes) over view/zoom, and that
+view's widest zoom is now fitted to the system's reach (`viewport/camera.setWidestView` from
+`system/systemReach.placementLimitAu`, never under 1e6 AU) - over 10^12 hexes a frame. It now has
+the GATE (`map/niceInterval.gridCellLegible`, 3 px, the figure `Grid.svelte` holds privately) and NO
+cap; a ladder-chosen cell is 36-90 px and never trips it. The gate's call site is in a canvas path
+and is not covered by a test.
 
 ### UI-L6 A load-failure bundle needs the STORED map and the LIVE one, and they answer different questions
 BUCKET: ARCHITECTURE - ask whether the object you are exporting is the INPUT or the STATE, and say
@@ -2403,19 +2526,33 @@ arriving for these objects, it wins - and `typicalForClass` must not be set for 
 ### DATA-R4 The importer never invents and never overwrites — and both must reach the user
 BUCKET: ARCHITECTURE - an importer neither invents nor overwrites, and BOTH the skips and the
 collisions must reach the user, or a silently short import reads as a complete survey.
-WHERE: `convert.mjs` (`starNodeFromRow` skips, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
-RULE: a host missing mass, radius or temperature is SKIPPED with a named reason rather than guessed
-into existence, and a host is treated as a COLLISION only when the TARGET MAP already holds it —
+WHERE: `convert.mjs` (`convertRegion` step 4 and `starNodeFromCensus` for the stars-first path,
+`starNodeFromRow` skips in `convertArchiveRows`, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
+RULE: a star NEITHER catalogue can describe is SKIPPED with a named reason rather than guessed into
+existence, and a host is treated as a COLLISION only when the TARGET MAP already holds it —
 under the id this import would mint, or under the bundled maps' stable id for the same star, which
-callers supply via `existingSystemIds`. `convertArchiveRows` returns `{systems, collisions, skipped}`
+callers supply via `existingSystemIds`. Both converters return `{systems, collisions, skipped}`
 and the caller must SHOW the last two; filtering them away to tidy the dialogue defeats the design.
+CORRECTED (2026-11-13, the 3.1.1 importer pass): THIS ENTRY USED TO SAY "a host missing mass,
+radius or temperature is SKIPPED", AND THAT IS NOW TRUE OF ONLY ONE OF THE TWO CONVERTERS. On the stars-first path
+(`convertRegion`, the one the dialogue calls - D18) the star comes from the CENSUS and the archive
+is an enrichment, so a matched archive row with a gap in its stellar figures no longer costs the
+star: it is built by `starNodeFromCensus` like any planet-less star, keeps its planets, and its
+description says which catalogue fell short. The old rule still holds for `convertArchiveRows`
+(specs only), which has no census to fall back on.
 WHY: a silently short import reads as a complete survey. And the first version got the collision test
 wrong in the other direction — it skipped any host curated on a BUNDLED map whether or not the GM was
 importing into one, so "Local Neighbourhood" into a new starmap imported ZERO systems and 16.5→18 ly
 imported exactly one. Curation elsewhere is not a reason to withhold a star from a map that has none.
+THE CORRECTION'S CASE IS GJ 667 C (`HD 156384C` in SIMBAD): the archive gives it no `st_rad`, so a
+real M dwarf 24 ly away was skipped "missing stellar radius" and ALL FIVE of its confirmed planets
+went with it - while the same star with no planets would have imported from the census untouched.
 BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemIds` means "empty target",
 which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
-roster, so it is only as current as the last kit run (D15).
+roster, so it is only as current as the last kit run (D15). The fallback star's figures are derived
+or class-typical and SAY so (DATA-R42), which is estimating openly, not inventing; the archive's own
+measured mass and temperature for that star are NOT merged onto it. Gated in `bareStar.spec.ts`
+against the committed cache, which must keep a host with a gap for the gate to mean anything.
 
 ### DATA-R46 AN EQUILIBRIUM TEMPERATURE IS A FLOOR ON A SURFACE TEMPERATURE, NEVER A CEILING
 BUCKET: DOMAIN - the two temperatures are different quantities and the gap between them is set
@@ -3631,6 +3768,147 @@ BLAST: **A CONTROL'S PLACE IN A GROUP IS RECORDED ONCE, WHEN IT JOINS, AND FROM 
 BLAST: **ONE settle per member per move, and never a settle per member per FRAME.** A group drag calls `nudge` on the others - `set(..., false)`, no re-settle - because a settle per member per frame is exactly the fight UI-C17 warns about; the anchors do not move during a drag, so a shared delta is right THERE and only there. **`redock` runs on RELEASE and in a LATER MACROTASK**, never per frame and never inside `pointerup`: not per frame or a control dragged past a neighbour snaps to it in passing, and not in `pointerup` because the offset that drag just wrote reaches the DOM as a Svelte microtask - a pill dropped 5.75 px from the clock measured itself 120.75 px away, its own starting distance, and nothing ever docked. **THE 24 px IS A QUESTION ABOUT THE GROUP'S LAYOUT, NOT ABOUT POSITIONS.** Asked of positions it undocks a perfectly good pair mid-correction, because during a re-layout "where the members are" is exactly what is wrong; asked of the offsets and the live sizes it answers the thing it is for, which is a member that has grown or shrunk away from its neighbours. **A control leaving a group must re-read its own edge and gap** (`settle(false)`) or it keeps the group's, which for the member that was not at the group's edge means inheriting its neighbour's distance from the wall - and the two then settle on top of each other. A group of ONE is dissolved when a pair separates. **Undocking is a drag on an END, and the menu item is what a MIDDLE one has instead** (the first design had only the menu item, because with one grip moving all nothing could be dragged clear; the owner's end/middle rule replaced it).
 **AND NONE OF THIS IS VISIBLE HEADLESSLY.** Four faults survived a green suite of twenty gates and were found in ten minutes of driving the real app. In jsdom the mocked rect follows the store synchronously, so every "the DOM is one flush behind" fault is invisible by construction, and no mocked box has a fractional width. **`ResizeObserver` never fires in the browser pane either** - not even its initial callback - because delivery is part of the same rendering steps that suspend `requestAnimationFrame` ([[E7]]), so the detail-pane path has to be driven through the window `resize` listener there.
 
+### UI-C19 A RANGE INPUT BOUND TO AN ABSENT FIELD WRITES ITS MIDPOINT INTO THE DATA AT MOUNT
+BUCKET: PLATFORM (Svelte 5 and the browser) - a range input always has a value and the framework's
+two-way binding writes it back. The fix shape carries: bind one-way, write in the handler.
+WHERE: `components/BodySpinEditor.svelte` (the tilt slider, `onTiltSlider` / `onTiltInput`; it was in
+`BodyBasicsTab` until A105 moved the spin block to the Orbit tab - UI-C22); Svelte's
+`bind_value` (`internal/client/dom/elements/bindings/input.js`, the branch that fires when the bound
+value is nullish and `input.value` is not). Gate: `components/BodyOrbitTab.tilt.spec.ts`.
+RULE: never `bind:value` a `type="range"` input to a field that may be undefined. Give it a one-way
+`value={field ?? resting}` and write the field in the `on:input` handler, so the data changes only
+when the thumb is moved. An unset field must READ as unset, and clearing its number box must delete
+it (PHY-9).
+WHY: B21, four reporters: "the axis tilt always sets to 90 degrees". A range with nothing to show
+rests at its midpoint - 90 on a 0..180 slider - and Svelte 5 writes the DOM value back at mount when
+the bound value is nullish and the input has one. So merely OPENING the tab that held the slider
+(Basics then, Orbit now) gave every
+tilt-less world a 90 degree axis, and the next edit of anything saved it. It read as a physics
+default and nothing in the engine ever chose 90. Every body from the type picker was tilt-less -
+`SystemView.placeBodyOfType` was a fourth creation route the tilt model had not reached, and now
+calls `importFixup.inferMissingAxialTilt` - so every new world showed it.
+BLAST: A NUMBER INPUT IS SAFE (its empty string is falsy, so the branch does not fire); only ranges
+do this. A GATE MUST ASSERT `undefined`, NEVER "not 90": jsdom rests a range at 50, so a test for 90
+passes with the bug fully present. A local initialised to a number (`massSliderPos = 0.5`) is safe.
+`BodyStarTab`'s star-tilt slider has the same markup and tested clean in jsdom (an effect re-seeds
+its local state from the body), so it was left alone; that is not proof for a browser.
+BLAST: OTHER SITES OF THE SAME SHAPE, FOUND BY READING AND NOT VERIFIED. Each binds a range to a
+field its own label defaults with `??`, which is the tell: `PlayerPresetEditor.svelte`
+(`starmapGridFalloff ?? 0.5`, `gridFalloff ?? 0`, `orbitOpacity ?? 1`, `constellationBoost ?? 0.35`,
+`constellationLabelSize ?? 11` - its neighbours in the same file already use the one-way form);
+`ConstructFuelTab.svelte` (`tank.current_units`); `EditBiospheresModal.svelte` (`defaultCoverage`,
+`pigmentDriven`, `opacity`). Where the stated default is not the midpoint, opening the editor may be
+changing the value. Measure each before fixing it.
+
+### UI-C22 THE SPIN BLOCK RIDES THE ORBIT TAB, AND WHO GETS IT IS THE COMPOSITION TAB'S OWN PREDICATE
+BUCKET: ARCHITECTURE - a block moved between tabs keeps its audience only if the audience is stated
+once; and a control that leaves its host takes its script, its base styles and its gate with it.
+WHERE: `components/BodySpinEditor.svelte` (Day Length with the tidal-lock notch and the break-up
+note, Retrograde spin, Lobes, Axial Tilt); mounted by `components/BodyOrbitTab.svelte` under
+`showSpin`; `components/BodySidePanel.svelte` passes `showSpin={!isBeltOrRing && !isStar &&
+!isBarycenter}`. Gates: `BodyOrbitTab.tilt.spec.ts` (UI-C19's gate, moved with the slider, plus the
+arrival / departure / two-retrogrades cases) and `BodyOrbitTab.elements.spec.ts` (A106).
+RULE: the Orbit tab is opened by THREE kinds of node - an ordinary world, a star with a parent and a
+barycentre with a parent - and only the first has a spin block. `showSpin` defaults to OFF and the
+side panel turns it on with the SAME expression that guards the Composition button, so a star's
+Orbit tab cannot grow a second tilt beside the one on `BodyStarTab` (a different block, left alone).
+The block sits OUTSIDE the tab's co-orbital / no-orbit / orbit branches: a trojan and a rootless
+world still spin. The tab now carries TWO retrogrades, so each says which it is in its label
+("Retrograde orbit (circles its host backwards)", "Retrograde spin (turns backwards)") and has its
+own id (`#retrograde`, `#retrograde-spin`); the "Spin and shape" heading is the other half of that.
+WHY: A105, the owner with a screenshot: *"move the planet edit settings ... to orbit controls - more
+space than composition"*; A106, the same day: *"as we have 3d - we don't need advanced orbital
+controls - we need those in the open now."* Inclination and the ascending node are first level and
+the "Show Advanced Orbital Elements" checkbox is gone.
+BLAST: RE-HOME (G64, DATA-R39) shared that disclosure on the owner's EARLIER word that it "does not
+deserve 1st level appearance". His later word was about the elements, so re-home kept a disclosure
+of its own - a "Re-home..." button at the foot of the tab, below the spin block. Flattening it is
+his call, not a tidy-up.
+BLAST: THE BLOCK'S DENSITY IS READ OFF THE BODY, not off the Composition tab's state. It was
+`isPlanetMoon ? pDensity : densityValue` there; only planets and moons ever reached it, so the
+component uses `densityGcc` over the body's own mass and radius - the same expression `pDensity` is.
+The break-up floor still HARD-CLAMPS a typed day length, which predates "steer, do not stop" and
+moved unchanged; and the track's zone stops are still the literals 0.8 / 0.5 / 0.25 beside
+`physics/rotation.ts`'s `NEAR_BREAKUP_AT` / `ELLIPSOID_AT` / `OBLATE_AT` - two spellings of three
+numbers, reported rather than folded into a move.
+BLAST: THE STYLES CAME ACROSS WITH THEIR BASE RULES (UI-C8). The Orbit tab styles a bare
+`input[type="number"]` at 80px and the Composition tab at 100px with the same specificity as
+`.rot-num input`, so pasting the markup inline would have re-sized three boxes by source order.
+A component of its own keeps the Composition tab's resolved rules, including the `.link-btn` that
+tab declared twice. Not seen in a browser by the session that moved it.
+BLAST: OTHER CODE CITES "the Day Length control" AS THE HOUSE SLIDER IDIOM (gradient painted into
+the runnable track, a notch ON the track): `BodyOverridesTab.svelte` in three comments. They point
+at `BodySpinEditor` now; anything new that cites the idiom should too.
+
+### UI-C23 A FILTER WITH NO CONTROL OF ITS OWN MUST SAY IT IS ON, AND MOST OF ALL WHEN IT MATCHES NOTHING
+BUCKET: ARCHITECTURE - an emphasis driven by state set somewhere else, and persisted, is invisible
+at exactly the moment it is most total.
+WHERE: `components/Starmap.svelte` (the `.hl-key` box in its `hl-note` form: `highlightNames`,
+`fadedSystemCount`, `clearHighlights`, `highlightNoteDismissedFor`); `tags/mapHighlights.ts`
+(`describeHighlightRef`, `presentTagKey`). Gates: `components/Starmap.highlightNote.spec.ts`,
+`tags/mapHighlights.spec.ts` (`describeHighlightRef`).
+RULE: while a tag highlight is fading systems the key says so: "Highlighting: <the selection>",
+how many systems that has faded, a Clear (which empties `liveOverrides.mapHighlights`, the one
+selection every map shares - the GM's and the players'), and an X that hides the NOTE and never the
+highlight. The count is taken with `systemMatches`, the same call `class:hl-dim` makes, so the
+number in the note and the number of dimmed systems cannot differ. GM starmap only: the players'
+starmap (`starmap/Starmap2DView`, `starmapScene`) draws the badges and does not fade.
+WHY: a user: *"why are stars faded in the starmap?"* The selection lives in `localStorage`
+(`liveOverrides`), is chosen in Find by tag or the Player Views panel, and survives a reload. The
+key used to render only when `highlightKey.length` - that is, when something MATCHED - so a
+selection nothing on the map carried dimmed EVERY system to 22% and drew nothing at all.
+BLAST: THE BOX IS `pointer-events: none` so it never eats a map drag; its two buttons opt back in.
+A new control inside it is dead until it does the same.
+BLAST: THE DISMISSAL IS KEYED TO THE SELECTION (`highlightSelectionKey`), in memory only. A
+different selection is a different question and brings the note back; so does a reload, on purpose -
+a persisted fade with a persisted "do not tell me" is the original fault again.
+BLAST: WHAT A SELECTION ENTRY IS CALLED HAS ONE ANSWER NOW, `describeHighlightRef`. It was spelled
+twice and the two disagreed: `PlayerViewModal.hlStyle` asked only the GM's categories (an engine tag
+such as `biodiversity/land-cover` was a grey chip named from its raw key) and `TagFinder.hlChip`
+asked only the presentation layer (a faction the GM had recoloured kept the category colour). Both
+call the one function, and a tag entry resolves exactly as its MARKER does (`presentTagKey`, which
+`markersFor` uses too) - so the two chips in those panels may have changed colour or wording for
+some tags. Not seen in a browser.
+
+### UI-C24 A MONTH IS A DATE, NOT A LENGTH - AND THE RESOLVER IS THE ONLY THING THAT KNOWS WHICH DATE
+BUCKET: DOMAIN + ARCHITECTURE - domain: a calendar's second, minute, hour and day are lengths it
+states; its month and year are not lengths at all. Architecture: calendar arithmetic that re-derives
+month lengths or leap placement is a second copy of the resolver, so ask the resolver instead.
+WHERE: `temporal/step.ts` (`clockStepUnits`, `stepClockSeconds`); the control is the step panel in
+`components/TimeControls.svelte` (`stepBy`, the `.tt-stepper` button). Gates: `temporal/step.spec.ts`
+(Gregorian checked against JavaScript's own `Date.UTC`, which shares no code with the resolver) and
+`components/TimeControls.step.spec.ts`.
+RULE: a FIXED step is `count x the calendar's own multiplier` - the CALENDAR'S day, never 86,400 by
+assumption, and a ratio calendar (a stardate) is offered its own counting unit and nothing else. A
+MONTH or YEAR step WALKS whole calendar days and asks `resolveCalendar` what date each instant is:
+same day of the month (or of the year, with no month table), same time of day, clamped to the last
+day of a shorter month, with the wanted day REMEMBERED across the walk (31 Jan + 2 months is 31
+March, not 28). Nothing in `step.ts` knows how long a month is or where a leap unit lands.
+A step SEEKS, as the jog does (A60): it moves the displayed time through `scrubDisplay` and leaves
+the play state and the campaign's "now" alone.
+WHY: a user: *"a forward ticker that moves the time forward by X amount then stops ... if I want to
+go forward exactly one month"*; the owner agreed to "turn the clock into a time selector". The
+temporal module exposed a resolver and no arithmetic - Settings' own year control shifts the clock
+by a MEAN year (`SettingsModal.applyBucketYearOverride`: the plain year plus `drift_per_year_t`),
+which is a length and so not the same date in general; read, not measured, and not touched.
+BLAST: THE WALK HAS TWO GUARDS AND NEEDS BOTH. `MAX_LOOKS` bounds new days resolved; `MAX_ASKS`
+bounds questions asked, remembered or not. With only the first, a year of a quadrillion one-second
+days put the day count past 2^53, where `k++` leaves `k` unchanged, and the loop asked for the same
+remembered day for ever - the gate's first run hung for ten minutes on exactly that. A calendar the
+walk cannot finish returns `null` (no step, and the panel says so); it never throws and never
+invents an instant (the resolver's own promise, `calendarSafety.spec.ts`).
+BLAST: A YEAR NEED NOT BE A WHOLE NUMBER OF DAYS (328.96 of them on the world in that spec), so the
+year turns over part-way through a day and whole-day walking lands at a shifted clock time. The
+result is shifted back by the difference in seconds-into-the-day and then nudged a second or two
+until hour, minute and second read the same - a calendar's own second need not be one clock second.
+BLAST: COST. About 14 microseconds a resolve (measured): a month is a few dozen, a year a few
+hundred WHATEVER the count (it jumps by the plain year first, then settles), and months are capped
+at `MAX_MONTH_STEPS` because each one is walked. Do not call this per frame.
+BLAST: NOT BUILT - TYPING A DATE. "A time selector" in the sense of entering a target date and time
+needs the inverse of the resolver (fields to instant) for every calendar a GM can author, which is
+the calendar work the owner has planned. This is the step half only. Not seen in a browser: the
+extra button widens the transport pill by one button, on the phone bar too.
+
 ### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
 BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
 clean console, no error, no warning and a hit test that measures perfectly.
@@ -3709,6 +3987,15 @@ are unaffected. Scoped styles ride on the element's own hash class and travel wi
 backdrops were found never registering at all, which is why the contract is now a GATE and not a
 convention: a new full-viewport fixed layer is RED until it registers or is listed as not-a-dialog
 with a reason.
+BLAST (3.1.1): A PORTALLED DIALOG COMPETES AT THE ROOT WITH EVERY OTHER DIALOG'S NUMBER. Declared
+inside its opener it was simply the last thing in that opener's stacking context; on `<body>` its
+z-index is compared directly with the opener's. So a dialog that OTHER DIALOGS OPEN must carry a
+number above all of them. `HelpModal` inherited the shared `.modal-overlay` 1000 and opened BEHIND
+three of its four openers - Find by tag (1500), the tag category editor and the ship panel (2200) -
+which was reported as "the tagging guide opens behind everything"; only the Help menu, itself 1000
+and earlier in the document, still showed it. It now takes the top of the modal tier
+(`--z-modal` + 2). Gate: `components/HelpModal.spec.ts`, whose table of openers is RED for any new
+file that mounts the guide. Other dialog-opened-by-a-dialog pairs have not been audited.
 
 ### UI-C13 A SLIDER AND THE BAND PAINTED BEHIND IT ARE ONE AXIS, AND THE AXIS IS DATA
 BUCKET: IMPLEMENTATION - durable: two halves of one control must not each decide their own scale.
@@ -3994,8 +4281,12 @@ BLAST: **opening on the stored override is the trap** — a delta has no `.lengt
 `overrides.x?.length ? overrides.x : base` idiom silently falls back to the base and the next save
 wipes everything the GM had not re-typed. `applyListDelta` still accepts a whole list, because
 campaigns saved before this carry one. A key absent from `order` is a DELETION; a field stored as
-`undefined` is a field the GM removed. **`liquids` and `gasPhysics` still store whole lists** — same
-fault, not yet converted, and they are the next users of this module.
+`undefined` is a field the GM removed. **CORRECTED 3.1.1 - this used to say `liquids` and `gasPhysics`
+still store whole lists, and neither does.** `liquids` is a delta (the reader since D25, its editor
+since R-19). `gasPhysics` is a keyed record of only the gases that DIFFER - a new shipped gas still
+arrives, but a tweaked shipped gas is stored as a whole record, so its other fields are frozen.
+**`atmosphereCompositions` is the one section that still stores the whole list** (the effective pack
+REPLACES the distribution's entries with it) - same fault, not yet converted.
 
 ### UI-C2 The picture chain is model > photo > glyph, on every surface
 BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: a capability is not keyed on a ROLE. The subject of
@@ -4178,6 +4469,10 @@ FOUR THINGS THAT ARE NOT OBVIOUS AND EACH COST SOMETHING TO FIND:
     at 1e23 kg is over every tonnage stop, so "largest stop still >= 1" prints 1e11 Gt. Nearest-
     window reaches across the gap and reads 0.01674 M-Earth, which is the comparison A80 asked for.
     Any ladder with a gap wider than three decades has this property; do not add stops to close it.
+    (3.1.1: `M-Luna` now sits IN that gap as a stop a reader can cycle to, and the walk never lands
+    on it - `CHOSEN_ONLY_STOPS` in `units.ts`. As an auto stop it would take every reading from a
+    fiftieth of a lunar mass to a thousand of them, this shell included: 1.362 M-Luna in place of
+    0.01674 M-Earth. Offering a unit and defaulting to it are two decisions.)
  3. AN AUTO STOP CHOOSES DECIMALS; IT NEVER ROUNDS INTEGER DIGITS. Rounding to significant figures
     instead turned every planetary orbit from "1.000 AU" into "1 AU" and a barycentre member from
     "7,465,000 km" into "7,400,000 km". Show enough decimals to reach SIG_FIGS, never fewer than the
@@ -4281,7 +4576,11 @@ stops (anything drawing from raw or partly-processed data steps outside it).
 fraction, so it is exactly the body the two could disagree about.
 HOLDS because `SystemProcessor.reconcileGiantMakeup` runs TWICE (`:455` and `:849`, idempotent) and
 rewrites a gas-poor fluid-giant makeup to gas 0.6–0.92 before either helper is consulted; where the
-makeup is absent entirely, `makeupFractions` infers it from density and lands gas-dominated anyway.
+makeup is absent entirely, `makeupFractions` infers it and lands gas-dominated anyway - from density
+below 2.5 g/cc, and BY MASS past ~1.9 M_Jup (PHY-41). Until B18 the second half was missing, so this
+clause was false for any dense heavy giant: a makeup-less super-Jupiter or brown dwarf inferred as
+rock or iron and both helpers called it solid. An AUTHORED gas-poor makeup at that mass is outside
+the repair by design (`isFluidGiant` is still mass AND density) and both helpers agree it is solid.
 Checked on the bundled Sol: Uranus and Neptune correctly carry NO `hazard/radiation` tag.
 BREAKS IF: `rendersAsGiant`'s consumers are RENDERING code (`planetAppearance`, `apparentColor`,
 `holo/scene`, `catalogue/smallBodyShape`) and none of them requires the body to have been through
@@ -4424,6 +4723,45 @@ Earth masses with irradiation over 1000 a stripped gas-giant core (inbox B67, D1
 BLAST: `minScore` went with it — nothing reads it. If you ever need a fingerprint-less pack to
 classify richly, the answer is to GENERATE fingerprints, not to restore scoring: the two engines
 disagreed on essentially every body and there was no test that could have told you which was right.
+
+### CLASS-2 WHERE A TYPE FORMS AND WHAT A BODY IS ARE TWO BANDS - AND WIDENING `match` RELABELS GENERATED WORLDS TOO
+BUCKET: DOMAIN + ARCHITECTURE - domain: a planet can end up somewhere it could not have formed
+(migration, a GM's hand, a measured exoplanet), so "born at" is narrower than "found at".
+Architecture: one band answering both questions is a hidden coupling between the classifier and the
+generator; and the classifier cannot tell a generated body from an authored one.
+WHERE: `classification.json` `planet/ice-giant` (`match.Teq_K [0, 700]`, `formation.Teq_K [0, 200]`);
+the temperature gate in `generation/generateBodyOfType.judgeTypesAt`; `system/modifiers.
+preferredOrbitBandAU`. Gates: `generation/warmIceGiant.spec.ts`, `createdPlanetPlacement.spec.ts`.
+RULE: a BIRTH question reads `formation.Teq_K` where the type declares one and falls back to the
+match band (then `range`) only where it does not. There are two birth readers - the viability gate
+(generator AND picker) and the orbit band a newly created type is placed in - and both must prefer
+it. `match` is the classifier's alone; `range.Teq_K` is the editor's "is this type reachable for
+this body" and follows `match`, not `formation`.
+WHY: a Uranus-mass body at 1 AU read "gas giant". It matched NOTHING: ice-giant stopped at 200 K
+(soft edge 230), hot-neptune starts at 700 (soft edge 595), and between them 13.8-17 Earth masses is
+outside every other Neptune-class band, so `fallbackBaseClass` named it by mass. The band was doing
+the generator's job (where ice giants form) inside the classifier.
+BLAST: **"THE GENERATOR IS UNTOUCHED" IS TRUE OF THE DRAW AND FALSE OF THE LABEL.** With the birth
+band held, the viable set at every temperature is identical and so is every drawn body - measured
+over 300 systems / 4,185 bodies, not one field outside the label moved. But generated bodies are
+`autoClassify`, so the processor re-derives their class from the same widened band: 27 of the 4,185
+(0.65%) became ice giants. Four were the fault itself; 23 were drawn as mini-/sub-/super-Neptune or
+protoplanet and are now out-scored, because ice-giant carries FOUR match bands against their two or
+three and the specificity bonus is per band. That is not new behaviour - the same four bands already
+take those bodies on a cold orbit - but widening any band extends its steal to wherever it now
+reaches. Run a before/after dump of generated systems before believing a band change is label-neutral.
+BLAST: THE LABEL DRAGS THREE THINGS WITH IT. (1) Tags keyed on `isGiant`, which is "class NAME
+contains a giant type OR gas >= 0.4": a super-Neptune relabelled ice giant gains `resource/helium-3`
+and `frontier/gas-skimming` with no change to the body. (2) The picture. (3) PROPER NAMES in
+generated systems: `generateSystemFromConfig` rolls a name per planet AFTER processing with a chance
+set by the final class's rarity tier, and a hit consumes extra draws, so one relabel can rename every
+later world in that system (6 of 300 systems). A seed's bodies are stable across a classifier
+change; its names are not.
+BLAST: the warm edge (700) is hot-neptune's cold edge on purpose, and the spec pins them equal. Move
+one without the other and the gap reopens, silently, as a fallback gas giant. Bundled content that
+moved: GJ 674 b and GJ 687 b in both starmaps, and Conquestor and Mors in the e Eridani example
+(642 K hot-neptune and 205 K super-neptune before). None of the four stores a class - the maps ship
+`autoClassify` bodies and the label is derived on load - so no shipped file changed.
 
 ### GEN-6 ONE STAR-HIERARCHY PLANNER, AND THE TRAVELLER PATH WIDENS IT RATHER THAN REPLACING IT
 BUCKET: DOMAIN + ARCHITECTURE - domain: a hierarchy is not a set of orbits round one centre, and a
@@ -5624,6 +5962,23 @@ physics criterion tags and explains and never refuses an authored choice. Both a
 is where they meet.
 BLAST: adding a placement rule as a modal branch instead of a `requires` clause; putting any
 numbers-are-bad test in `hard`; any code path that blocks creation off the back of a steer note.
+AMENDED (3.1.1 fix batch): THE RECORD HAS TWO HALVES AND BOTH SURFACES APPLY BOTH. `requires` is
+the HOST half; `allowedPlacements` on the registry record is the PLACEMENT half (an elevator is
+Surface or nothing). The create dialog applied both and the EDIT surface (`ConstructGeneralTab`, the
+Orbit tab) applied neither, so a standing elevator was offered L1-L5, every orbit band and every
+host - PHY-42 is what that cost. Both surfaces now ask `megaPlacement.filterMegaPlacements` /
+`megaPlacementAllowed` / `megaIsSurfaceOnly`, and the Orbit tab greys hosts through `megaHardCheck`.
+The function folds the two surfaces' vocabularies onto the record's words ('Medium Orbit' is 'Mid
+Orbit'; 'Inner System', 'A - B' and 'Outer System' are 'AU Distance'); the spellings themselves are
+NOT unified. Gated at the DOM by `ConstructGeneralTab.spec.ts`.
+CORRECTION (2026-11, RENDER-S62): the orbit-band spellings ARE unified now - one word each, from
+`constructs/placements.ts`, with 'Medium Orbit' the survivor and an old save's 'Mid Orbit' read
+through `canonicalPlacement`. The star-distance fold ('Inner System', 'A - B', 'Outer System'
+onto 'AU Distance') is unchanged and still lives in `megaPlacementWord`.
+BLAST: A HANDLER MUST READ THE PICK, NEVER A `$:` MIRROR OF IT. The Orbit tab read
+`selectedLagrangePoint` (a reactive statement) inside the select's change handler, where it still
+described the PREVIOUS pick: every L-point choice, for ANY construct, was applied one pick late and
+under the wrong label. A `$:` value is one flush behind inside an event handler.
 
 ### RENDER-S44 A MEGA IS CENTRED ON ITS HOST, AND ITS DRAWN RADIUS IS ITS OWN ORBIT
 BUCKET: ARCHITECTURE - a structure that SURROUNDS its host is positioned and sized differently from
@@ -5642,8 +5997,10 @@ around it. The centring was identified while measuring phase 2's extent question
 into phase 3 - the two halves of one fact, landed a version apart.
 BLAST: a TETHER is the opposite case and must NOT be centred - it is stood up on its anchor by
 `updateSurfaceConstructs` and is exempt from the surface-construct model suppression, because a
-beanstalk's whole point is that it leaves the ground. Inclined orbits are NOT yet oriented: a ring
-currently lies in the ground plane whatever its inclination.
+beanstalk's whole point is that it leaves the ground.
+CORRECTION (2026-11, RENDER-S61): this entry used to end "inclined orbits are NOT yet oriented: a
+ring lies in the ground plane whatever its inclination". They are now - the structure's axis is its
+orbit normal - and a control authors the tilt. See RENDER-S61.
 
 ### RENDER-S45 `bodyById` IS EMPTY WHILE THE BODIES ARE BEING BUILT
 BUCKET: IMPLEMENTATION - a lookup map rebuilt AFTER the loop that fills it answers every question
@@ -5704,6 +6061,9 @@ collapsed the drawn HZ while the worlds stayed warm - the two halves of one fact
 Isotropic occluders still apply in full regardless of tilt.
 Companion flux stays undimmed through the solver. A swarm inside the kill zone is honestly a
 radiation shield (both hazard halves are linear in L, so the radius scales as sqrt f).
+ADDENDUM (2026-11, PHY-46): the received form now takes a SECOND factor - a mirror's gain - and
+"multiplies by `starlightTransmission`, never its own factor" extends to it: the gain comes from
+`starlightBoost` in the same module and from nowhere else.
 
 ### TAG-25 THE DISCLOSURE LADDER HAS THREE RUNGS AND EXACTLY ONE WRITER
 BUCKET: ARCHITECTURE - durable: a redaction that REPLACES rather than removes must build its
@@ -5732,6 +6092,35 @@ and this must not be the one thing that puts one back.
 BLAST: `TagDef.secretDefault` is DECLARED AND NEVER READ (`tags/tagCategories.ts`) - "new instances
 start redacted" is a comment, not a behaviour. Do not add a `disclosureDefault` beside it until
 something consumes one; a second unconsumed field is a second thing that looks implemented.
+
+### TAG-26 A RULE TAG IS THE PASS'S BY NAMESPACE OR BY RULE ID, AND WHAT IS NEITHER IS NOT DELETED
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a pass may clear only what it can prove it wrote,
+and "this looks like mine" is not proof when the same data arrives from somebody else. The reason
+it cannot be proved is this code's: a save carries no tagging rules.
+WHERE: `tagLifecycle.stripRuleTags` (the strip), `reasonsToVisit.ruleStripScope` (what the pass
+holds), `reasonsToVisit.strandedRuleTags` / `removeStrandedRuleTags` (what is left, and the GM's
+removal of it); surfaced in `BodyTagsTab.svelte` ("Left behind") and `TagCategoryEditor.svelte`.
+RULE: the rules pass clears a rule-seeded tag (`source: 'rule:<id>'`) when its key sits under a
+category that exists, OR when it names a rule the pass holds - wherever that key sits. A rule tag
+that is NEITHER is spared by every pass and removed only by a GM's explicit act. "Stranded" is
+defined as whatever a rule seeded that the strip leaves standing, so the two cannot drift.
+WHY: a GM's report, 2026-10-23, and two faults in one sentence ("how do I REMOVE tags that are
+seeded from rules no longer in the pack?"). (1) THE NAMESPACE TEST ALONE PILED TAGS UP: a category
+file whose `id` was renamed by hand kept rules writing `old/...` from a category called `new`;
+nothing owned `old/`, so the pass never cleared what it pushed again - one more copy on EVERY
+pass, a duplicated key, which is one origin of A104. (2) THE LEFTOVERS CANNOT BE DELETED
+AUTOMATICALLY: a save carries no tagging rules and no world-only category
+(`saveRegistries.registriesForStarmap` writes the old CoI shape and the switches;
+`categoriesForStarmap` / `mergeStarmapCategories` have no callers), so ANOTHER GM'S RULE TAGS LOOK
+EXACTLY LIKE THE OPENER'S OWN LEFTOVERS. A pass that dropped them would strip an author's tagging
+from every shared map on load.
+BLAST: "tidying" `stripRuleTags` into delete-everything-a-rule-seeded empties shared maps -
+`reasonsToVisit.spec.ts` ("a pass does not delete it") goes red. Revisit only when rules travel
+with a save. `importCategory` now re-homes a file into the namespace its `id` names
+(`rehomeCategory`), so the pile-up needs an older store or a hand-built one to occur at all; the
+rule-id clear is what repairs those. A copied category gets NEW rule ids (`asCategoryCopy`), or
+its tags and the original's would be one rule's to this strip. A104's per-group dedupe stays: the
+tab is a reader and old maps still carry the copies.
 
 ### RENDER-S46 THE GREEN BUILD DOES NOT TYPECHECK - A FREE VARIABLE SHIPS AS A RUNTIME THROW
 BUCKET: PLATFORM (vite/esbuild strips types without checking them) + IMPLEMENTATION (the fault).
@@ -6064,8 +6453,10 @@ WHERE: `hub/hubConfig.ts` (the ONE place a hub URL exists, the flags, and R-17's
 `parseHubReference`, `fetchHubMap`, `fetchHubMapFromUrl`, and the shared `fetchBundleBytes`),
 `hub/hubSaves.ts` (the GM's preference), `hub/hubUpload.ts` (R-04, built and parked), and in
 `routes/+page.svelte` `hubOpenRequest` / `runHubOpen` / `runHubOpenFromUrl` / `openHubBytes` /
-`openHubMap` / `declineHubMap`. Gated by `hub/hubClient.spec.ts`, `hub/hubOpenUrl.spec.ts`,
-`routes/hubOneDoor.spec.ts` and `hub/hubUpload.spec.ts`.
+`openHubMap` / `declineHubMap` / `openHubFromList`; R-20's list is `hub/hubMapList.ts` and
+`components/HubMapPanel.svelte`. Gated by `hub/hubClient.spec.ts`, `hub/hubOpenUrl.spec.ts`,
+`routes/hubOneDoor.spec.ts`, `hub/hubUpload.spec.ts`, `hub/hubMapList.spec.ts`,
+`components/HubMapPanel.spec.ts` and the Explorers case in `routes/page.spec.ts`.
 RULE ONE: **the slug is validated BEFORE a URL is built from it, never after.** Encoding is a second
 line of defence, not the first: `../../admin`, `//evil.example.com/x` and `a/b` are refused before
 `encodeURIComponent` is reached, and a refused slug never touches the network at all.
@@ -6150,6 +6541,60 @@ decided they want to open something. Putting it back is pinned against in `loadS
 **A NAME AND A KIND ARE DIFFERENT THINGS** - passing the kind into `SisterFileModal`'s name slot
 shipped the sentence "shared map is a saved campaign", so the offer takes both and falls back to the
 campaign's own name when the caller has no filename.
+RULE ONE-E (R-20 / [[G98]], Stream AA, 2026-09-11): **THE EXPLORERS LIST IS A THIRD WAY TO ASK FOR
+A MAP, NOT A THIRD WAY TO GET ONE, AND THE LOAD SCREENS NOW DEPEND ON THE NETWORK.** Load Starmap and
+New Starmap mount `HubMapPanel`, which fetches `GET /api/maps` on open. A click hands up the map's
+`downloadUrl` and the route's `openHubFromList` gives it to `runHubOpenFromUrl` - so a listed map gets
+the allow-list, the classify, the question and the one-step-back a `?open=` link gets, and the source
+gate pins that `openHubFromList` fetches, classifies and opens NOTHING itself. Four things that are not
+visible from the code: (1) **the list RESPONSE is untrusted input too** - every address in it goes
+through `isTrustedOpenUrl` before it becomes a fetch, a link or an `<img>`; an entry whose download is
+off the hub is DROPPED, and a cover off the hub is blanked, because that image is a request made on
+the GM's behalf to a host nobody chose. The parser builds each summary from NAMED fields and never
+spreads the object: the hub says its other columns "may change without a version bump". (2) **the
+network half is SHARED, not copied** - `fetchHubBytes` returns a REASON (`unreachable`, `not-found`,
+`status`, `too-large`, `empty`, `cut-short`) and each caller words it, because "that map no longer
+exists" is wrong about a list, while the cap, timeout, `credentials: 'omit'` and redirect rule must
+not differ. Extracted with the eight map messages compared old against new, identical. (3) **offline
+is a SENTENCE, never an empty box** - loading, failed and empty are three states, and the stale-answer
+guard (`latest`) stops a slow page for the previous order overwriting the current one. (4) **`src/setup.ts`
+REJECTS every hub host in tests**, so any spec that renders a load screen without stubbing `fetch`
+sees the offline line instead of reaching the live hub; a spec wanting a list stubs `fetch` itself.
+**THE STARTER TAG'S TRAP, and it moved (hub 0.61.2, D-90, same day):** `tag=` used to match only
+`auto_tags`, so a hand-added tag was invisible; it now matches `auto_tags` OR the cartographer's
+`tags`. **But a tag outside lowercase letters, digits and hyphens is DROPPED, and a dropped tag is no
+filter at all** - measured, `tag=Bad%20Tag` returned EVERY map. A misspelt `HUB.starterTag` would put
+every shared map under "Starter maps" in silence, so its spelling and its shape are pinned absolutely
+in `hubMapList.spec.ts`. The same reply added `creator` (only `name` is read - `url` is null until the
+hub has profiles, and the row has no room for a second link) and the `needs-a-fix` pill in `auto_tags`
+(D-88/D-89): such a map is SHOWN, last as the hub sorts it, with a line saying it may not open -
+the hub's own rule is "last, not hidden", and the app repairs one of those faults on open ([[A107]]). WHAT STILL WORKS OFFLINE: the file picker, the paste field, and the bundled examples on
+the New Starmap screen (Stream AA job 2 retires all but Local Neighbourhood, owner's decision).
+RULE ONE-F (R-18, Stream AA job 3, 2026-09-11): **A SINGLE SYSTEM FROM THE HUB IS ADDED WHERE THE GM
+CHOOSES - NEVER OPENED, NEVER REFUSED, NEVER PLACED UNASKED.** Two doors. (a) The generation wizard lists
+`kind=system` maps (the same `HubMapPanel`) and places the picked one at the spot already clicked. (b) A
+link (`?open=` or `?hub=`) whose bytes classify as a SYSTEM used to be refused in `openHubBytes`; it now
+goes to `offerHubSystem`, which places NOTHING - it holds the classified save, shows a banner, and the
+starmap's empty-space menu offers "Add <name> here" (`Starmap.svelte` `pendingSystemName`), because a
+link carries no position and the owner's word was "you pick the spot". The source gate pins that the
+offer never writes the store. **ONE ANSWER PER STEP, SHARED BY BOTH DOORS:** `io/systemFromSave.ts`
+turns a classified save into a fixed-up system (a system, or a campaign's first) - classification stays
+the caller's, so link bytes are classified once, in `openHubBytes`; `io/hubClip.ts creditDownloadedSystem`
+gives it the paste path's two credits (the `origin/hub` tag on every top node, a campaign credit over every
+node) through the paste path's own private helpers; `starmap/placeSystem.ts placeSystemOnMap` puts any
+processed system on the map - unique id ([[A107]]), display-clock stamp, credits merged by
+`addContentCredit` - and is called by `landSystem` (the wizard and the link) AND by
+`pasteClipAsNewSystem`, which had claimed to use "the SAME door the generation wizard uses" while
+building its own node. **WHERE THE CREDIT COMES FROM:** a saved system names nobody, so the wizard takes
+title/creator/page from the list entry and the link asks `GET /api/maps/<slug>` for `title` and `by`
+(`fetchHubMapCredit`; nulls on any failure - absent is said, never guessed). **THREE THINGS FOUND AND
+NOT CHANGED, reported on [[G98]]:** a SINGLE-SYSTEM SAVE carries neither `rulePackOverrides` nor
+`contentCredits` (both live on the campaign), so a system uploaded to the hub cannot bring its custom
+liquids or its own lineage by any door - R-19's fault for system files; the Traveller add door
+(`Starmap.svelte handleAddTravellerSystem`) still builds its own node, without a clock stamp and named
+from its form, so folding it in would change what it does; and the wizard (and so both R-18 doors)
+processes a placed system against `selectedRulepack`, not the campaign's effective pack that
+`pasteClipAsNewSystem` uses.
 RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
 exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
 worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence
@@ -6281,6 +6726,76 @@ one pass LATER, so the belt torus's geometry comes from `beltInnerEdgeRadii(body
 `beltScaleLengthRadii(field, pack)` - the belt model's own pure functions - and never from the
 stamped value. Same reason `totalIncidentFlux` and `surfaceRadiation` are forbidden here.
 
+### PHY-41 PAST ABOUT 1.9 JUPITER MASSES DENSITY IS NOT EVIDENCE OF ROCK - MASS DECIDES, FOR INFERENCE ONLY
+BUCKET: DOMAIN + ARCHITECTURE - domain: electron degeneracy holds a hydrogen body near one Jupiter
+radius, so past a couple of Jupiter masses density climbs with mass and says nothing about
+composition. Architecture: the rule governs INFERENCE and must never reach a model that rewrites
+authored data.
+WHERE: `physics/makeup.ts` (`isFluidByMass`, `nominalGasDensityGcc`, `FLUID_GIANT_MIN_ME` /
+`FLUID_GIANT_MAX_GCC`, the inference branch of `makeupFractions`); `physics/bodyEdit.ts`
+(`makeupForGeomDensity`, `denserThanFluid`, the `outOfBand` of `editDensityAnchored`);
+`SystemProcessor` emits `structure/overdense`. Gate: `physics/massDecides.spec.ts`.
+RULE: "massive and lighter than 2.5 g/cc" tells a giant from a solid world only below the mass at
+which the engine's OWN giant relation reaches 2.5 g/cc (1.86 M_Jup, 591 M_Earth - derived from
+`gasGiantRadiusRe`, not a constant). Above it a body with NO stored makeup is fluid whatever its
+density, and a density-driven edit HOLDS the composition and moves the radius. An implausible
+density is tagged and explained (`structure/overdense`), never clamped or corrected.
+WHY: B18/B17. CoRoT-3b is a measured 26.4 g/cc at 22 M_Jup - denser than iron, and hydrogen.
+`makeupFractions` inferred it as 100% metal and `makeupForGeomDensity` re-inferred rock or iron on
+every density edit, so "lock the mass, raise the density" and a Space Engine import both turned
+super-Jupiters and brown dwarfs into "very large rocky planets". The class label often stayed a
+giant; the body had ground, geology and a habitability score.
+BLAST: NEVER ROUTE `isFluidGiant` OR `reconcileGiantMakeup` THROUGH `isFluidByMass`. The reconcile
+REWRITES `body.makeup` and that reaches the save; an authored heavy solid world is a GM's statement,
+not an inconsistency (steer, never stop). Measured: the bundled Mesklin (61 Cygni, 5 M_Jup, 672
+g/cc, 5% gas by hand) would have become a gas giant. The cost, accepted: a giant ALREADY flipped to
+iron by the old fault stays iron until the GM recomposes it.
+BLAST: THE RULE KEYS ON MASS AND NOT ON ROLE (DATA-R22), SO STARS MOVE TOO. 98 dense stars in the
+two bundled starmaps (M dwarfs and remnants) now infer `gas 0.8` where they inferred rock or metal;
+no class or tag moved, but anything that newly asks a star for its makeup gets a different answer
+than it would have. `denserThanFluid` is scoped to this regime on purpose: below it an ice giant
+sits on the edge of its own envelope (Neptune 1.638 against 1.637 g/cc) and the tag would be noise.
+The editor's density box no longer stops at a flat 30 g/cc in this regime (it sat below a 20 M_Jup
+dwarf's nominal 36): the ceiling is read off this same envelope - PHY-49.
+
+### PHY-49 THE DENSITY CEILING IS ONE FUNCTION OF MASS, AND WITH THE RADIUS HELD IT MUST BE ASKED OF THE RADIUS
+BUCKET: DOMAIN + ARCHITECTURE - domain: past the mass-decides line density climbs with mass, so
+no single figure can be both generous to a rock and enough for a brown dwarf. Architecture: a
+limit that exists twice (a clamp and a slider end) and a limit that depends on the thing the
+control is changing.
+WHERE: `physics/bodyEdit.ts` - `maxDensityGcc`, `densityCeiling`, `MAX_D`, `OVERDENSE_HEADROOM`;
+the only readers are `editDensity`, `editDensityAnchored` and `BodyBasicsTab`'s `denSpan`. Gate:
+`physics/densityCeiling.spec.ts` (pure and mounted).
+RULE: the top of the density slider and the clamp on the number box are the SAME call
+(`densityCeiling(state, lock)`); the component holds no figure of its own. Below `isFluidByMass`
+the ceiling is `MAX_D` (30). Above it, `OVERDENSE_HEADROOM` (2) times the dense edge of the body's
+own fluid envelope - the edge `denserThanFluid` and `structure/overdense` already use (PHY-41) -
+and never less than 30: 30 to ~6 M_Jup, 54 at 10, 72 at 13, 116 at 20, 421 at 63. Mass only,
+never makeup or role (DATA-R22). It is an EDITOR limit: nothing on load, import, generation or
+the processor reads it, and the Overrides density pin has no ceiling.
+WHY: users asked for room for brown dwarfs (a flat 80 for dwarfs, 30 for super-Jupiters); the
+owner chose mass-aware. The flat 30 sat BELOW the nominal density of anything past ~17 M_Jup, so
+the first touch of the control on an ordinary 20 M_Jup dwarf (nominal 36) could only make it LESS
+dense than it started, and CoRoT-3b (26.4) was within 4 g/cc of the stop.
+BLAST: THE HEADROOM IS NOT A NEW NUMBER. 30 is 2.1 times the dense edge of the densest solid the
+composition model builds (pure iron: 13.2 g/cc from a few Earth masses up, 14.2 at its trim
+edge - compression saturates, so no solid in this engine is denser). The fluid ceiling takes the
+same factor over ITS densest edge. The spec pins both halves; change `compressionFactor` or
+`GAS_TRIM_LO` and it says which half moved.
+BLAST: WITH THE RADIUS LOCKED, DENSITY IS MASS (M = rho R^3). Reading the ceiling off the current
+mass there makes it rise as the slider is dragged, the slider's own span is that ceiling, and a
+log slider whose top moves under the pointer runs away: each input event re-ranges the track and
+the same pointer position asks for more. So `densityCeiling(..., 'radius')` depends on the radius
+ONLY: 30 if a 30 g/cc body of that radius still has a 30 ceiling, else the mass limit read as a
+density. That two-valued answer is exact only because the ceiling climbs faster than the mass
+(~M^1.12); the spec asserts the property itself, every density on the way up, not one figure.
+BLAST: A CLAMPED VALUE THAT CHANGES NOTHING DOES NOT RE-RENDER. Type 500 into a box whose body is
+already at its ceiling: state is unchanged, Svelte leaves the input alone, and the field reads 500
+over a body of 72. `onDenNum` writes the real figure back by hand. Any other clamped number box
+bound one-way with `value={...}` has the same fault waiting (mass and radius clamp at `MAX_M` /
+`MAX_R`; not fixed here). A body already ABOVE the ceiling shows its true density with the slider
+parked at the end, and is not written until the author moves the control.
+
 ### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
 BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which
 publish energy from nowhere. Architecture: TWO COPIES OF ONE WALK, which is how they came to
@@ -6310,6 +6825,84 @@ the TAG beside it said 130% - one question, two answers, and every existing test
 compared a surface against a number rather than against the other surface. The gate now compares the
 two SURFACES across six arrangements. When one function grows a second caller with a slightly
 different question, give the caller a FLAG, never a copy.
+
+### PHY-48 AN EDITOR SHOWS A PHASE AT ONE STATED EPOCH, OR IT IS SHOWING A DIFFERENT QUANTITY ON EVERY BODY
+BUCKET: DOMAIN + ARCHITECTURE - domain: `M(t) = M0 + n*(t - t0)`, so a mean anomaly is a number AND
+an instant, and a catalogue always states the instant. Architecture: a stored pair that is one fact
+(PHY-33) must be shown as one fact - displaying half of it publishes a number whose meaning depends
+on a field no surface shows.
+WHERE: `components/BodyOrbitTab.svelte` (`shownMeanAnomalyDeg`, `applyMeanAnomaly`, `writeOrbit`);
+`physics/orbits.setPhaseAtEpoch` (the write) and `rephasedM0` (the read); the epoch is
+`system.epochT0`, labelled through `temporal/utre.formatInstantMs` (UI-C14). Gate:
+`components/BodyOrbitTab.epoch.spec.ts`.
+RULE: the Mean Anomaly box shows `rephasedM0(orbit, system.epochT0)` - the stored phase re-expressed
+at the system's reference epoch - and typing in it writes `t0 = epochT0` and `M0_rad = typed`
+together. NOTHING STORED IS MIGRATED: opening the tab writes nothing, and an edit of any OTHER
+element leaves `t0` and `M0_rad` exactly as they were (`writeOrbit` no longer writes the phase at
+all; it used to re-write `M0_rad` from the box on every keystroke of every field, which was harmless
+only while the box held the raw stored value). With no system to name an epoch the box falls back
+to the stored phase and its label drops "at epoch".
+WHY: user report from the bug run: *"two objects with identical orbital elements placed at
+different times end up in different places."* `t0` is the instant a body was created or placed
+(`Date.now()` in the generators, the display clock in `SystemView`'s placement routes, 0 in three
+importers) and nothing showed it, so the same six numbers typed into two bodies were two orbits.
+Measured in the gate with the epoch handling switched off: twins on a 2.5 AU orbit, placed 311 and
+2,045 days into a campaign and given identical elements, sat 3.14 AU apart.
+BLAST: A NEW SEMI-MAJOR AXIS IS A NEW MEAN MOTION, so the same stored phase is a different mean
+anomaly at the epoch. The box is RE-READ after every non-phase edit rather than left stale, which
+means dragging the distance slider moves the Mean Anomaly box on a body whose `t0` is not the
+epoch. That is the honest reading of "the phase is held where it was stored", and it stops the
+moment the GM types a mean anomaly (the orbit is at the epoch from then on). THE ALTERNATIVE WAS
+WEIGHED AND NOT TAKEN: re-stamping `t0 = epochT0` on EVERY element edit makes the six boxes
+independent, but a world just placed at the display instant (`t0` = now) would then swing round its
+orbit by `dn * (now - epoch)` while its distance slider is dragged - years of phase in a long
+campaign - where today it holds still. That changes what dragging feels like; it is the owner's
+call, recorded in the handover.
+BLAST: A PAIR. `processBarycenters` copies `t0` and `M0_rad` from the member with the later
+`lastEditedT0` onto both (PHY-33), and `writeOrbit` stamps `lastEditedT0`, so typing a mean anomaly
+on one member puts BOTH at the epoch on the next pass - gated through `process()`. A PINNED
+`n_rad_per_s` (a pair member's, an l1/l2 point's) is respected because the read is `rephasedM0`,
+which asks `orbitMeanMotion`; never recompute `sqrt(mu/a^3)` in the tab. Between a keystroke and
+the processor's next pass a pair member's pinned `n` is one edit stale, so the box can lag one
+pass on a pair whose separation is being dragged.
+BLAST: `on:input={updateOrbit}` HANDS THE HANDLER AN EVENT. An optional `phaseTyped = false`
+argument on `updateOrbit` is switched ON by every input in the tab, silently - which is why the flag
+lives on `writeOrbit(phaseTyped)` and `updateOrbit()` takes nothing.
+BLAST: NOT REACHED. `ConstructGeneralTab` shows and writes a construct's `M0_rad` bare, against the
+construct's own `t0` (three sites) - the same shape on ships, owned by another stream and DATA-R29.
+The Retrograde orbit checkbox flips the sign of `n` without re-expressing the phase, so a body whose
+`t0` is not "now" jumps when it is ticked; that predates this entry and was left alone. The
+propagator answers in AU: a position gate written as "less than 1" is a one-AU tolerance and
+passes with the fault fully present (it did, once, in this gate's first draft).
+
+### PHY-42 THE POSITION WALK MUST TERMINATE ON ANY DATA
+BUCKET: ARCHITECTURE - a recursive walk over AUTHORED references is bounded by the data, not by the
+code, and this one is called on every frame by every view.
+WHERE: `physics/worldPositions.ts` `walkPositions` - the `resolving` set in `resolve`, and the
+`selfAnchored` test in the attachment pass. Gate: `worldPositions.docking.spec.ts`, "a ladder with
+nothing to stand on is still somewhere". The sibling walk is `transit/physics.ts getGlobalState`.
+RULE: the walk recurses along `parentId` and `attachedTo`. A node met again while it is still being
+resolved answers the origin for that one link, and the walk carries on. A structure attached to
+ITSELF (a ladder at its anchor, RENDER-S51) that gets no offset from `attachedOffsetAu` must NOT ask
+for its structure's position - that is its own - and falls through to its own orbit instead.
+WHY: a user report of 2026-09-26 (Discord triage B9, not a board id): a space elevator sent to L2
+from the Orbit tab froze the system view, and then the site on re-entry. A co-orbital node is
+re-homed onto its world's own host, so the ribbon hung from a star: no geostationary, no ladder,
+`attachedOffsetAu` null, and the fallback `resolve(structure.id)` resolved the node being resolved -
+`RangeError: Maximum call stack size exceeded` in the 2D, 3D and states walks, on every frame, and
+again on load because the save carried the state. The same throw needs no L-point: edit a world's
+rotation until its geostationary is only a fallback and an elevator already standing on it has no
+ladder either.
+BLAST: `getGlobalState` already carried the self guard (`if (structure !== c)`) and the walk did
+not - one rule written twice, one copy missing half of it. It still has NO cycle guard: `attachedTo`
+A -> B -> A recurses there (hand-edited data only; not fixed). `SystemView absolutePositionOf`
+recurses on `parentId` unguarded too.
+BLAST: `orbits.ts solvePerifocal` reads a non-numeric `M0_rad` or `t0` as zero for the same reason:
+one NaN position is inherited by every child of the body.
+BLAST: THE LOAD HEAL IS NARROW ON PURPOSE. `importFixup.fixUpImportedSystem` puts a SURFACE-ONLY
+mega that carries a co-orbital marker back on the world it stood on (relevance, UI-B2: there is no
+reading of "an elevator at L2" to keep). It touches no other node; the guard in the walk is what
+makes every other bad reference harmless rather than repaired.
 
 ### RENDER-S47 A STAR DIMMED TO NOTHING IS AN ABSENCE ON THE MAP, AND READS AS THE WRONG OBJECT
 BUCKET: IMPLEMENTATION - durable: a MARK is not a READING, and a derived quantity that reaches zero
@@ -6454,6 +7047,29 @@ every prediction). Measured on this build: the first Earth eclipse after 2026-06
 a 0.597 partial, 771.7 days from the real total of 2026-08-12. A correct anchor does not move that
 by one second. Closing it needs real elements for Earth and Luna plus nodal precession - a physics
 item, filed on the board, and `temporal/eclipseAnchor.spec.ts` records the gap with its numbers.
+BLAST: THE RESOLVER IS TOTAL OVER WHAT THE EDITOR'S BOXES CAN HOLD (user report 2026-09-12, "custom
+calendar completely bricks sse"). A unit length is whatever a GM typed - 1.62, 46043873.28, a blank -
+and `BigInt(x)` THROWS on anything not whole; the resolver runs on every clock tick and the save
+carries the calendar, so one fractional second was a throw per frame and per load.
+`resolveBucketDrain` now works in TICKS (thousandths of a second, `ticks` / `signedTicks`): exact
+for a fractional unit, and bit-for-bit the old answer for a whole-second calendar (360,000 instants
+compared across the shipped calendars, no differences). `resolveCalendar` catches and answers with
+the raw tick. Never write `BigInt(<authored number>)`; `wholeClockSeconds` is the safe form outside
+the resolver (`SettingsModal applyBucketYearOverride` had the same throw). Gate:
+`temporal/calendarSafety.spec.ts`.
+BLAST: A NEGATIVE `drift_per_year_t` IS HONOURED - a year shorter than its whole days, one unit
+taken OUT in the year the deficit reaches the threshold. It was silently ignored. And the first
+guess at the year is the EXACT mean year as a fraction: a GM's new calendar has its zero at the big
+bang, a year index near 1.4e10, where the old guess (Gregorian's 97/400 whatever the cycle said; a
+truncated division for a bucket) could miss by hundreds of years - outside the eight-step search -
+and print a garbage date.
+CAVEAT (found 2026-11, NOT fixed): ADOPTION IS KEYED ON `id` AND THE EDITOR RE-STAMPS EVERY `id`.
+`EditTemporalModal handleSave` writes `CAL_<slug of key>` onto all calendars, shipped ones included
+(`EARTH_GREG` becomes `CAL_earth_gregorian`). After any Save there, `adoptShippedCalendarEpochs` no
+longer recognises that campaign's built-ins, and nothing is `sameAsShipped`, so B112's delta writes
+all four into the file. The re-stamp is also the only thing keeping a GM's edit to a built-in's
+`leap_logic` alive - with the id intact, adoption resets it on the next load - so the two must be
+changed together.
 ### RENDER-S48 A MODEL DRAWN IN ITS HOST'S CURRENCY MUST BE SCALED BY THE HOST'S LIVE RADIUS
 BUCKET: ARCHITECTURE - a build-time snapshot of another object's drawn size is stale by the next
 frame, and the units silently square if the caller also scales by length.
@@ -6570,7 +7186,8 @@ position walk with velocity as a second operand), one host-list rule (`hostCandi
 construct picker).
 WHERE: `system/reparent.ts` (`reparentBody`, `hostCandidates`, `roleHintUnderHost`),
 `physics/worldPositions.computeWorldStates3D`, `import/ubox/kepler.elementsFromState`; the control is in
-`BodyOrbitTab.svelte` behind the one Advanced disclosure and `BodySidePanel` hands it `nowMs`. Gate:
+`BodyOrbitTab.svelte` behind its OWN "Re-home..." disclosure at the foot of the tab (the shared
+Advanced disclosure went with A106 - UI-C22) and `BodySidePanel` hands it `nowMs`. Gate:
 `system/reparent.spec.ts`, each case seen red with its half of the fix removed.
 RULE: derive every element from the world state at `nowMs` and stamp `t0 = nowMs`. Never keep an old
 mean anomaly on a new host - a circle is not an orbit without its phase (DATA-R29, B111): with the
@@ -6675,6 +7292,9 @@ the approach sense at all - it was TRANSIT-8, the far-side velocity sign in `bui
 which parked EVERY Hohmann retrograde. The approach-sense rule above still stands for the
 interplanetary paths; the orbit-change path now conserves the sense and applies the same prograde
 rule at a beanstalk host, with a reversal priced when the origin runs against the spin.
+CORRECTION (PHY-42): "outranks `orbit`" holds only while the structure HAS an offset. A ladder with
+no ports (a host with no real geostationary) falls through to its own orbit; it used to ask for its
+own position and overflow the stack.
 
 ### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
 WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.
@@ -7091,8 +7711,10 @@ layout, a stored scroll, a hit test computed against a stale scale: all of them 
 BUCKET: ARCHITECTURE - a player-facing view that ignores the preset's visual filter does not look
 like a bug from the inside; it looks like a view. The tell is that its PREVIEW disagrees with it,
 which is the one thing the preview exists to prevent.
-WHERE: `routes/catalogue/+page.svelte` - one branch per stage, each of which must either run the
-filter itself (the holo) or wrap in `FilterFrame` (everything else); `components/FilterFrame.svelte`
+WHERE: `routes/catalogue/+page.svelte` - one branch per stage, each of which runs the REAL filter
+itself (the holo as a pass in its own scene; the document, the list and the size comparison through
+the real chain). No stage wraps its content in `FilterFrame` any more - see WHAT STILL MOUNTS IT
+below; `components/FilterFrame.svelte`
 + `player/cssFilterApprox.ts` (the approximation); `holo/filteredCanvas.ts` (the real chain over a
 static canvas); mirrored in `PlayerPresetEditor.svelte`'s preview branches.
 RULE, AND IT IS A DECISION ALREADY TAKEN RATHER THAN A CHOICE PER STAGE. Owner, 2026-07-18, in
@@ -7107,6 +7729,26 @@ composites its info card as a HUD quad so the card warps WITH the picture.
 through GLSL without a capture step, it is one source of truth rendered two ways rather than a rival
 implementation ([[A39]]), and the surfaces still on it are tracked as unfinished, not as finished.
 Reach for it only where a preset is explicitly un-filtered, or as a stop-gap you have written down.
+WHAT STILL MOUNTS IT (3.1.1 - [[G78]]'s kill has NOT happened, and the frame is still shipped): the
+preset's OVERLAY GRAPHIC at three catalogue mounts (the starmap size comparison, the system size
+comparison, and the holo only until its overlay bitmap has loaded and the HUD quad takes over); the
+`.inspector` block, which reads `cssFilterApprox` directly (`inspFx`) wherever the HUD card is not
+drawing it; and the preset editor five times (the cover preview, the text-list preview, and the
+overlay three times - once for every previewed stage, plus an extra copy inside each of the two
+size-comparison previews, which therefore draw their overlay twice).
+AND A FRAME AROUND A TRANSPARENT GRAPHIC IS NOT A FRAME AROUND A SURFACE. The frame's tint,
+scanlines and vignette are WHOLE-FRAME sheets, and the tint is solid colour under
+`mix-blend-mode: color`. `.overlay-wrap` has a z-index and is therefore its own stacking context:
+over a mostly transparent image the blend has no backdrop, falls back to plain source-over, and
+lays a film of phosphor across a stage the real shader has already filtered - reported twice as
+"the phosphor colour overlays the whole screen". A mount around a graphic passes `graphic`: no
+sheet is painted and the tint goes on the image's own pixels as a colour matrix
+(`graphicTintMatrix`). Gate: `components/FilterFrame.spec.ts`, RED for any `FilterFrame` around a
+`GraphicLayer` without it. The same gate pins that `GraphicLayer` is handed a PLACEMENT and never
+the `{img, placement}` pair the canvas surfaces take: the starmap size comparison passed the pair,
+found no asset, and never drew its overlay at all - only the wash. An overlay on a size comparison
+is still DOM and does not warp with the picture; the finish is G78's own first step, the overlay
+drawn into that view's chrome canvas.
 WHY THE DECISION EXISTS, and it is not tidiness: DOM chrome is positioned in SCREEN space and does
 not follow the warped, inset projection. Under a barrel-warped CRT preset the picture bends and the
 DOM sitting over it does not, so labels drift off the things they name - which is the exact fault
@@ -7166,6 +7808,57 @@ paths, also fixed); the spec written to pin the fix exposed this sign underneath
 BLAST: anything that reads a completed orbit change's end state - the sampler's parking orbit
 (sense from `u x w` of the arrival), the reconciler's circular elements, and now the dock catch,
 which assumes a prograde park to compute when the ship meets the ribbon.
+
+### RENDER-S60 A BODY'S SHAPE IS ONE SEEDED FIELD, AND THE CARD AND THE MESH BOTH SAMPLE IT
+BUCKET: ARCHITECTURE - the same fault RENDER-S53 records one level up, caught before it happened
+rather than after: two surfaces drawing one object from two descriptions of it.
+WHERE: `src/lib/catalogue/smallBodyShape.ts` - `smallBodyShape` (the field), `smallBodyOutline` (the
+2D slice) and `lobeCount` (the fact). Read by `PlanetDisc.svelte`, `CompositionCrossSection.svelte`,
+`rendering/planetAppearance.ts`, `holo/bodyLook.ts` `displaceToShape`, and by
+`core/SystemProcessor.ts` for the `lobes` FEATURE. Pinned by `catalogue/smallBodyShape.spec.ts`,
+`components/bodySilhouette.spec.ts` and `holo/bodyLookShape.spec.ts`.
+RULE: there is ONE radial field per body, `r(lon, colat)`, seeded from the body id and normalised so
+1 is the body's volume-equivalent radius. The 2D silhouette is that field's EQUATORIAL SLICE and the
+3D mesh is the same field over both angles. Neither surface may compute a shape of its own, and a
+new surface samples the field rather than re-deriving it. Sampling DENSITY is each surface's own
+choice (the outline takes 16 points for a plain rock and up to 96 for a lobed one; the mesh takes
+whatever the sphere's segmentation gives it) - what must never differ is the field underneath.
+WHY: the 2D potato existed from the composition redesign and 3D drew a plain `SphereGeometry` for
+every body until [[G91]], so the same asteroid was a convincing rock on its card and a billiard ball
+in the holo. Building the 3D lump separately would have replaced one mismatch with a subtler one -
+two rocks that are both lumpy and plainly not the same rock - which is this codebase's most recurring
+recorded fault. It also makes the contact binary ([[G90]]) one piece of work instead of two.
+THREE THINGS THAT ARE NOT OBVIOUS AND EACH COST SOMETHING:
+(1) THE EQUATORIAL ROW IS DRAWN FIRST OFF THE LCG, and that ordering is load-bearing. It is the same
+sixteen draws in the same sequence the old one-dimensional function made, which is the only reason
+every asteroid in every existing campaign kept its exact silhouette. `smallBodyShape.spec.ts` holds
+the old expression verbatim and compares path strings CHARACTER FOR CHARACTER. Reorder the draws and
+every rock in the product changes shape silently.
+(2) THE GRID IS SAMPLED WITH SMOOTHSTEP, NOT LINEAR INTERPOLATION, and that is arithmetic rather than
+taste. A longitude round-trips through pi, so a sample lands up to 2e-16 either side of its own grid
+index; linear weights carry that straight into the answer, while smoothstep is flat to second order
+at both ends so the epsilon underflows to exactly 0 or 1. That is what makes (1) bit-identical
+instead of merely close.
+(3) A POLE IS ONE RADIUS AND THE SEAM IS ONE MERIDIAN. Every vertex of a sphere's top row is the SAME
+POINT and the two sides of the u seam are the same longitude, so the field must be single-valued at
+both or the mesh tears open. The pole rows are therefore a single draw filled across, and the
+longitude wraps.
+LOBES ARE A UNION OF SPHERES ON A CHAIN, IN THE EQUATORIAL PLANE. A ring would leave a hole at the
+centre of volume - the origin every radius is measured from - and a ray from inside that hole misses
+every sphere. The equatorial plane is where the 2D card slices, so a GM sees the lobes rather than
+one of them end-on. A CHAIN OF THREE HAS TWO RADIAL MAXIMA, NOT THREE: the middle lobe sits at the
+centre of volume, so it reads as a thickened waist. That is geometry, not a fault, and the gate
+measures elongation for n > 2 rather than a lobe count.
+COST, MEASURED (`bodyLookShape.spec.ts` prints it): about +0.2 ms per small body at 32x24, against
+~1.0 ms to build the body's look at all - roughly half sampling the field and half
+`computeVertexNormals`. It is a BUILD cost and there is NO per-frame cost: same vertex count, same
+draw call, static geometry. IT NEEDS NO EXTRA SEGMENTS EITHER - the sphere is 32 longitudes (16
+lo-poly) against the field's own 16, so the mesh already samples at or above the field's resolution
+and a finer sphere would only draw the same rock with more triangles. Nothing here is shed under Low
+Power because Low Power buys fill rate ([[G80]]) and this costs none.
+BLAST: a fourth surface that wants a body's outline or its solid samples this field. Changing the
+draw ORDER, the grid dimensions or the interpolation reshapes every small body ever authored;
+changing the LOBE parameters reshapes only bodies a GM has given a lobe count.
 
 ### RENDER-S57 A CONTEXT'S POWER FLAGS ARE FROZEN AT CREATION, SO ASKING IS A ONE-SHOT AND REFUSING IS FATAL
 BUCKET: PLATFORM (the browser's WebGL context creation). The duplication half - one factory rather
@@ -7271,23 +7964,41 @@ renames a GM's definition. Get it wrong in the "different" direction and one qui
 becomes a quietly wrong campaign.
 
 ### DATA-R47 AN EDITOR THAT STORES A DELTA MUST BE HANDED THE SHIPPED PACK, NEVER THE EFFECTIVE ONE
-BUCKET: ARCHITECTURE - the companion to DATA-R46, and it cost two data-losing bugs (B147).
-WHERE: `src/routes/+page.svelte` where the pack editors are mounted; `EditBiospheresModal.svelte`
-(shipped pack - stores a delta), `EditAtmospheresModal.svelte` (effective pack - needs the merged
-liquid list for a dropdown, B132). Pinned by `EditBiospheresModal.base.spec.ts` and the corrected
-gate in `customLiquidsForGases.spec.ts`.
-RULE: **the pack prop is doing two different jobs and only one of them tolerates the effective pack.**
-An editor that stores a DELTA uses its pack twice - as the base a saved delta is laid OVER on the way
-in, and as the base the edited list is diffed AGAINST on the way out - and both of those must be the
-pack WITHOUT this campaign's overrides. Hand it the effective pack and base and edited list become
-one list: `makeListDelta` correctly finds no difference, returns `undefined`, and
-`applyStarmapOverrides` reads `undefined` as "no override at all" and DELETES the key. Opening the
-biosphere editor and pressing Save with no edits wiped morphologies, pigments and pigmentModel
-together, in silence. An editor that only POPULATES CONTROLS from the pack wants the effective one,
-which is why the two mounts differ and why "as the other editor does" is not a reason.
-BLAST: silent loss of every customisation in the affected sections, on a gesture a GM has no reason
-to think is destructive. The tell is a save handler that diffs against the same prop its loader
-applied an override to.
+BUCKET: ARCHITECTURE - the companion to DATA-R46, and it has now cost three data-losing bugs (B147
+twice, and the 3.1.1 "it only saves one custom gas").
+WHERE: `src/routes/+page.svelte` where the pack editors are mounted - ALL FIVE on `selectedRulepack`
+(Fuel & Drives, Sensors, Atmospheres, Liquids, Biospheres); `EditAtmospheresModal.svelte`
+(`effectivePack`, a second READ-ONLY prop for its liquid dropdown, B132); the fold every editor's
+save goes through is `rulepack/effectivePack.ts applyEditorOverrides`. Pinned by
+`customDefinitionsSurviveEditors.spec.ts` (reads each mount out of the page's own markup and drives
+it over several visits), `EditBiospheresModal.base.spec.ts` and the gate in
+`customLiquidsForGases.spec.ts`.
+RULE: **every editor that hands a section back is mounted on the SHIPPED pack.** Such an editor uses
+its pack twice - as the base the stored override is laid OVER on the way in, and as the base the
+edited list is diffed AGAINST on the way out - and both must be the pack WITHOUT this campaign's
+overrides. Hand it the effective pack and base and edited list become one list: the diff finds
+nothing, and the page's fold (a shallow, section-level replace) writes the section back without
+whatever was already stored. **A control that needs the effective list takes it as a SEPARATE
+read-only prop**, and nothing is ever diffed against that prop.
+**CORRECTED 3.1.1 - THIS ENTRY WAS WRONG ABOUT ONE EDITOR, AND THAT EDITOR WAS THE BUG.** It listed the
+atmospheres editor as one that "only populates controls" and so rightly took the effective pack
+(B132's fix, v3.0.321). But "stores a delta" includes A KEYED RECORD OF WHAT DIFFERS: that editor
+writes back only the gases that differ from its pack. On the effective pack a custom gas saved on the
+last visit compared equal to "the default", was left out of the next save, and the section was
+replaced without it - make a second custom gas and the first was gone, with every tweak to a shipped
+gas. Two side effects of the same mistake: a saved custom gas or mix showed "revert" instead of
+Delete, and had no Copy button, because it looked shipped.
+AND ITS COMPANION RULE: an editor hands back `undefined` for a section with nothing custom left (the
+fold removes the key). Leaving the key OUT means "keep what was stored", so deleting the last custom
+gas, mix, fuel, engine or sensor never stuck. **`undefined` is safe ONLY on the shipped pack** - on the
+effective pack an unchanged visit says "nothing custom" and wipes the section. The two travel together.
+WHY: B147 (opening the biosphere editor and pressing Save wiped morphologies, pigments and
+pigmentModel in silence), and the 3.1.1 report in three GMs' words - "when I create a new one, the
+older one deletes itself".
+BLAST: silent loss of every customisation in the affected section, on a gesture a GM has no reason to
+think is destructive. The tell is a save handler that diffs against the same prop its loader applied
+an override to. A NEW editor, or a new control inside one that wants the campaign's own list, must
+not reach for the pack prop - add a read-only prop and a row to the spec.
 
 ### RENDER-S59 A CACHED CANVAS IS NOT A CACHED TEXTURE - THE UPLOAD IS THE BILL, AND IT IS PAID PER BUILD
 BUCKET: PLATFORM (what a GPU upload costs, and what it costs when there is no GPU) plus
@@ -7377,3 +8088,556 @@ THE ARGUMENT, and the third point is the one that decided it:
 BLAST: if narrowing is ever built, it must be additive-only over a measured reference map, and the
 three set-scored sections must be exempt by name. Do not derive the reference list from the fields
 that happen to appear in one fixture.
+
+### DATA-R51 A COPIED DEFINITION CARRIES WHAT IT NAMES, AND THE MERGE REPOINTS EVERY REFERENCE A COPY CAN CARRY
+BUCKET: ARCHITECTURE (file format) - G99, Stream AA job 4, 2026-09-11. The copy half of R-19.
+WHERE: `src/lib/io/clipRules.ts` (`DEFINITION_REFERENCES`, `isShippedDefinition`, `rulesForDefinition`,
+`repointDefinition`), `src/lib/io/hubClip.ts buildRulesClip`, `src/lib/components/CopyDefinitionButton.svelte`
+in the five Settings editors (Liquids; Atmospheres: gases and mixes; Fuel & Drives: fuels and engines; Sensors;
+Biospheres: morphologies and pigments). Gated by `io/definitionCopy.spec.ts` and `CopyDefinitionButton.spec.ts`.
+RULE ONE: **"not a default one" is asked of the SHIPPED PACK by identity, never of the editor's form.**
+`isShippedDefinition` is the section's own `fromPack(...).has(id)` - the lookup the paste uses. Several editors
+decide default-ness with `JSON.stringify` against a record their own bindings have already filled in (a
+`bind:value` select writes its first option into a field the pack never declared), so a form-based test would put
+Copy on shipped fuels the moment the dialog rendered. A MODIFIED shipped definition gets no Copy either: every
+campaign has one under that name, and a paste would only rename it.
+RULE TWO: **a copy carries every custom definition the copied one names, transitively, and never a shipped one.**
+`DEFINITION_REFERENCES` is ONE table with both halves: `names` (what the copy follows) and `repoint` (what the
+merge moves when the named definition is renamed on a clash). Three references, each a field the engine reads by
+name: an engine's `fuel_type_id`, a gas's `cloud.condensesTo`, a mix's composition keys. Before G99 the merge
+repointed only the first, so a copied gas whose liquid clashed would have pasted pointing at the DESTINATION's
+liquid in silence. A reference known to the copy and not to the merge travels whole and still pastes broken.
+`repointDefinition` now receives the section of the definition it edits - the loop used to throw it away.
+RULE THREE: **one envelope.** `buildRulesClip` is the hub's own: `nodes: []`, no `root`, definitions on
+`rulePackOverrides`, through `readClipOverrides` so a copy cannot produce what a paste would drop; `putClip` puts it
+in the one copy buffer and on the system clipboard. `source.title` is the campaign's name.
+THREE THINGS FOUND ON THE WAY, TWO FIXED IN THE SAME PUSH: (a) **the app's own body Copy never carried the
+campaign's custom rules.** `buildClip` accepted `rulePackOverrides` from v3.1.45 and the R-19 record said Copy
+"now carries" them, but no call site passed them - Copy and Cut in the system view and Copy System on the starmap
+do now, pinned in the source. (b) **the starmap greyed "Paste Rules (...) here"** because its menu asked
+`systemNodesFromClip`, while `pasteClipAsNewSystem` behind it has merged a rules clip since R-19; enabled. (c) NOT
+FIXED, reported on [[G99]]: a delta section records an explicit `order` whenever a key is added (by an editor or by
+a paste), and `applyListDelta` walks that order only - so a definition added to the SHIPPED pack later would never
+reach that campaign. Read in the code, not measured against a pack change.
+WHY: owner, 2026-09-11 - "a quick easy way of getting new drive/atmo/liquid presets" - and "that extra copy option is
+part of the new copy paste scope from explorers site".
+BLAST: a NEW field by which one definition names another must be added to `DEFINITION_REFERENCES` (both halves) or
+a copy of it pastes half-attached. A new override section with an identity needs a `<CopyDefinitionButton section>`
+in its editor - the spec compares the editors' sections against `SECTIONS` absolutely.
+
+### DATA-R52 A DOCUMENT THAT LEAVES A CAMPAIGN CARRIES THE CAMPAIGN'S RULES, AND ONE THAT ENTERS HANDS THEM TO THE CAMPAIGN
+BUCKET: ARCHITECTURE (file format) - R-19 with a file where the clipboard was. Added 3.1.1.
+WHERE: `src/lib/io/systemRules.ts` (`withCampaignRules`, `takeCarriedRules`, `takeRulesOffDocument`,
+`landCarriedRules`). OUT: `SystemView.svelte handleSaveSystem` (GM branch), `ConstructSidePanel.svelte
+handleExport`. IN: `SystemView.svelte openSystemBytes`, `io/systemFromSave.ts` (the wizard's file and
+Explorers doors, the "Add System" link) into `+page.svelte landSystem`, and `ConstructSidePanel.svelte
+handleImport`. Pinned by `io/customDefinitionsRoundTrip.spec.ts`, nine roads with TWO custom
+definitions in every section, counted absolutely.
+RULE: custom definitions live on the STARMAP (`rulePackOverrides`), never on a node, so anything saved
+WITHOUT its campaign must take them along. **OUT:** a system file and a construct file carry the
+campaign's `rulePackOverrides` WHOLE (DATA-R50) - the key and shape a campaign file and a clip already
+use, through `readClipOverrides`, so a save cannot write what a load would drop. **IN:** the key comes
+OFF the document (left on, a system inside a campaign would hold a second, stale copy), is merged per
+DEFINITION by `mergeClipOverrides` - added, dropped when identical, renamed and the arriving nodes
+repointed on a clash, never overwritten (DATA-R48) - BEFORE `process()`, and the result is SAID ALOUD
+through `describeMerge`. **NEVER ON A PLAYER SAVE:** that file goes to players and the bag names every
+drive and sensor in the campaign, hidden ships' included.
+WHY: the 3.1.1 reports - "every single custom thing we created from engines to biospheres gets
+deleted", and custom engines, atmospheres and liquids gone from a system file while "the planets'
+atmospheres with custom molecules were unchanged". Save System wrote the nodes alone. So did a
+construct Export (a drive shown by its id, "Unknown Fuel", no thrust), and the wizard took a CAMPAIGN
+file's first system and left the rules at the top of that file behind. Nothing failed or warned.
+BLAST: any NEW standalone file kind and any NEW door a system or construct enters by needs both
+halves, or it is this bug again. The merge needs the SHIPPED pack (delta sections are written back
+against it): `SystemView` and `ConstructSidePanel` take it as `shippedRulePack`, and the editor is
+reached two ways (`ConstructDetailsPane`, `ShipPanel`) - an import where that prop is absent takes the
+key off and merges nothing. A file from before 3.1.1 has no key and loads as it did; a 3.1.1 file
+opened by an OLDER build leaves a harmless stray key on the system or construct. Whether a construct
+file should carry only what the construct names is an OPEN OWNER DECISION - it carries the whole bag,
+as a copied ship does, so importing a ship can add another campaign's gases and pigments.
+
+### DATA-R53 A CAMPAIGN IS DERIVED AGAINST ITS OWN RULES FROM THE FIRST PASS
+BUCKET: ARCHITECTURE - DATA-R48's third point ("the merge runs before `process()`, never after") at the
+campaign's own door. Added 3.1.1.
+WHERE: `src/lib/rulepack/effectivePack.ts campaignRulePack`; `src/routes/+page.svelte
+recalcAllSystems` (a refresh from browser storage, a base-map upgrade or its undo, an example or
+real-sky starmap) and `openStarmapPayload` (a campaign opened from a file or a link). Pinned by
+`rulepack/campaignRulePack.spec.ts`, which reads out of the page which pack each load derives
+against and derives the test world with that.
+RULE: every campaign load strips each system's derived data and re-derives it, and that re-derive
+uses the campaign's EFFECTIVE pack - shipped plus its own `rulePackOverrides` - not the shipped pack
+alone. **IT FALLS BACK RATHER THAN FAILING:** overrides in a shape the merge cannot walk give the
+shipped pack and a console warning, because a damaged file opened before this and must still open.
+WHY: both loads derived against `selectedRulepack`, so a world breathing a custom gas over an ocean
+of a custom liquid came back coloured, heated and tagged as though neither existed - 49 derived
+fields different on the test world, among them `apparentColorHex`, the ocean and haze colours, the
+greenhouse temperature and two vegetation layers. The definitions were never lost; the worlds did
+not show them on the starmap, in All Bodies or to players until the GM opened that system, where
+the system view derives against the effective pack and converges (0 differences, measured). "Liquid
+colours do not save" was this.
+BLAST: authored data is untouched - this changes only what is DERIVED on load. NOT YET COVERED, each
+read in the code and not measured, and each heals when its system is opened: `attachStarmapUndo(() =>
+selectedRulepack)` (a deleted system restored by undo), the generation wizard's first pass and
+`placePendingHubSystem` when the file brings no rules of its own, and the real-sky import's
+`completeImportedStars` / `fillOutAll`. The wizard is also MOUNTED on the shipped pack, so a custom
+atmosphere mix's spawn weight does not apply to what it generates. Any new load path must ask
+`campaignRulePack` before its first `process()`.
+### DATA-R54 THE NEWEST STORED COPY IS NOT ALWAYS THE ONE IN INDEXEDDB
+BUCKET: ARCHITECTURE (a fallback store written after a failure is newer than the primary by
+construction) + PLATFORM (browser: an IndexedDB connection can die under a running page, typically
+when a phone puts the browser in the background).
+WHERE: `src/lib/starmapStorage.ts` (`FALLBACK_NEWER_KEY`, `loadSavedStarmap`,
+`migrateLegacyStarmapToIndexedDb`, `saveStarmap`, `withFreshConnectionOnFailure`); the banner in
+`routes/+page.svelte` (`noteSaveFailed`). Pinned by `lib/starmapStorage.spec.ts` and a case in
+`routes/page.spec.ts`.
+RULE: a copy written to the localStorage fallback is marked newest, read first, moved back into
+IndexedDB when that takes writes again, and never deleted before then. A connection is never cached
+past its death, nor is a failed open; each read and write retries once on a fresh one. `saveStarmap`
+rejects when neither store took the campaign.
+WHY: B-1. A dead connection stayed cached for the visit, so every save went to the fallback; at the
+next start the migration saw "a copy already in IndexedDB", deleted the newer fallback as a
+leftover, and the older copy loaded. The GM came back from a reload to the campaign as it stood when
+writes began to fail, redid the work and lost it again. Reproduced on the old module against a
+stand-in IndexedDB; that it is what the reporter hit is inferred from the symptom, not observed.
+BLAST: any second store added later needs the same recency rule. A marker with no copy must not hide
+the IndexedDB copy (`loadSavedStarmap` falls through). `saveStarmap` must keep rejecting on a total
+failure: the route's "could not be saved" banner is its only reader. Two tabs still share one stored
+campaign and the last writer wins; that is not addressed here.
+### DATA-R55 A CATALOGUE MASS IS A VALUE OR A LIMIT, AND THE COLUMN DOES NOT SAY WHICH
+BUCKET: DOMAIN - a published figure carries a kind (measured, minimum, upper limit, estimated) and
+a catalogue may hold all of them in one column. Move verbatim; any importer reading the Exoplanet
+Archive meets this.
+WHERE: `import/realsky/planets.mjs` (`planetMassFromRow`, `estimateMassMe`, `planetDescription`),
+`query.mjs` (`ARCHIVE_COLUMNS`), `convert.mjs` (`planetNodeFromRow`); gated by `massLimit.spec.ts`
+on the QUERY as well as the transform (DATA-R44).
+RULE: `pl_bmasse` is read only through `planetMassFromRow`, which reads `pl_bmasselim` beside it.
+A flag of 1 is an UPPER LIMIT and is never used as the mass while anything better exists: with an
+independently measured radius the mass is estimated from that radius by the inverse of
+`estimateRadiusRe`, never above the limit; with no such radius the limit stays as the figure and
+the description CALLS it a limit. Either way the row's `pl_dens` is ignored, because the archive
+computed it FROM the limit.
+WHY: a user's report, 2026-09-24 - "i dont think the mass for kepler 32f is right". Kepler-32 f is
+0.82 Earth radii and its only published mass is an upper limit near 969 Earth masses (3.05
+Jupiters). The query never asked for the flag, so "lighter than three Jupiters" imported as three
+Jupiters in a body smaller than Venus, with a gas giant's makeup.
+BLAST: THE COMMITTED CACHE AND THE BUNDLED SNAPSHOT PREDATE THE COLUMN, so their rows carry no flag
+and read as values - a limit inside 41 ly stays a mass until `scripts/starmap-build/fetch-sources.mjs`
+asks for the column and the kit is re-run. A flag of -1 is a LOWER limit and is left as it was (a
+minimum mass already is one). `pl_bmassprov` = 'M-R relationship' is a THIRD kind - the archive's
+own estimate from the radius - and is still printed as plain "Mass"; relabelling it changes a
+shipped map (LHS 475 b). Past ~12 Earth radii the relation cannot be inverted and answers with the
+mass at which its plateau begins. THE FIXTURE ROW IS SYNTHESISED from published figures; the live
+composite row for Kepler-32 f has not been seen from a browser.
+### PHY-43 A BODY'S AGE HAS ONE ANSWER, AND ITS "NOW" IS THE SYSTEM'S REFERENCE EPOCH, NEVER THE SCRUB
+BUCKET: ARCHITECTURE + DOMAIN - architecture: one function answers "how old is this body" and
+nothing else may read the stored field or the system's age in its place. Domain: an age is a
+property with a history behind it, not an overruled derivation. Carries to V4 unchanged.
+WHERE: `physics/bodyAge.ts` (`ageOf`, `setBodyAge`, `clearBodyAge`, `hasOwnAge`, `cosmicNowGyr`);
+the field is `CelestialBody.formationTimeGyr` (`types.ts`). Design: `docs/dev/deep-time-design.md`.
+Gate: `physics/bodyAge.spec.ts`.
+RULE: a body's age is `ageOf(body, system)`. WHAT IS STORED IS A FORMATION TIME, in Gyr after the
+big bang on the master clock's axis (G62), and it is OPTIONAL: ABSENT MEANS INHERIT, the body is as
+old as its system, and NOTHING STAMPS THE SYSTEM'S AGE ONTO A BODY - not the processor, not a save,
+not an importer. It is NOT in `body.overrides` and raises no anomaly. "Now" is
+`cosmicNowGyr(system)`: the system's reference epoch `epochT0` (unix ms, written once at creation)
+placed on the master clock by `temporal/utre.ts unixMsToMasterSeconds`. IT IS NEVER THE CAMPAIGN
+CLOCK'S DISPLAY TIME: no code that reads `starmap.temporal`, `currentTime` or a scrub position may
+feed an age.
+WHY: [[G94]], the owner: "EVERY object should have an independent age anyway as V4 will track
+formation times, captured bodies and rebuilding planets smashed in system" and, settling the trap,
+"No clock is changed as you can slide the age of a body independently". Stamping on save is the
+fault rule-pack deltas exist to avoid: a GM who later ages the system would find it reaches
+nothing. Deriving against the scrub would make a brown dwarf cool while a GM drags the time bar.
+BLAST: `ageOf` reads the runtime temporal anchor through `unixMsToMasterSeconds`. The shipped
+anchor equals the built-in constant, so this is the same number in a test and in the app; a
+campaign whose anchor is moved moves "now" for every body that has its own formation time, by the
+same amount, and moves nothing for a body that inherits. A body pasted into another system keeps
+its formation time and therefore its place in history - its AGE there is that system's "now" less
+it, which differs only by the gap between the two reference epochs. `epochT0` of 0 (the Traveller
+importer) reads as 1970 and is 56 years in 13.787 Gyr. The float round trip is not exact
+(`now - (now - 9.2)` is 9.2 to about 1e-15): compare with a tolerance, display rounded.
+BLAST: THE `age/` TAG FAMILY IS DERIVED FROM THIS AND FROM NOTHING ELSE (`physics/ageTags.ts`,
+`ageBand`; emitted by pass 0d of `SystemProcessor.process`, which owns the namespace and clears it
+first, TAG-6; gates `physics/ageTags.spec.ts` and the last block of `system/bodyAge.test.ts`).
+ONLY A BODY WITH ITS OWN FORMATION TIME IS BANDED OR EVEN TOUCHED - an inheriting body formed with
+its system, carries no tag, and has its tag array left exactly as it arrived, which is what keeps
+old saves and the Sol baseline identical. ONE TAG, the most specific band, value = the body's age.
+PRIMORDIAL IS ABSOLUTE AND IS ASKED FIRST (cosmic formation time below `primordialBeforeGyr`);
+young, old and ancient are RELATIVE to the SYSTEM's formation - the system's, not the nearest
+star's, so a moon of a captured brown dwarf is compared with the system like everything else. The
+four numbers are PACK DATA (`deepTime` in the pack's `main.json`, read only through
+`deepTimeConfig`, which defaults each field separately); they are first values awaiting the
+owner's eye. `age/` and `origin/` never read each other. The namespace is `overridable: false`:
+forcing the tag by hand would describe an age the body does not have, and the Age control is the
+lever. A NEW ENGINE NAMESPACE IS DECLARED IN THREE PLACES and `age/` is in all three:
+`tagDefaults.ENGINE_NAMESPACES` (provenance), `tagPresentation` (`NAMESPACE_META`, `NAMESPACE_DESC`
+and the four `TAG_INFO` entries) and `importFixup.DERIVED_TAG_PREFIXES` - miss the last and the tag
+is written into every save as a fossil beside the field it was derived from.
+(This paragraph wants its own TAG- entry; no TAG id was reserved for the stream.)
+BLAST: WHAT A SAVE CARRIES. `formationTimeGyr` is AUTHORED and is not in
+`importFixup.DERIVED_FIELDS`; it must never be added there. The stellar pin's `temperature0K` and
+`radiationOutput0` (OVR-9) are written by the processor and are DECLARED in `NOT_STRIPPED`: strip
+them and a pin becomes irreversible across a save. `system/bodyAge.test.ts` ("a save keeps the ages
+it was given...") gates all three through `stripSystemForExport` and `fixUpImportedSystem`.
+### PHY-44 WHICH PHYSICS READS A BODY'S OWN AGE AND WHICH STILL READS THE SYSTEM'S - THE LIST IS THE RULE
+BUCKET: ARCHITECTURE (ordering + single source) - the processor holds two ages on purpose, and a
+consumer on the wrong one is invisible until a GM ages one body. First-order for V4's evolution
+engine, where the system-wide list should shrink to nothing.
+WHERE: `core/SystemProcessor.ts` - `this.ageOf(body)` (the body's own, PHY-43) and
+`this.systemAgeGyr` (the system's). Gate: `system/bodyAge.test.ts`, one describe per consumer.
+RULE: a consumer that answers a question ABOUT ONE BODY'S HISTORY asks `this.ageOf(body)`. Switched
+so far, each with its own gate:
+  - THE SUBSTELLAR COOLING TRACK (`applySubstellarSelfLuminosity`, and the substellar test in the
+    star pre-pass) - a brown dwarf's temperature and luminosity. This is [[B150]]'s fix.
+  - A GIANT'S INTERNAL HEAT (`estimateInternalHeatK` in `processEnvironment`) - the heat of its own
+    formation, still being shed. The Temperature tab's live preview is handed the same figure
+    (`BodySidePanel` passes `ageOf(body, system)`), so the tab and the card cannot disagree.
+  - ATMOSPHERIC ESCAPE (`applyAtmosphericEscape`, opted-in bodies only) - eroded over the body's
+    own age less `FORMATION_DELAY_GYR`. One expression for both cases, no branch on whether the
+    body has its own age.
+  - A STAR'S FLARE ACTIVITY (`flareActivity` in the star pre-pass) - the dynamo spins down on the
+    star's own age. THIS IS THE ONLY STELLAR CONSUMER SWITCHED, and it is not `ageStar`.
+STILL ON THE SYSTEM'S AGE, DELIBERATELY: tidal locking (`predictTidalLock`), the surface-age read
+inside the thermal solve (`solveThermalState` / `surfaceAgeOnProbe`), the geology model
+(`deriveGeoActivity`), the classifier's `age_Gyr` feature, the habitability bonus, and everything
+outside the processor (zones, reasons to visit, generation, the map summary). The first four are
+questions about one body and are the next candidates; they were not in the brief's list and each
+is a physics change wanting its own gate.
+A FUSING STAR'S TEMPERATURE, RADIUS AND LUMINOSITY DO NOT FOLLOW ANY AGE in the editor:
+`physics/stellar-evolution.ts ageStar` runs at creation only ([[G97]]). Do not wire it to `ageOf`
+without the owner's word on seed versus current state - on an imported star it double-ages.
+`ageOf` IS AN INPUT: it is read from authored data and the system record, never from anything a
+pass writes, so it may be asked anywhere in the pass and answers the same every time.
+WHY: [[G94]]. There was exactly one age, `System.age_Gyr`, consumed at 21 sites, so the only lever
+that moves a brown dwarf's temperature could not be reached for one dwarf without ageing every
+world around it - and the Star tab offered a temperature box that the cooling track overwrote on
+the next pass ([[B150]], three reporters).
+BLAST: A MOON IS LIT BY ITS HOST'S OWN AGE: an aged brown dwarf's luminosity is what its moons
+receive, so ageing the host cools the moons and that is correct. A BODY FILED EITHER WAY IS ONE
+OBJECT (DATA-R22): the star-filed and planet-filed dwarf must give the same photosphere for the
+same age, and the gate asserts it. `process()` works on the nodes it is handed, so a test that
+compares "before" and "after" must read the before figures BEFORE the second run - the first cut
+of this gate compared an object with itself and failed for that reason, not for the physics.
+### UI-C20 THE AGE CONTROL IS ONE COMPONENT, ITS AXIS IS FORMATION TIME, AND ITS SENTENCE IS MEASURED
+BUCKET: ARCHITECTURE (single source) + PLATFORM (the range-input trap again). The control is thin;
+the three things that are easy to get wrong are below.
+WHERE: `components/AgeControl.svelte`, mounted by `BodyTemperatureTab.svelte` (planet, moon) and by
+`BodyStarTab.svelte` (a brown dwarf filed as a star); `physics/ageDrives.ts` (`ageDriven`,
+`ageDrivesSentence`, `formatAgeGyr`). Gates: `components/AgeControl.spec.ts`, and the
+"what the Age control says it drives is what moves" block of `system/bodyAge.test.ts`.
+RULE: (1) THE SLIDER'S VALUE IS THE FORMATION TIME, NOT THE AGE - big bang at the left, the
+system's reference date at the right, so LEFT IS OLDER; the number box beside it is the age. Its
+maximum is `cosmicNowGyr(system)`, derived, never a typed 13.787. (2) THE RANGE IS BOUND ONE WAY
+and the body is written only from a handler (UI-C19): mounting the control on a body with no age
+of its own must leave `formationTimeGyr` ABSENT, and "Use the system's age" DELETES it rather than
+writing the system's age. (3) THE LINE SAYING WHAT AGE DRIVES IS NOT A LIST OF BODY KINDS: each
+clause asks the model it describes whether age changes its answer for this body, and the gate
+gives every body in a test system two ages and requires the set of figures that MOVED to equal the
+set the sentence CLAIMED. A body whose age drives nothing is told so.
+WHY: [[G94]] job 3 and [[G96]]. The label is "Age" and never "time", which here means the campaign
+date. It is not an override - no pin, no anomaly, no warning - because a body older than its
+system is a history.
+BLAST: SWITCHING ANOTHER CONSUMER TO `ageOf` (PHY-44's "still on the system's age" list) TURNS THE
+MEASURED GATE RED until `ageDriven` learns the new clause - that is the gate working, and the fix
+is a clause that asks the model, never a `roleHint` test. A star-filed brown dwarf's sentence
+includes "how hard it flares" because `flareActivity` gives an L, T or Y class an age-dependent
+figure; whether a brown dwarf should flare at all is a physics question the sentence only reports.
+The slider is linear in cosmic time, so the youngest 100 Myr is under 1% of its travel: young ages
+are typed, or reached through the temperature inversion on a brown dwarf. The composition floor,
+the four coloured zones and the detent of deep-time-design.md section 4 are NOT built; the only
+mark on the axis is the system's own formation.
+BLAST: ON THE STAR TAB THE CONTROL STANDS IN PLACE OF THE EFFECTIVE TEMPERATURE BLOCK FOR A
+SUBSTELLAR BODY ONLY (`tempIsCoolingTrack`, asked of the cooling model, never a mass literal). A
+FUSING star keeps `#temp`; removing it there is [[G97]]'s half and `BodyStarTab.spec.ts` gates both
+directions. A TEST TRAP PAID FOR HERE: two star tabs mounted in one jsdom document both carry
+`#temp`, and a container-scoped `querySelector('#temp')` is answered from the DOCUMENT's first
+match - so the second container reports "no temperature box" whatever it holds. `cleanup()` before
+each mount, or the "control is gone" assertion passes with the control present.
+### PHY-45 A BROWN DWARF'S TEMPERATURE IS ASKED FOR AS AN AGE: THE TRACK IS INVERTED, NEVER PINNED
+BUCKET: ARCHITECTURE (single source) + DOMAIN - domain: a brown dwarf does not fuse, so its
+temperature is a consequence of mass and age and has no independent existence to pin.
+Architecture: an inverse lives beside the law it inverts and is gated by the round trip.
+WHERE: `physics/substellar.ts` - `brownDwarfThermal` (the track) and `brownDwarfAgeForTeff` (the
+same track rearranged), sharing `trackFor`, `TEFF_FLOOR_K`, `TEFF_CAP_K` and `MIN_TRACK_AGE_GYR`.
+Caller: `components/AgeControl.svelte` ("Aim for a temperature"). Gates: `substellar.spec.ts`
+(every answer run back through the track), `AgeControl.spec.ts`.
+RULE: THERE IS NO TEMPERATURE OVERRIDE FOR A SUBSTELLAR BODY AND THERE MUST NOT BE ONE. A GM who
+has a temperature in mind types it and is OFFERED the age that gives it; accepting sets the AGE
+(PHY-43) and stores no temperature. The inverse returns the age the law implies even when that is
+30 Gyr - IT DOES NOT KNOW HOW OLD THE UNIVERSE IS, and the caller compares with
+`cosmicNowGyr(system)` and says so in words instead of offering it. Typing a temperature changes
+nothing until the offer is accepted.
+WHY: [[B150]] - a T dwarf whose typed 914 K and 988 K each returned to 1172.77 K, three reporters.
+The first proposed fix was a `temperatureK` override; the owner withdrew it for [[G94]] ("give the
+GM the cause, not the consequence"). MEASURED on the report's own dwarf (36.9 Jupiter masses): 988 K
+is a 9.1 Gyr dwarf, and 914 K needs 15.3 Gyr - so one of the two figures he typed is not reachable
+by ANY age at that mass, which is exactly what a pin would have hidden.
+BLAST: THE TRACK IS FLAT AT BOTH ENDS (the 2800 K ceiling for a young heavy dwarf, the 250 K
+floor), so the inverse is not unique there: at the ceiling it returns the OLDEST age that still
+gives it, below the floor it reports the age the floor is reached. A planet-filed dwarf's box
+reads in the campaign's PLANET temperature unit (Celsius by default), a star-filed one in kelvin:
+the unit is presentation, the SI value handed to the inverse is the same (DATA-R22). The 1900-2100
+K raise for a fusing star just above the limit (`STELLAR_FLOOR_K`) is untouched and is the one
+place an authored stellar temperature is still overruled.
+### OVR-9 A STAR'S TEMPERATURE PIN IS APPLIED TO THE STORED FIGURE, BY ONE FUNCTION, AND KEEPS WHAT IT DISPLACED
+BUCKET: ARCHITECTURE (ordering + single source) - the one override whose quantity nothing derives,
+so the F-OVR shape "feed the pin INTO the derivation" has no derivation to feed. Revisit when
+[[G97]] gives a star a temperature that IS derived; until then this is the honest form.
+WHERE: `physics/stellarTempPin.ts` (`applyEffectiveTempPin`, `effectiveTempPin`,
+`hasPinnablePhotosphere`, `STELLAR_FLOOR_K`, `NON_THERMAL_STAR_CLASSES`); the roster record
+`effectiveTempK` in `physics/overrides.ts` and the new optional `OverrideDef.offered`; the call at
+the top of the stellar pass in `core/SystemProcessor.ts`; the pinned state of the Effective
+Temperature block in `components/BodyStarTab.svelte`. Gate: `system/stellarTempPin.test.ts`.
+RULE: `overrides.effectiveTempK` on a star with a photosphere nothing else derives means the star's
+`temperatureK` IS that figure and its `radiationOutput` is Stefan-Boltzmann over the radius and it
+(PHY-34, three significant figures, as the star editor rounds). `applyEffectiveTempPin` is the only
+writer and is called from TWO places - the processor, first thing in the stellar pass, and the
+roster record's `commit` - so the Overrides tab shows the effect before any recalculation and a
+save that arrives with the key is honoured without the tab. THE FIGURE IT DISPLACED IS KEPT on the
+body as `temperature0K` / `radiationOutput0` (the `atmosphere0` pattern) for exactly as long as the
+pin exists; when the pin goes the same function restores both and deletes them. That is what makes
+reset exact and re-processing a no-op.
+WHO IS NOT OFFERED IT, via `OverrideDef.offered` (a finer test than `appliesTo`'s role): a BROWN
+DWARF, asked of the cooling model - its handle is its age (PHY-45) and a pin there would rebuild
+the control [[B150]] removed; and a BLACK HOLE, NEUTRON STAR or MAGNETAR, whose output is not a
+surface. A pin key found on one of those (a hand-edited save) is IGNORED, not applied.
+THE PIN OUTRANKS THE IGNITION FLOOR: the raise of a fusing star below `STELLAR_FLOOR_K` is skipped
+while a pin is set; an unpinned star is raised exactly as before.
+WHY: [[G96]], the owner: "direct temp control is now in overrides" and "the physics just uses the
+actual values - even if they don't make a huge amount of sense". `surfaceTempK` could not carry it:
+that is a planet's mean-surface pin, banded on equilibrium and fed through a thermal solve a star
+does not have.
+BLAST: THE STAR TAB STILL HAS ITS EFFECTIVE TEMPERATURE BLOCK ([[G97]] decides its removal), so
+while a pin is set that block is DISABLED and says "pinned" - two controls writing one figure is
+[[B150]] again. The class picker still draws a temperature for a newly chosen class; under a pin
+the processor puts the pinned figure back and the DISPLACED figure stays the pre-pin one, so a
+reset returns to the temperature from before the pin, not the new class's. The CLASS is not
+re-derived from a pinned temperature. THE PLAUSIBLE BAND IS THE FUSING RANGE (`STELLAR_FLOOR_K` to
+the star editor's own 50,000 K), not yet "the star's own mass-and-age track" as G96 specified:
+that track needs the zero-age seed G97 is about. A white dwarf is given no band. FOUND ON THE WAY:
+`formatOverrideValue` trimmed trailing zeros from ANY string, so the first record with
+`decimals: 0` printed 500 K as "5 K" and 1900 K as "19 K"; it now trims only after a decimal point.
+### UI-C21 THE SYSTEM'S AGE IS EDITED ON A STAR'S "SYSTEM INFO" TAB, AND AN EDIT MAKES IT CHOSEN
+BUCKET: ARCHITECTURE (where a system-level property is edited) - there is no system panel; the
+system's own properties ride a tab on its stars, and the edit reaches the processor by MUTATING the
+store's system object and announcing a body update.
+WHERE: `components/SystemInfoTab.svelte` (mounted by `BodySidePanel.svelte` for a star only);
+`SystemView.svelte handleBodyUpdate` (re-processes `{ ...system }` on every body update, which is
+how a changed `age_Gyr` is picked up). Gate: `components/SystemInfoTab.spec.ts`; the consequence is
+gated in `system/bodyAge.test.ts` ("ageing the SYSTEM afterwards...").
+RULE: `System.age_Gyr` is written here, by the generation wizard and by the import dialog, and
+nowhere else. An edit here DELETES `ageEstimated` (the import dialog's rule: an age a GM chose is
+not a guess) and leaves `ageBandGyr` alone - the band is what the star's own life makes likely,
+shown under the control, and an age outside it is KEPT and said, never clamped. The slider is
+log-scaled from 1 Myr to `cosmicNowGyr(system)` and bound ONE WAY (UI-C19).
+WHY: [[B150]]'s workaround was "the lever that works is the SYSTEM'S AGE" - and an existing
+system's age had no control at all, so the people it was said to could not act on it. [[G94]]
+makes it the age of every body that has not been given its own; the tab counts the ones that have,
+because those will not follow.
+BLAST: THE TAB EXISTS ON STARS ONLY, so a system with no star (a rogue planet on its own) has no
+way to reach this control; it would need the tab offered on the root body. CHANGING THE AGE DOES
+NOT AGE THE STARS: `ageStar` runs at creation only ([[G97]]), and the tab says so in words. The
+sentence listing what the age drives is PROSE, not measured (unlike the body Age control's,
+UI-C20); it names the system-wide consumers of PHY-44 and must be kept true by hand when one moves.
+The `system` prop here is the STORE'S OWN OBJECT (`BodyDetailsPane` is given `$systemStore`), which
+is the only reason mutating it works; a caller that hands this tab a copy would see edits vanish.
+### RENDER-S61 A STRUCTURE ROUND ITS HOST LIES IN ITS OWN ORBIT'S PLANE, AND lookAt CANNOT PUT IT THERE
+BUCKET: ARCHITECTURE - one orbit, one plane: the node, its orbit line, its shadow, its docking
+ports and the drawn structure must all be told the same tilt.
+WHERE: `constructs/megaGeometry.ts` (`hostCentredAxisScene`, `hostCentredQuaternion` - pure,
+THREE-free); `holo/scene.ts` `attachMegaVolume` (stamps `megaAxis` and the paused pose) and the
+orientation line at the foot of `updateConstructs`; the control is `ConstructGeneralTab.svelte`
+(inclination + ascending node), gated by `megaPlacement.megaOrbitPlaneAuthorable`. Gates:
+`megaGeometry.spec.ts` ("oriented to its orbit normal"), `ConstructGeneralTab.spec.ts`.
+RULE: a host-centred structure (record anchor 'host-centred') is built about its own +Y, and that
+axis is the NORMAL OF ITS ORBIT, taken through the pipeline its orbit line is drawn with: the
+elements' W vector (sin O sin i, -cos O sin i, cos i) -> `toParentEquator` with the caller's
+`satelliteTiltRad(node, host)` -> the scene swap (x, z, y). The per-frame heading may only turn
+it ABOUT that axis. The generic ship `lookAt` cannot do this: it keeps "up" on the scene's +Y, so
+it can yaw a ring and never tilt it. For an uninclined ring the new pose equals what lookAt gave
+(the gate pins the dot product at 1), so nothing flat moved.
+WHY: a user asked for inclined megastructures and the bug run measured the two missing halves.
+The propagator (`propagateState3D`), docking's `toPlane` and `starlightOcclusion` had honoured
+inclination since they were written; every construct create path wrote `i_deg: 0` and no control
+changed it, and the drawn ring would not have followed if one had. Both halves landed together
+on purpose - a control whose shadow moved and whose ring did not would have been a third fault.
+BLAST: (1) THE lookAt TARGET FOR A HOST-CENTRED STRUCTURE WAS NEVER ITS MOTION. `shipModel` sits
+at the HOST, and lookAt was handed `node position + motion`, so its +Z has always pointed from
+the host at the NODE (radial), not along the velocity. The new code keeps exactly that heading;
+"fixing" it to the velocity would turn every part-built shell a quarter turn. (2) A torus round a
+tilted world now lies in that world's EQUATOR at i 0 - the satellite frame, where its orbit line
+always was. It used to draw in the scene's ground plane whatever the host's tilt, so on a tilted
+host this is a visible correction, not a regression.
+(3) The Orbit tab's star branch used to rebuild the orbit with i 0 / node 0 on every zone
+re-pick; it now keeps the plane. (4) The 2D orrery draws every orbit untilted, megastructures
+included - deliberate, and the control's own note says so. (5) A Lagrange-point structure has a
+DERIVED orbit and is not offered the control; `megaOrbitPlaneAuthorable` is the one predicate.
+### PHY-46 A MIRROR'S GAIN IS A SECOND, TYPED ARGUMENT - NEVER A LOOSER CLAMP, AND NEVER A STAR-WIDE FACT
+BUCKET: ARCHITECTURE (the amplify convention) + DOMAIN (what a soletta's added share is).
+WHERE: `physics/starlightOcclusion.ts` (`starlightBoost` - the ONE who-lights-whom site;
+`deriveStarlightBoost`, `commitStarlightBoost`, `STARLIGHT_BOOST_TAG`); `physics/luminosity.ts`
+`receivedLuminosityWatts(radius, temp, transmission, mirrorGain = 1)`; `physics/temperature.ts`
+(both equilibrium functions ask once per body; `calculateSurfaceTemperature` stamps the field);
+`core/SystemProcessor.ts` (one call, beside the dimming commit); the record is `soletta` in
+`constructs/megaTypes.ts` (`flux.amplifies: 'target'`, `starAmplification`). Gates:
+`starlightOcclusion.spec.ts` ("a soletta lights its world", absolute 266.86 K anchor, seen red
+with the gain forced to 1), `exoticsParity.spec.ts`, `megaDerive.spec.ts`.
+RULE: light that arrives is `intrinsic x transmission x gain`. Transmission stays clamped to
+[0, 1] - a malformed shading factor can still only darken - and the gain is its own argument
+that can only brighten (below 1, or not a number, reads as 1; no ceiling). The gain belongs to
+ONE BODY: the world the mirror is stationed at, `coOrbital.hostId ?? parentId` (a mirror at L1 is
+gravitationally the star's child and still lights the planet). It is derived fresh every ask
+from authored data - megaType, the instance's knobs, where it is stationed, the target's radius
+- and the added share is reflectivity x mirror area / (pi x target radius squared), a FRACTION
+(no luminosity is computed in the registry, B110). Mirrors add; light and shadow multiply.
+WHY: the header of `luminosity.ts` said "nothing between a star and a world manufactures light"
+and clamped accordingly. True of every occluder and false of the first new catalogue member -
+the design named this in August (nonstandard-objects §3). Widening the clamp would have let a
+bad transmission amplify; a second argument keeps both guards.
+BLAST: (1) THE ZONES DO NOT MOVE, DELIBERATELY. `zones.ts` describes the STAR's light; a lit world
+outside the drawn habitable zone is warm and reads warm, and the physics page says so. Feeding
+the gain into `occludedZoneDistance` would brighten the star for everyone. (2) The target's
+MOONS are not lit, and `heliocentricEdgeElements`-style inheritance must not be added: a mirror
+is aimed. (3) Every reflected photon is ASSUMED to land - which is why the record's
+`allowedPlacements` stop at L1/L2. Offering L4/L5 without tracing the beam's spread would be the
+A33 lie. (4) `radiation.ts` does not take the gain: a soletta reflects the star's light, and
+whether it reflects its hard radiation is unmodelled, so the dose is left at the bare figure
+rather than guessed up. AND `surfaceSpectrum.ts` (ground light, vegetation, pigments) is handed
+the INTRINSIC luminosity by its caller - it sees neither this gain nor phase 4's shadow. That gap
+predates the mirror (PHY-36 wired temperature and zones only) and is reported, not fixed here. (5) `commitStarlightBoost` returns early when there is no mirror and no
+old tag, so a system without one never grows a `tags` array or the field - idempotence and the
+Sol baseline depend on that. (6) The gain multiplies EVERY luminous source's light at the body,
+a stated approximation that is right for a single star and a close binary.
+### PHY-47 A FIGURE ABOUT THE STAR'S MOTION OR MASS IS PUBLISHED, NEVER PERFORMED - AND A HEMISPHERE MIRROR IS L/2c
+BUCKET: ARCHITECTURE (what the stellar engines may and may not do) + DOMAIN (the thrust law).
+WHERE: `constructs/megaTypes.ts` records `shkadov-thruster` and `caplan-thruster`; `MegaDerived`
+`starThrustPhotonFrac`, `starThrustN`, `starMassLossKgPerS`; shown by
+`constructs/megaPreview.ts megaSummaryLine` (the multiply into newtons is THERE, through the
+one luminosity function). Gates: `megaDerive.spec.ts`, `megaPreview.spec.ts`, and the
+"a figure about the STAR" row of `exoticsParity.spec.ts`.
+RULE: a stellar engine's thrust and mass loss are numbers derive() publishes and a panel prints.
+Nothing may integrate them: no node's orbit, position or `massKg` is ever written from them, and
+no capability axis declares them, because an axis nothing consumes is a claim (DATA-R33). The
+consumer is the event driver board row G41 describes - V4 design, not in this tree - and the
+axis arrives with it. The Shkadov law is momentum conservation: all of L leaves through the
+open sky, so the push is (L / 2c)(1 - cos psi) for a cap of half-angle psi; published as the
+dimensionless (1 - cos psi) / 2 of L/c. The Caplan law is a rocket: jet mass flow x jet speed
+(relativistic momentum), in newtons directly, and that flow is the star's mass loss.
+WHY: the owner asked for both engines (2026-11) with the instruction to ship what can be shown
+truthfully and not fake motion. A star crawling across the map on a clock that drives nothing
+else would be the renderer inventing a fact - and would silently invalidate every orbit, zone
+and transit computed about it.
+BLAST: (1) THE COMMONLY QUOTED SHKADOV FIGURE FOR THE SUN, 1.28e18 N, IS L/c - it turns every
+photon of half the output straight back. Integrating the cosine over a hemispherical cap gives
+L/2c = 6.4e17 N, and the open-sky derivation agrees. Do not "correct" the engine to the larger
+number. (2) Untilted, the cap stands over the pole of the system plane (the structure's axis
+is its orbit normal, RENDER-S61) and shades nothing near that plane, so the record publishes
+NO occlusion. A TILTED cap does shadow worlds for part of their orbit and that cone is not
+traced: it is a third occlusion geometry beside 'isotropic' and 'band', with four consumers
+(temperature, zones, observedStar, eclipses). (3) The Caplan record's collector swarm DOES
+occlude (isotropic, its density knob) - that half is real physics on the existing chain.
+(4) The mirror also returns light to the star and would raise its temperature; unmodelled.
+### RENDER-S62 A PLACEMENT IS A STORED WORD WITH ONE SPELLING, AND THE BOUNDARIES HAVE SIX FIELDS - NO MORE
+BUCKET: IMPLEMENTATION - a stored string compared in a dozen files, and a derived record read
+for fields it never had.
+WHERE: `constructs/placements.ts` (the words; `canonicalPlacement`, `hostOrbitBands`,
+`orbitBandAtAltitude`, `hasRealGeostationary`); consumers `AddConstructModal.svelte`,
+`ConstructGeneralTab.svelte`, `SystemView.svelte` (the drop-on-the-map path),
+`construct-logic.ts` (the orbit string), `constructs/megaTypes.ts` + `megaPlacement.ts`,
+`transit/scheduler.ts` (the arrival stamp). The producer of the boundaries is
+`physics/orbits.ts calculateOrbitalBoundaries`. Gates: `placements.spec.ts` (including a source
+scan for a second literal), `construct-logic.spec.ts`, the two DOM specs.
+RULE: an orbit band's name is written in ONE file and imported everywhere else; a stored
+placement is read through `canonicalPlacement` wherever it is compared or shown, and never
+rewritten just by being looked at. `OrbitalBoundaries` is exactly `minLeoKm`,
+`leoMoeBoundaryKm`, `meoHeoBoundaryKm`, `heoUpperBoundaryKm`, `geoStationaryKm`,
+`isGeoFallback`. "Which band is this altitude in" has one answer (`orbitBandAtAltitude`) and it
+never says Surface or Geostationary: those are stated by the GM, not inferred.
+WHY: the create dialog and the mega registry wrote 'Mid Orbit'; the Orbit tab, the map-drop
+path, the planner and every bundled map said 'Medium Orbit' - so a station made in the dialog
+opened its Orbit tab on an EMPTY Zone select. Beside it, three files read `hasSurface`,
+`surface`, `geosynchronousOrbit`, `lowOrbit`, `mediumOrbit` and `highOrbit` off the boundaries.
+Nothing has ever produced any of the six, so: the Orbit tab's slider never had its Surface zone,
+a dragged or dropped construct was never called geostationary, and `construct-logic` called
+every construct with a generic placement "Far Orbit" on every real host.
+BLAST: (1) A FIXTURE THAT INVENTS THE SHAPE KEEPS DEAD CODE GREEN. `construct-logic.spec.ts`
+built its Earth with the six nonexistent fields, so the dead chain passed its own gate for
+months (the PHY-34 lesson in another coat). The fixture is now pinned to the producer's keys.
+(2) The dead geostationary branches each carried their own 1,000 km tolerance and their own
+spelling ('Geosynchronous', 'Geosynchronous Orbit' - a word no Zone select offers). They were
+removed, not revived: turning a radius into a band needs a tolerance somebody chooses. (3)
+`physics/orbits.ts` still names its planner option 'Medium Orbit' as a literal - it cannot import
+from `constructs/` without a cycle of intent, it is a label not a stored value, and the stored
+stamp goes through `scheduler.ts`, which does import the word. (4) `placement === 'Surface'` is
+still compared by name in about ten files (scene.ts, reports, derived specs, topology); that
+word has one spelling and was left alone - it is the reason an in-atmosphere placement for an
+aerostat is not a small job. (5) The Traveller importer writes `${type} Orbit` from its own
+table; none of its words is the middle band.
+
+### UI-C25 "OBSERVED FROM A DISTANCE ONLY" IS AN ALLOW-LISTED COPY OF THE BODY, NOT A LIST OF ROWS TO HIDE
+BUCKET: ARCHITECTURE - durable: a veil that hides a derived fact must hide every FORM of it, and
+the only way to be sure is to hand the surface a node that never had it.
+WHERE: `catalogue/bodyDisclosure.ts` (`BodyDisclosure`, `bodyDisclosureFor`, `observedBody`,
+`genericTypeLabel`, `graphicModeFor`); read by `catalogue/bodyFacts.ts`, `document/guideDocument.ts`,
+`DocPanel`, `FilteredDocumentView` and `routes/catalogue/+page.svelte`. The preset field is
+`PlayerPreset.bodyDisclosure` (optional, absent = `full`, NOT in `DEFAULT_PRESET`). Gate:
+`catalogue/bodyDisclosure.spec.ts`.
+RULE: every info surface takes a LEVEL (`full` | `observed`), never the preset's field, and
+`bodyDisclosureFor(preset, body)` is the only reader of that field. At `observed` a natural body
+that is not a star is replaced by `observedBody()`: a NEW object built from `OBSERVABLE_FIELDS`
+(identity, orbit, period, rotation, tilt, mass, radius, the GM's description), plus hand-added tags
+(`tagOrigin === 'manual'`, and the anonymous placeholder), plus `image` only when `image.custom`.
+`bodyFacts` then STOPS after the bulk rows, so a row added below that line later is hidden without
+anyone remembering to. Stars, constructs and barycentres pass through untouched.
+WHY: the request was "hide atmosphere and air mix, keep orbit and rotation", and hiding those rows
+alone leaks the same answer five more ways - the Type row ("Earth Analogue"), the heading's
+subtitle, the derived tag pills, the class swatch (`getClassColor` is habitable BLUE and biosphere
+GREEN, which is TAG-25's category-colour leak again), and the stock type picture, which is chosen
+BY the class. A field the engine starts deriving next month would have been a sixth.
+BLAST: (1) IT IS A PRESENTATION VEIL, NOT A SNAPSHOT STRIP. The preset is resolved in the player's
+own window, so the full body still crosses the wire (the `liveReadings` trade-off, A29) and TAG-9
+still has one redaction point. Do not describe it to a GM as secure against developer tools.
+(2) THE ECLIPSE ROW NEEDS THE REAL SYSTEM: `nextEclipseCached` keys on the system OBJECT, so a
+veiled system rebuilt per render would run the forward search on every tick. `discloseSystem` is
+for id lookups (the photo loader) only. (3) ONE FACT IS READ BEFORE THE COPY IS MADE:
+`orbit/spin-orbit-resonance` is a rotation fact stored as a derived tag, and without it Mercury
+reads "tidally locked" beside a day length that contradicts it (B7). (4) THE PICTURE: the live
+globe and the gallery disc draw from the body's own data, so a veiled body takes the plain disc
+(`graphicModeFor`) - one function because the builder reserves the gap and two components fill it.
+(5) NOT VEILED, knowingly: the 2D/3D maps and the document's chart still DRAW the world as it
+looks (`apparentColorHex`, clouds, oceans), and map-highlight badges still badge whatever the GM
+highlighted - the renderers read tags to draw, so they cannot be handed the copy. (6) V4's
+per-body "scanned" state is one line in `bodyDisclosureFor` (a scanned body returns `full`); if it
+ever moves into `computePlayerSnapshot` to take data off the wire, it should call this same
+`observedBody`.
+
+### UI-C26 THE REPORT CHART'S ROW IS ONE SNIPPET, AND A STACK ITEM CARRIES ITS OWN HEIGHT
+BUCKET: IMPLEMENTATION - durable: when a stack can grow both ways from a line, position belongs
+to the ITEM, and every height helper must ask the items rather than count them.
+WHERE: `reports/ReportDocument.svelte` - the `chartRow` snippet, `getBodyStackItems` (`StackItem.dy`),
+`getStackMarkerRadius`, `getOverviewMaxMoonDepth`, `getRowHeadroomExtra`, `getOverviewLineY` and the
+`CHART` table of numbers. Gate and recordings: `reports/reportChart.spec.ts`, `reports/__chart__/`.
+RULE: the row markup exists ONCE (it was three copies: main star, each further star, circumbinary
+strip) and takes `baseY`, the clash list and a `nameLift` (the 2 units a further star's names have
+always had). An item sits at `baseY + item.dy`: moons BELOW (positive), a planetary pair's second
+member ABOVE (negative, by both radii plus `CHART.companionGap`), its moons below again after a
+dashed divider. A row's extra room above its line is `getRowHeadroomExtra` - the tallest of
+"rise + radius + name length" over every labelled item, less what the row always had - and it is
+added at the row's TOP, so the line moves down and everything after it follows.
+WHY: the owner asked for binaries above the line ("I save below for moons - above for binaries").
+It was not a one-liner because position was `stackIdx * 14` in three places and every height helper
+measured the stack as `items.length - 1`, i.e. assumed it only grows downward.
+BLAST: (1) `getRowHeadroomExtra` IS ZERO FOR A ROW WHOSE NAMES FIT, and that is load-bearing: it is
+why a chart with no pair and no long name is drawn exactly where it was (the `uggi` and
+`trappist-1` recordings did not change by a character). Do not "tidy" the bases to one number -
+76, 84 and 68 are what the three kinds of row have always had. (2) The same sum is what stopped
+the printed report cutting names off at about eighteen characters; it estimates a name's climb at
+3.4 units a character (8px, 0.6em, 45 degrees), which is generous for a proportional font. A
+bigger chart font needs that number moved with it. (3) THE SNIPPET IS DECLARED OUTSIDE THE <svg>,
+so its elements are SVG only because Svelte infers the namespace from the snippet's content. In
+the HTML namespace an <ellipse> has the same tag and attributes and paints nothing - the spec
+checks `namespaceURI`, and an element-list comparison alone would not notice. (4) The recordings
+are `toMatchFileSnapshot` files: a deliberate change is re-recorded with `vitest -u` and then READ
+in `git diff`, which is the review. (5) Not done: names still run off the RIGHT edge on the
+outermost orbit (about 27 characters), and only planetary pairs are lifted - a star pair is the
+circumbinary strip's own drawing.

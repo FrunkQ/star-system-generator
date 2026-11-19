@@ -19,7 +19,7 @@ const host = (over: Partial<CelestialBody> = {}): CelestialBody =>
     ...over
   }) as CelestialBody;
 
-const KNOWN_HARD = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary']);
+const KNOWN_HARD = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary', 'hostIsBlackHole']);
 const KNOWN_STEER = new Set(['geoBelowHillFraction', 'inHabitableZone', 'maxPlacementAU', 'minHostMassKg', 'maxHostMassKg']);
 
 describe('mega-type registry integrity', () => {
@@ -27,7 +27,7 @@ describe('mega-type registry integrity', () => {
     const keys = MEGA_TYPE_DEFS.map((d) => d.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const k of keys) expect(megaTypeDef(k)?.key).toBe(k);
-    expect(megaTypeDef('shkadov-thruster')).toBeUndefined(); // not built yet — degrades, no throw
+    expect(megaTypeDef('matrioshka-brain')).toBeUndefined(); // not built — degrades, no throw
     expect(megaTypeDef(undefined)).toBeUndefined();
   });
 

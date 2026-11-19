@@ -66,10 +66,13 @@ function logUniform(rng: SeededRNG, lo: number, hi: number): number {
  * declares. Returns null when the pack says nothing about that type, which is most of them — the
  * caller must treat this as a refinement, never a requirement.
  */
-function preferredOrbitBandAU(planetType: string, host: CelestialBody | Barycenter, pack: RulePack): [number, number] | null {
+export function preferredOrbitBandAU(planetType: string, host: CelestialBody | Barycenter, pack: RulePack): [number, number] | null {
     if (host.kind !== 'body' || (host as CelestialBody).roleHint !== 'star') return null;
     const fp = pack.classifier?.fingerprints?.find((f) => f.class === planetType);
-    const band = (fp as any)?.range?.Teq_K ?? (fp as any)?.match?.Teq_K;
+    // Where a type is PLACED when it is created is a birth question, so a formation band wins where
+    // the pack declares one (engine map CLASS-2): an ice giant's `range` and `match` now admit a warm
+    // orbit, because one that is already there is still an ice giant, but a new one is born cold.
+    const band = (fp as any)?.formation?.Teq_K ?? (fp as any)?.range?.Teq_K ?? (fp as any)?.match?.Teq_K;
     if (!Array.isArray(band) || band.length !== 2) return null;
     // Hotter temperature = closer in, so the band inverts.
     const near = getDistanceForTemperature(host as CelestialBody, Math.max(1, band[1]));
@@ -191,11 +194,11 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
     //     geometric — so uniform sampling in AU is the wrong measure and is what buried 99% of
     //     draws beyond 2 AU. Log-uniform over the same gap spans the same range and puts the median
     //     at the geometric mean.
-    // (2) HONOUR THE TYPE WHERE THE PACK DECLARES ONE. A fingerprint's `range.Teq_K` says what
-    //     temperature that type belongs at; inverting the equilibrium relation turns it into an
-    //     orbital band. Only 18 of 71 types declare one, so this is a REFINEMENT of (1) and never a
-    //     requirement — an ice giant asked for at 0-200 K gets the cold half of the gap, and a type
-    //     that says nothing simply gets (1).
+    // (2) HONOUR THE TYPE WHERE THE PACK DECLARES ONE. A fingerprint's `formation.Teq_K` (where it
+    //     can be born) or, failing that, its `range.Teq_K` says what temperature that type belongs
+    //     at; inverting the equilibrium relation turns it into an orbital band. Only 18 of 71 types
+    //     declare one, so this is a REFINEMENT of (1) and never a requirement — an ice giant asked
+    //     for at 0-200 K gets the cold half of the gap, and a type that says nothing simply gets (1).
     const typeBand = preferredOrbitBandAU(finalPlanetType, host, pack);
     let lo = chosenGap.start, hi = chosenGap.end;
     if (typeBand) {

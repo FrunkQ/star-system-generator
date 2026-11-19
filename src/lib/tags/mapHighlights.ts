@@ -92,8 +92,6 @@ export function markersFor(
     const hit = byTag ?? byCat;
     if (!hit && !anon) continue;
 
-    const cat = categories.find((c) => c.id === ns);
-    const def = cat?.tags.find((x) => canonicalTagKey(x.key) === key);
     // THERE ARE TWO REGISTRIES AND THIS FUNCTION USED ONLY ONE OF THEM.
     // `categories` is the GM-CONFIGURABLE set — status, owner, purpose, resource, frontier — and it
     // is the right first answer, because a GM who recolours a faction means it. But it holds NOTHING
@@ -104,16 +102,17 @@ export function markersFor(
     // green in Find by tag, green in the info block and green on the body panel.
     // `describeTag` is what those three use. It is the presentation layer: registered PoI category,
     // then per-tag override, then the built-in namespace map, then a neutral fallback. Deferring to
-    // it here removes the second answer rather than syncing it.
-    const pres = describeTag(key);
-    const label = def?.label || pres.label;
+    // it here removes the second answer rather than syncing it. (`presentTagKey`, below, is that
+    // resolution - shared with `describeHighlightRef` so a selection chip and the marker it stands
+    // for cannot be two colours.)
+    const { label, color, textColor } = presentTagKey(key, categories);
 
     seen.add(key);
     out.push({
       key,
       label,
-      color: def?.color || cat?.color || pres.color,
-      textColor: def?.textColor || cat?.textColor || pres.textColor || '#ffffff',
+      color,
+      textColor,
       style: hit?.style ?? defaultStyle,
       // A QUESTION MARK, not initials. `monogramOf('Undisclosed')` gives "UN", which reads as an
       // abbreviation of something and invites a guess; "?" says what this actually is.
@@ -126,6 +125,42 @@ export function markersFor(
     const bi = catOrder.get(b.key.split('/')[0]) ?? 999;
     return ai - bi || a.key.localeCompare(b.key);
   });
+}
+
+export interface HighlightChip { label: string; color: string; textColor: string; }
+
+/** One tag's label and colours: the GM's category first, then the presentation layer. */
+function presentTagKey(key: string, categories: TagCategory[]): HighlightChip {
+  const ns = key.split('/')[0];
+  const cat = categories.find((c) => c.id === ns);
+  const def = cat?.tags.find((x) => canonicalTagKey(x.key) === key);
+  const pres = describeTag(key);
+  return {
+    label: def?.label || pres.label,
+    color: def?.color || cat?.color || pres.color,
+    textColor: def?.textColor || cat?.textColor || pres.textColor || '#ffffff'
+  };
+}
+
+/**
+ * WHAT ONE ENTRY OF THE SELECTION IS CALLED AND COLOURED - a category ('faction') or a tag
+ * ('frontier/refuelling') - for any surface that lists the selection itself rather than the markers
+ * it produces: the Find-by-tag tray, the Player Views panel, the starmap's "Highlighting" note.
+ *
+ * It existed twice, in two components, and the two disagreed: one asked only the GM's categories
+ * (so an engine tag such as `biodiversity/land-cover` was a grey chip named from its raw key) and
+ * the other asked only the presentation layer (so a faction the GM had recoloured kept the category
+ * colour). A tag entry now resolves exactly as its MARKER does, which is the point of a chip that
+ * "previews the map"; and an entry that nothing on the map carries still has a name, which is what
+ * the starmap note needs to say why every system has faded.
+ */
+export function describeHighlightRef(ref: string, categories: TagCategory[]): HighlightChip {
+  if (!isCategoryRef(ref)) return presentTagKey(canonicalTagKey(ref) || ref, categories);
+  const cat = categories.find((c) => c.id === ref);
+  if (cat) return { label: cat.longName, color: cat.color, textColor: cat.textColor || '#ffffff' };
+  // An engine namespace has no category record: take its colour from the presentation layer.
+  const pres = describeTag(`${ref}/x`);
+  return { label: ref.charAt(0).toUpperCase() + ref.slice(1), color: pres.color, textColor: pres.textColor || '#ffffff' };
 }
 
 /**

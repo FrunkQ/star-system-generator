@@ -102,6 +102,7 @@
   // Views is then just a mute for what is chosen here, not a second way to choose it.
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { describeHighlightRef } from '$lib/tags/mapHighlights';
 
   let dragOver = false;
   const isHl = (ref: string) => $liveOverrides.mapHighlights.some((h) => h.ref === ref);
@@ -124,16 +125,7 @@
     return first.includes('/') ? first.split('/')[0] : first;
   };
   /** What a chosen ref renders as, so the tray previews the marker. */
-  function hlChip(ref: string): { label: string; color: string; textColor: string } {
-    if (ref.includes('/')) {
-      const i = describeTag(ref);
-      return { label: i.label, color: i.color, textColor: i.textColor || '#fff' };
-    }
-    const c = $tagCategories.find((x) => x.id === ref);
-    if (c) return { label: c.longName, color: c.color, textColor: c.textColor || '#fff' };
-    const i = describeTag(`${ref}/x`);
-    return { label: ref.charAt(0).toUpperCase() + ref.slice(1), color: i.color, textColor: i.textColor || '#fff' };
-  }
+  const hlChip = (ref: string) => describeHighlightRef(ref, $tagCategories);
 
 </script>
 

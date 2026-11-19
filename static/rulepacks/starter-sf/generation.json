@@ -1,6 +1,10 @@
 {
   "generation_parameters": {
     "planet_mass_band_me": [0.03, 4130],
+    "contact_binary": {
+      "why": "How often the generator gives a small body TWO LOBES JOINED AT A NECK - a contact binary, like Arrokoth or comet 67P. Radar surveys find roughly one in eight near-Earth asteroids above about 200 m is one, and the cold classical Kuiper belt looks much the same, so this is that observed fraction rather than a taste setting. It only ever applies to a body already inside the contact-binary type's OWN mass window, which in practice means captured small moons - this generator does not place free-flying asteroids at all, so raising it will not fill a system with them. The draw is keyed on the body's id rather than the system seed, so changing it does not move anything else a seed produces. Set chance to 0 to switch it off entirely; a GM can still make any small body a contact binary by hand in its Basics tab.",
+      "chance": 0.12
+    },
     "infill_anchor_exclusion_hill_radii": 3.5,
     "realism_bands": {
       "name": "WHICH SIDE OF THE PHYSICS A CONTROL IS ON, as a coloured band under its track. Green is the range reality supports; amber is possible but unlikely; red is unlikely enough that no measured system looks like it. NOTHING IS EVER FORBIDDEN at any setting - hand authoring is hand authoring, and a GM running a deliberately fantastical setting moves these edges rather than fighting them, which is the whole reason they are pack data and not constants in the code. Each entry gives green as [lo, hi] and amber as the WIDER [lo, hi] that contains it; outside amber is red. The wording is here too, because 'few real systems look like this' and 'invalid' are different claims and only the first one is true.",

@@ -6,6 +6,13 @@
     "_note": "Player-facing chrome the GM can re-word in character. A63: `incoming` is the holding message a player sees while a large starmap is on its way — it is in-world flavour, not a system message, which is why it lives here and not in the code.",
     "incoming": "Incoming Transmission…"
   },
+  "deepTime": {
+    "_note": "G94: the bands of the age/ tag family, in Gyr. A body with an age of its own is 'young' when it formed more than accretionGyr after its system, 'old' when it formed before it, 'ancient' when it is older than its system by ancientGenerations x generationGyr, and 'primordial' when it formed less than primordialBeforeGyr after the big bang, whatever it orbits. FIRST VALUES, meant to be tuned: see docs/dev/deep-time-design.md section 5.",
+    "accretionGyr": 0.1,
+    "generationGyr": 0.5,
+    "ancientGenerations": 2,
+    "primordialBeforeGyr": 1
+  },
   "imports": [
         "./generation.json",
         "./stars.json",

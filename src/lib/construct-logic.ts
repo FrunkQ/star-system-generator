@@ -2,6 +2,7 @@ import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameter
 import { AU_KM, THERMAL_LIMITS } from './constants';
 import { calculateFuelMass } from './transit/physics';
 import { lagrangePlacementId } from './physics/lagrange';
+import { canonicalPlacement, orbitBandAtAltitude } from './constructs/placements';
 
 // Define constants
 const g0 = 9.81; // Standard gravity for ISP and g-force calcs
@@ -157,7 +158,7 @@ export function calculateFullConstructSpecs(
         if ((hostBody?.roleHint === 'star' || hostBody?.kind === 'barycenter') && describesThisHost && construct.orbit?.elements.a_AU !== undefined) {
             placementDescription = `${construct.orbit.elements.a_AU.toFixed(2)} AU`;
         } else if (construct.placement && construct.placement.endsWith(' Orbit')) {
-            placementDescription = construct.placement;
+            placementDescription = canonicalPlacement(construct.placement);   // an old save's spelling reads as today's word
         } else if (construct.placement === 'Surface') {
             placementDescription = 'Surface';
         } else if (lagrangePlacementId(construct.placement)) {
@@ -167,12 +168,14 @@ export function calculateFullConstructSpecs(
           if (hostBody.orbitalBoundaries && describesThisHost) {
               const altitudeKm = (construct.orbit.elements.a_AU * AU_KM) - (hostBody.radiusKm || 0);
               const boundaries = hostBody.orbitalBoundaries;
-              if (boundaries.hasSurface && boundaries.surface && altitudeKm <= boundaries.surface.max) placementDescription = 'Surface';
-              else if (boundaries.lowOrbit && altitudeKm <= boundaries.lowOrbit.max) placementDescription = 'Low Orbit';
-              else if (boundaries.mediumOrbit && altitudeKm <= boundaries.mediumOrbit.max) placementDescription = 'Medium Orbit';
-              else if (boundaries.geosynchronousOrbit && altitudeKm <= boundaries.geosynchronousOrbit.max) placementDescription = 'Geosynchronous';
-              else if (boundaries.highOrbit && altitudeKm <= boundaries.highOrbit.max) placementDescription = 'High Orbit';
-              else placementDescription = 'Far Orbit';
+              // THE BANDS THE PROCESSOR REALLY STAMPS. This chain used to read `lowOrbit`, `mediumOrbit`,
+              // `highOrbit`, `geosynchronousOrbit`, `hasSurface` and `surface` - six fields nothing has
+              // ever produced - so on a real host every branch was skipped and every such construct
+              // read "Far Orbit". (Its own test passed, on a hand-built host carrying the six.)
+              // Beyond the host's gravitational reach it is honestly far; inside, the one band rule.
+              placementDescription = altitudeKm > boundaries.heoUpperBoundaryKm
+                ? 'Far Orbit'
+                : orbitBandAtAltitude(boundaries, altitudeKm);
           } else {
               placementDescription = 'Orbit';
           }

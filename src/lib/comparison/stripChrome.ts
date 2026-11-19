@@ -161,9 +161,15 @@ export function drawStripChrome(ctx: ChromeCtx, spec: StripChromeSpec): void {
   // The last label drawn on each side, so a crowd at the small end thins itself out rather than
   // stacking into a smudge. Per SIDE, because the layout alternates them for exactly this reason and
   // two neighbours on opposite sides do not collide.
-  const lastOn: Record<string, { at: number; half: number }> = {
-    start: { at: -Infinity, half: 0 }, end: { at: -Infinity, half: 0 }
-  };
+  //
+  // AND PER DEPTH, which only the orbit order has. There a planet with moons is named on the same
+  // side as a moon-of-a-moon that sits rows away from it across the strip, and one shared lane would
+  // let either thin the other out. Every flat order is depth 0 throughout, so nothing changes there.
+  const lastOn: Record<string, { at: number; half: number }> = {};
+  // The names drawn BESIDE their bodies (the orbit order's moons). A column of moons shares one
+  // position along the strip, so the one-dimensional lane test above cannot tell them apart - it
+  // named the first moon of every planet and dropped all the rest. These are tested box against box.
+  const beside: LabelBlock[] = [];
   ctx.font = CHROME.nameFont;
   for (const slot of spec.layout.slots) {
     const p = slotScreenPos(slot, spec);
@@ -178,17 +184,30 @@ export function drawStripChrome(ctx: ChromeCtx, spec: StripChromeSpec): void {
     if (slot.belowFloor) drawDot(ctx, p);
     drawRings(ctx, slot, p, spec);
     const centred = p.x >= 0 && p.x <= spec.vw && p.y >= 0 && p.y <= spec.vh;
+    if (slot.labelSide === 'before') {
+      if (!centred) continue;
+      const block = besideBlock(ctx, slot, p, spec);
+      ctx.font = CHROME.nameFont;
+      if (!block) continue;
+      const clear = beside.every((b) => !blocksCollide(block, b));
+      if (clear || slot.id === spec.selectedId) {
+        beside.push(block);
+        drawBlock(ctx, block);
+      }
+      continue;
+    }
     // ...and not on top of the last one on this side. MEASURED, so a long name asks for the room it
     // actually needs. The SELECTED object always gets its name whatever the crowd: it is the one the
     // reader asked about. (On a vertical strip the names stack by LINE HEIGHT rather than by width,
     // so that is what the half-extent means there.)
-    const prev = lastOn[slot.labelSide];
+    const lane = `${slot.labelSide}:${slot.depth}`;
+    const prev = lastOn[lane] ?? { at: -Infinity, half: 0 };
     const half = spec.axis === 'x'
       ? ctx.measureText(slot.name).width / 2
       : CHROME.lineHeightPx;
     const room = Math.abs(along - prev.at) >= prev.half + half + CHROME.labelPaddingPx;
     if (centred && (room || slot.id === spec.selectedId)) {
-      lastOn[slot.labelSide] = { at: along, half };
+      lastOn[lane] = { at: along, half };
       drawLabel(ctx, slot, p, spec);
     }
   }
@@ -257,6 +276,83 @@ function drawRings(
   ctx.restore();
 }
 
+interface LabelLine { text: string; font: string; color: string }
+
+/** What a label SAYS, whichever side it is drawn on: the name, the true size, and a dot's note. */
+function labelLines(slot: LayoutSlot, spec: StripChromeSpec): LabelLine[] | null {
+  const item = spec.info.get(slot.id);
+  if (!item) return null;
+  const size = formatPrefValues(spec.prefs, 'radius', bodyTypeOf(item.role), [item.diameterKm]);
+  const lines: LabelLine[] = [
+    { text: slot.name, font: CHROME.nameFont, color: CHROME.nameColor },
+    { text: size, font: CHROME.sizeFont, color: CHROME.sizeColor }
+  ];
+  if (slot.belowFloor) {
+    lines.push({ text: belowFloorNote(slot.diameterPx), font: CHROME.floorFont, color: CHROME.floorColor });
+  }
+  return lines;
+}
+
+/** A label laid out as a block of lines with a known box, so two of them can be tested for overlap. */
+export interface LabelBlock {
+  lines: LabelLine[];
+  x0: number; x1: number; y0: number; y1: number;
+  /** Where each line is anchored, and how. */
+  textX: number;
+  align: 'left' | 'center' | 'right';
+}
+
+/**
+ * THE BLOCK FOR A NAME DRAWN BESIDE ITS BODY (`labelSide: 'before'`) - the orbit order's moons.
+ *
+ * On a desktop the moons stack DOWN from their planet and their own moons run off to the right, so
+ * the name goes to the LEFT, reading up to the limb. On a phone the strip runs down the screen, the
+ * moons stack to the RIGHT and their moons run down, so the name goes ABOVE.
+ *
+ * AND IT NEVER REACHES BACK PAST THE BODY'S OWN PLANET-FACING EDGE. A block centred on a six-pixel
+ * dot is taller than the dot and would climb onto the planet the dot hangs from, which is the fault
+ * this placement exists to remove; so a block bigger than its body starts at that edge instead.
+ */
+export function besideBlock(
+  ctx: ChromeCtx, slot: LayoutSlot, p: { x: number; y: number }, spec: StripChromeSpec
+): LabelBlock | null {
+  const lines = labelLines(slot, spec);
+  if (!lines) return null;
+  let w = 0;
+  for (const l of lines) { ctx.font = l.font; w = Math.max(w, ctx.measureText(l.text).width); }
+  const h = lines.length * CHROME.lineHeightPx;
+  const off = slot.spanPx / 2 + CHROME.labelGapPx;
+  if (spec.axis === 'x') {
+    const y0 = Math.max(p.y - h / 2, p.y - slot.spanPx / 2);
+    const x1 = p.x - off;
+    return { lines, x0: x1 - w, x1, y0, y1: y0 + h, textX: x1, align: 'right' };
+  }
+  const y1 = p.y - off;
+  const fits = w <= slot.spanPx;
+  const x0 = fits ? p.x - w / 2 : p.x - slot.spanPx / 2;
+  return { lines, x0, x1: x0 + w, y0: y1 - h, y1, textX: fits ? p.x : x0, align: fits ? 'center' : 'left' };
+}
+
+/** Two blocks collide if their boxes overlap, with `labelPaddingPx` of clear space along the text. */
+export function blocksCollide(a: LabelBlock, b: LabelBlock): boolean {
+  const pad = CHROME.labelPaddingPx;
+  return a.x0 < b.x1 + pad && b.x0 < a.x1 + pad && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+function drawBlock(ctx: ChromeCtx, block: LabelBlock): void {
+  ctx.save();
+  ctx.textAlign = block.align;
+  ctx.textBaseline = 'middle';
+  let y = block.y0 + CHROME.lineHeightPx / 2;
+  for (const l of block.lines) {
+    ctx.font = l.font;
+    ctx.fillStyle = l.color;
+    ctx.fillText(l.text, block.textX, y);
+    y += CHROME.lineHeightPx;
+  }
+  ctx.restore();
+}
+
 /**
  * The name, the true size, and (for a dot) the note saying the marker is not the size.
  *
@@ -267,16 +363,8 @@ function drawRings(
 function drawLabel(
   ctx: ChromeCtx, slot: LayoutSlot, p: { x: number; y: number }, spec: StripChromeSpec
 ): void {
-  const item = spec.info.get(slot.id);
-  if (!item) return;
-  const size = formatPrefValues(spec.prefs, 'radius', bodyTypeOf(item.role), [item.diameterKm]);
-  const lines: { text: string; font: string; color: string }[] = [
-    { text: slot.name, font: CHROME.nameFont, color: CHROME.nameColor },
-    { text: size, font: CHROME.sizeFont, color: CHROME.sizeColor }
-  ];
-  if (slot.belowFloor) {
-    lines.push({ text: belowFloorNote(slot.diameterPx), font: CHROME.floorFont, color: CHROME.floorColor });
-  }
+  const lines = labelLines(slot, spec);
+  if (!lines) return;
   const off = slot.spanPx / 2 + CHROME.labelGapPx;
   ctx.save();
   if (spec.axis === 'x') {

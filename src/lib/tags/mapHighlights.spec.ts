@@ -1,6 +1,6 @@
 // What shows on a map, and in whose colour.
 import { describe, it, expect } from 'vitest';
-import { markersFor, rollUpMarkers, capMarkers, monogramOf, MARKER_CAP } from './mapHighlights';
+import { markersFor, rollUpMarkers, capMarkers, monogramOf, describeHighlightRef, MARKER_CAP } from './mapHighlights';
 import type { TagCategory } from './tagCategories';
 
 const cats = [
@@ -159,4 +159,33 @@ describe('monogramOf — text that survives a colour-blind table or a CRT filter
   it('takes two letters from one word', () => expect(monogramOf('Refuelling')).toBe('RE'));
   it('treats a hyphen as a word break', () => expect(monogramOf('blue-star')).toBe('BS'));
   it('never returns empty', () => expect(monogramOf('  ')).toBe('?'));
+});
+
+// ONE DESCRIPTION OF A SELECTION ENTRY. It was written twice (the Find-by-tag tray and the Player
+// Views panel) and the two disagreed; the starmap's "Highlighting" note would have been a third.
+describe('describeHighlightRef', () => {
+  it('a TAG entry is named and coloured exactly as its marker is - the chip previews the map', () => {
+    for (const key of ['faction/red-syndicate', 'faction/plain', 'frontier/refuelling', 'biodiversity/land-cover', 'hazard/radiation']) {
+      const marker = markersFor([{ key }], [{ ref: key }], cats)[0];
+      const chip = describeHighlightRef(key, cats);
+      expect(chip, key).toEqual({ label: marker.label, color: marker.color, textColor: marker.textColor });
+    }
+  });
+
+  it('a GM-recoloured tag keeps the GM\'s colour, and an engine tag is not a grey chip named from its key', () => {
+    expect(describeHighlightRef('faction/red-syndicate', cats)).toMatchObject({ label: 'Red Syndicate', color: '#ff0000' });
+    const engine = describeHighlightRef('biodiversity/land-cover', cats);
+    expect(engine.color.toLowerCase()).not.toBe('#888');
+    expect(engine.color.toLowerCase()).not.toBe('#888888');
+    expect(engine.label).not.toBe('land-cover');
+  });
+
+  it('a CATEGORY entry takes the category\'s own name and colour', () => {
+    expect(describeHighlightRef('faction', cats)).toEqual({ label: 'Faction', color: '#333333', textColor: '#ffffff' });
+  });
+
+  it('an entry nothing defines still has a name, so a note can say what is being highlighted', () => {
+    expect(describeHighlightRef('frontier/jump-gate', cats).label.length).toBeGreaterThan(0);
+    expect(describeHighlightRef('geology', cats).label).toBe('Geology');
+  });
 });

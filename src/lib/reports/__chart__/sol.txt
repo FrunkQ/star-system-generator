@@ -1,0 +1,77 @@
+# chart 1
+<svg aria-label="System diagram" class="overview-svg" role="img" viewBox="0 0 760 212">
+  <circle cx="-26" cy="76" fill="none" r="38" stroke="#111" stroke-width="2">
+  <text class="label" x="28" y="80">Sol
+  <ellipse cx="118" cy="76" fill="#111" rx="6.680742921199346" ry="6.680742921199346">
+  <text class="orbit-label" transform="rotate(-45 126.68074292119934 69.31925707880066)" x="126.68074292119934" y="69.31925707880066">Mercury
+  <text class="au-label" text-anchor="end" x="118" y="67.31925707880066">0.3871 AU
+  <ellipse cx="192.13866228519345" cy="76" fill="#111" rx="7.903842157749958" ry="7.903842157749958">
+  <text class="orbit-label" transform="rotate(-45 202.0425044429434 68.09615784225004)" x="202.0425044429434" y="68.09615784225004">Venus
+  <text class="au-label" text-anchor="end" x="192.13866228519345" y="66.09615784225004">0.7233 AU
+  <ellipse cx="230.54685311022433" cy="76" fill="#111" rx="7.973043575754327" ry="7.973043575754327">
+  <text class="orbit-label" transform="rotate(-45 240.51989668597867 68.02695642424567)" x="240.51989668597867" y="68.02695642424567">Earth
+  <text class="au-label" text-anchor="end" x="230.54685311022433" y="66.02695642424567">1.000 AU
+  <ellipse cx="230.54685311022433" cy="90" fill="#333" rx="3.4230291882867303" ry="3.4230291882867303">
+  <text class="orbit-label" transform="rotate(-45 235.96988229851107 86.57697081171327)" x="235.96988229851107" y="86.57697081171327">Luna
+  <ellipse cx="280.4892512539594" cy="76" fill="#111" rx="7.12342047856093" ry="7.12342047856093">
+  <text class="orbit-label" transform="rotate(-45 289.61267173252037 68.87657952143907)" x="289.61267173252037" y="68.87657952143907">Mars
+  <text class="au-label" text-anchor="end" x="280.4892512539594" y="66.87657952143907">1.524 AU
+  <ellipse cx="280.4892512539594" cy="90" fill="#333" rx="2.2" ry="2.2">
+  <text class="orbit-label" transform="rotate(-45 284.6892512539594 87.8)" x="284.6892512539594" y="87.8">Phobos
+  <ellipse cx="280.4892512539594" cy="104" fill="#333" rx="2.2" ry="2.2">
+  <text class="orbit-label" transform="rotate(-45 284.6892512539594 101.8)" x="284.6892512539594" y="101.8">Deimos
+  <ellipse cx="348.3328094573241" cy="76" fill="#9a9a9a" fill-opacity="0.30" rx="26.942856956788248" ry="4.619999974170756" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9">
+  <text class="orbit-label" transform="rotate(-45 352.5328094573241 73.8)" x="352.5328094573241" y="73.8">The Main Belt
+  <ellipse cx="426.12073752209454" cy="76" fill="#111" rx="11.198091094263564" ry="11.198091094263564">
+  <ellipse cx="426.12073752209454" cy="74" fill="none" rx="17.357041196108526" ry="6.158950101844961" stroke="#666" stroke-width="1">
+  <text class="orbit-label" transform="rotate(-45 439.31882861635813 64.80190890573644)" x="439.31882861635813" y="64.80190890573644">Jupiter
+  <text class="au-label" text-anchor="end" x="426.12073752209454" y="62.80190890573644">5.203 AU
+  <ellipse cx="426.12073752209454" cy="90" fill="#333" rx="3.4580723950200825" ry="3.4580723950200825">
+  <text class="orbit-label" transform="rotate(-45 431.57880991711465 86.54192760497992)" x="431.57880991711465" y="86.54192760497992">Io
+  <ellipse cx="426.12073752209454" cy="104" fill="#333" rx="3.343657072138917" ry="3.343657072138917">
+  <text class="orbit-label" transform="rotate(-45 431.46439459423345 100.65634292786109)" x="431.46439459423345" y="100.65634292786109">Europa
+  <ellipse cx="426.12073752209454" cy="118" fill="#333" rx="3.731178000459676" ry="3.731178000459676">
+  <text class="orbit-label" transform="rotate(-45 431.85191552255424 114.26882199954032)" x="431.85191552255424" y="114.26882199954032">Ganymede
+  <ellipse cx="426.12073752209454" cy="132" fill="#333" rx="3.665431226802764" ry="3.665431226802764">
+  <text class="orbit-label" transform="rotate(-45 431.7861687488973 128.33456877319725)" x="431.7861687488973" y="128.33456877319725">Callisto
+  <ellipse cx="497.97304048170787" cy="76" fill="#111" rx="10.952001289753007" ry="10.952001289753007">
+  <ellipse cx="497.97304048170787" cy="74" fill="none" rx="16.97560199911716" ry="6.023600709364154" stroke="#666" stroke-width="1">
+  <text class="orbit-label" transform="rotate(-45 510.9250417714609 65.04799871024699)" x="510.9250417714609" y="65.04799871024699">Saturn
+  <text class="au-label" text-anchor="end" x="497.97304048170787" y="63.047998710246986">9.536 AU
+  <ellipse cx="497.97304048170787" cy="90" fill="#333" rx="2.2" ry="2.2">
+  <text class="orbit-label" transform="rotate(-45 502.17304048170786 87.8)" x="502.17304048170786" y="87.8">Mimas
+  <ellipse cx="497.97304048170787" cy="104" fill="#333" rx="2.2" ry="2.2">
+  <text class="orbit-label" transform="rotate(-45 502.17304048170786 101.8)" x="502.17304048170786" y="101.8">Enceladus
+  <ellipse cx="497.97304048170787" cy="118" fill="#333" rx="2.5454255939196284" ry="2.5454255939196284">
+  <text class="orbit-label" transform="rotate(-45 502.5184660756275 115.45457440608037)" x="502.5184660756275" y="115.45457440608037">Tethys
+  <ellipse cx="497.97304048170787" cy="132" fill="#333" rx="2.5865094561488062" ry="2.5865094561488062">
+  <text class="orbit-label" transform="rotate(-45 502.5595499378567 129.4134905438512)" x="502.5595499378567" y="129.4134905438512">Dione
+  <ellipse cx="497.97304048170787" cy="146" fill="#333" rx="2.8144803101335953" ry="2.8144803101335953">
+  <text class="orbit-label" transform="rotate(-45 502.7875207918415 143.1855196898664)" x="502.7875207918415" y="143.1855196898664">Rhea
+  <ellipse cx="497.97304048170787" cy="160" fill="#333" rx="3.714288909289196" ry="3.714288909289196">
+  <text class="orbit-label" transform="rotate(-45 503.6873293909971 156.2857110907108)" x="503.6873293909971" y="156.2857110907108">Titan
+  <ellipse cx="497.97304048170787" cy="174" fill="#333" rx="2.785516019215299" ry="2.785516019215299">
+  <text class="orbit-label" transform="rotate(-45 502.7585565009232 171.2144839807847)" x="502.7585565009232" y="171.2144839807847">Iapetus
+  <ellipse cx="580.8903270637816" cy="76" fill="#111" rx="9.832968844459256" ry="9.832968844459256">
+  <ellipse cx="580.8903270637816" cy="74" fill="none" rx="15.241101708911847" ry="5.408132864452591" stroke="#666" stroke-width="1">
+  <text class="orbit-label" transform="rotate(-45 592.7232959082409 66.16703115554074)" x="592.7232959082409" y="66.16703115554074">Uranus
+  <text class="au-label" text-anchor="end" x="580.8903270637816" y="64.16703115554074">19.189 AU
+  <ellipse cx="580.8903270637816" cy="90" fill="#333" rx="2.6092390520114" ry="2.6092390520114">
+  <text class="orbit-label" transform="rotate(-45 585.499566115793 87.3907609479886)" x="585.499566115793" y="87.3907609479886">Ariel
+  <ellipse cx="580.8903270637816" cy="104" fill="#333" rx="2.837952979610627" ry="2.837952979610627">
+  <text class="orbit-label" transform="rotate(-45 585.7282800433921 101.16204702038937)" x="585.7282800433921" y="101.16204702038937">Titania
+  <ellipse cx="580.8903270637816" cy="118" fill="#333" rx="2.8121499475755836" ry="2.8121499475755836">
+  <text class="orbit-label" transform="rotate(-45 585.7024770113571 115.18785005242442)" x="585.7024770113571" y="115.18785005242442">Oberon
+  <ellipse cx="634.1608813637947" cy="76" fill="#111" rx="9.793102313619682" ry="9.793102313619682">
+  <ellipse cx="634.1608813637947" cy="74" fill="none" rx="15.179308586110508" ry="5.386206272490826" stroke="#666" stroke-width="1">
+  <text class="orbit-label" transform="rotate(-45 645.9539836774144 66.20689768638032)" x="645.9539836774144" y="66.20689768638032">Neptune
+  <text class="au-label" text-anchor="end" x="634.1608813637947" y="64.20689768638032">30.070 AU
+  <ellipse cx="634.1608813637947" cy="90" fill="#333" rx="3.238081623511403" ry="3.238081623511403">
+  <text class="orbit-label" transform="rotate(-45 639.3989629873062 86.7619183764886)" x="639.3989629873062" y="86.7619183764886">Triton
+  <ellipse cx="666.4543601756621" cy="76" fill="#111" rx="5.71227090108426" ry="5.71227090108426">
+  <text class="orbit-label" transform="rotate(-45 674.1666310767464 70.28772909891575)" x="674.1666310767464" y="70.28772909891575">Pluto
+  <text class="au-label" text-anchor="end" x="666.4543601756621" y="68.28772909891575">39.482 AU
+  <ellipse cx="666.4543601756621" cy="53.482063964000254" fill="#111" rx="4.805665134915486" ry="4.805665134915486">
+  <text class="orbit-label" transform="rotate(-45 673.2600253105776 48.67639882908477)" x="673.2600253105776" y="48.67639882908477">Charon
+  <ellipse cx="668" cy="76" fill="#9a9a9a" fill-opacity="0.30" rx="28" ry="10" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9">
+  <text class="orbit-label" transform="rotate(-45 672.2 73.8)" x="672.2" y="73.8">Kuiper Belt

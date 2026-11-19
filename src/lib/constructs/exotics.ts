@@ -47,15 +47,23 @@
  *    raw omega^2 r as `spinGravityMs2`.
  *  - 'spin-section': a separate habitat ring on a hull (`spinRadiusM` + `rotation_period_hours`) —
  *    ordinary stations; no registry type uses it yet but the crew tab serves it today.
- *  - 'surface': GM/r² of the object's own mass (`surfaceGravityMs2`) — the Death Star.
+ *  - 'surface': GM/r² at the object's own surface (`surfaceGravityMs2`) — the Death Star's own
+ *    mass; for a shell built ROUND its host (a Birch planet) the mass it encloses, at its outer face.
  *  - 'none': no meaningful figure; panels show nothing rather than a number without meaning. */
 export type ExoticApparentG = 'own-rotation' | 'spin-section' | 'surface' | 'none';
 
 /** What this type does to STARLIGHT (G53 phase 4's chain). 'isotropic' dims every body outside
  *  its radius; 'band' dims only what aligns with its plane (`occlusionBandWidthKm` beside
- *  `starOcclusion` in derive()). `amplifies` is RESERVED for the soletta (design §3): a mirror's
- *  target receives MORE than inverse-square, which falsifies receivedLuminosityWatts's dims-only
- *  clamp — declaring it here is what will force that clamp honest in N4. */
+ *  `starOcclusion` in derive()). `amplifies: 'target'` is the SOLETTA's (phase 6): a mirror's
+ *  target - the world it is stationed at - receives MORE than inverse-square. derive() publishes
+ *  `starAmplification`; `physics/starlightOcclusion.ts starlightBoost` is the one place who-lights-
+ *  whom is computed, and `receivedLuminosityWatts` takes the gain beside the transmission (its
+ *  dims-only clamp still guards the transmission; a gain can only brighten).
+ *
+ *  NOT AN AXIS YET, ON PURPOSE: what a structure does to its STAR'S MOTION (the Shkadov and Caplan
+ *  thrusters). Their thrust is PUBLISHED by derive() and shown; nothing consumes it as motion
+ *  because no event driver exists (board row G41). The axis arrives with the driver that reads
+ *  it - a declared capability nothing consumes is a claim, not a feature. */
 export interface ExoticFlux {
 	occludes?: 'isotropic' | 'band';
 	amplifies?: 'target';

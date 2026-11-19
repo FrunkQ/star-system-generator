@@ -168,3 +168,14 @@ export function formatNice(value: number): string {
   const dp = Math.min(6, Math.max(0, -Math.floor(Math.log10(a))));
   return value.toFixed(dp);
 }
+
+// ── WHEN A GRID IS WORTH DRAWING AT ALL (engine map UI-L7) ───────────────────────────────────────
+// A cell chosen by the ladder above is ~45-90 screen px by construction and never trips this. A
+// PINNED cell ("1 AU hexes") is a fixed size in the WORLD, so its lattice grows with the view: at
+// the 2D system view's widest zoom a 1 AU hex grid is over a million million hexes, and the loop that
+// draws them blocks the page before a single frame is seen. Below a few pixels a grid is a haze, not
+// a grid - so it is not drawn, which is also what stops the loop being entered.
+export const MIN_GRID_CELL_PX = 3;
+export function gridCellLegible(cellWorld: number, pxPerWorld: number): boolean {
+  return cellWorld > 0 && pxPerWorld > 0 && cellWorld * pxPerWorld >= MIN_GRID_CELL_PX;
+}

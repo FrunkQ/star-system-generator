@@ -178,3 +178,112 @@ describe('death star — honest numbers from the knobs', () => {
     expect(spec).toEqual({ family: 'spheroid', dimensionsM: [160000, 160000, 160000] });
   });
 });
+
+// ── PHASE 6: THE CATALOGUE WIDENS. Anchors are outside the code under test wherever one exists, and
+// each was seen RED by breaking its derivation (the factor named in the test) before it was kept.
+describe('soletta - a fifth more starlight by default, from the areas alone', () => {
+  it('the default mirror adds exactly 0.2 of what the world\'s own disc intercepts, on any world', () => {
+    const d = def('soletta');
+    for (const host of [earth(), earth({ radiusKm: 3389.5, massKg: 6.4e23 }), earth({ radiusKm: 1737 })]) {
+      const out = d.derive(defaultMegaParams(d, host), host);
+      // reflectivity 0.9 x (D/2)^2 / R^2 with D seeded at 2R sqrt(0.2/0.9). RED with the 0.9 dropped (0.2222).
+      expect(out.starAmplification).toBeCloseTo(0.2, 12);
+      expect(out.areaEarths).toBeUndefined();   // a mirror is not "Earths of floor"
+    }
+  });
+  it('it scales as the mirror\'s AREA and the reflectivity, and a dead mirror publishes nothing', () => {
+    const d = def('soletta');
+    const base = defaultMegaParams(d, earth());
+    expect(d.derive({ ...base, mirrorDiameterKm: base.mirrorDiameterKm * 2 }, earth()).starAmplification).toBeCloseTo(0.8, 12);
+    expect(d.derive({ ...base, reflectivityFrac: 0.45 }, earth()).starAmplification).toBeCloseTo(0.1, 12);
+    expect(d.derive({ ...base, reflectivityFrac: 0 }, earth()).starAmplification).toBeUndefined();
+  });
+});
+
+describe('Shkadov thruster - the push is momentum conservation, published and never applied', () => {
+  const L_SUN = 3.828e26, C = 299792458, M_SUN = 1.989e30;
+  it('a hemisphere gives half the star\'s light pressure: 6.4e17 N on the Sun, 3.2e-13 m/s^2', () => {
+    const d = def('shkadov-thruster');
+    const out = d.derive({ ...defaultMegaParams(d, sol()), halfAngleDeg: 90 }, sol());
+    // (L/2c)(1 - cos psi): the star's whole output leaves through the open half-sky, and its net
+    // momentum along the axis is L/2c. NOTE the often-quoted 1.28e18 N for the Sun is L/c - "half
+    // the output reflected" with every photon turned head-on; integrating the cosine over the cap
+    // halves it. Checked against the conservation law, fitted to neither. RED with the /2 dropped.
+    expect(out.starThrustPhotonFrac).toBeCloseTo(0.5, 12);
+    const newtons = out.starThrustPhotonFrac! * L_SUN / C;
+    expect(newtons).toBeGreaterThan(6.2e17); expect(newtons).toBeLessThan(6.6e17);
+    const a = newtons / M_SUN;
+    expect(a).toBeGreaterThan(3.1e-13); expect(a).toBeLessThan(3.3e-13);
+    // A million years of that: about ten metres a second - the honest scale of a Shkadov engine.
+    expect(a * 3.156e13).toBeGreaterThan(9); expect(a * 3.156e13).toBeLessThan(11);
+  });
+  it('the limits are the physical ones: no cap, no push; the whole sky but a pinhole, all of L/c', () => {
+    const d = def('shkadov-thruster');
+    const at = (deg: number) => d.derive({ ...defaultMegaParams(d, sol()), halfAngleDeg: deg }, sol()).starThrustPhotonFrac!;
+    expect(at(0.1)).toBeLessThan(1e-5);
+    expect(at(180)).toBeCloseTo(1, 12);
+    expect(at(30)).toBeCloseTo((1 - Math.cos(Math.PI / 6)) / 2, 12);   // the default: 6.7% of L/c
+  });
+  it('it shades nothing in the system plane: untilted, the cap stands over the pole (no occlusion published)', () => {
+    const d = def('shkadov-thruster');
+    expect(d.derive(defaultMegaParams(d, sol()), sol()).starOcclusion).toBeUndefined();
+    const spec = d.shape(defaultMegaParams(d, sol()), sol());
+    expect(spec.family).toBe('sphere-section');
+    if (spec.family === 'sphere-section') {
+      expect(spec.thetaStartRad).toBe(0);                         // a POLAR cap of the one generator
+      expect(spec.thetaLengthRad).toBeCloseTo(Math.PI / 6, 12);
+    }
+  });
+});
+
+describe('Caplan thruster - thrust is mass flow times jet speed, and the star pays for it', () => {
+  const M_SUN = 1.989e30;
+  it('at the published maximum - the Sun spent in a hundred million years at 0.01 c - it reaches 1e-9 m/s^2', () => {
+    const d = def('caplan-thruster');
+    // Caplan (2019): maximum acceleration ~1e-9 m/s^2, an engine life of ~100 million years on the
+    // Sun's mass, jets at about a hundredth of light speed. The three figures are one equation -
+    // a = (M / t) v / M = v / t - and the derivation must close it. RED with the jet speed squared.
+    const mdot = M_SUN / (100e6 * 3.156e7);
+    const out = d.derive({ ...defaultMegaParams(d, sol()), massFlowKgPerS: mdot, jetSpeedFracC: 0.01 }, sol());
+    const a = out.starThrustN! / M_SUN;
+    expect(a).toBeGreaterThan(0.9e-9); expect(a).toBeLessThan(1.05e-9);
+    expect(out.starMassLossKgPerS).toBe(mdot);
+    // And what that buys in a million years: of order ten parsecs, as published.
+    const pc = (0.5 * a * Math.pow(3.156e13, 2)) / 3.0857e16;
+    expect(pc).toBeGreaterThan(8); expect(pc).toBeLessThan(20);
+  });
+  it('the default (1e12 kg/s at 0.01 c) is the gentle engine: 3e18 N, and still five times a hemispherical mirror', () => {
+    const d = def('caplan-thruster');
+    const out = d.derive(defaultMegaParams(d, sol()), sol());
+    expect(out.starThrustN).toBeGreaterThan(2.99e18); expect(out.starThrustN).toBeLessThan(3.01e18);
+    expect(out.starThrustN! / (0.5 * 3.828e26 / 299792458)).toBeGreaterThan(4);
+    expect(out.starOcclusion).toBe(0.1);   // the collector swarm that feeds it dims the star like any swarm
+  });
+  it('a jet at or past light speed publishes nothing rather than an imaginary number', () => {
+    const d = def('caplan-thruster');
+    expect(d.derive({ ...defaultMegaParams(d, sol()), jetSpeedFracC: 1 }, sol()).starThrustN).toBeUndefined();
+  });
+});
+
+describe('Birch planet - one gravity of ground round a black hole, a trillion Earths of it', () => {
+  const sgrA = (): CelestialBody =>
+    ({ id: 'bh', name: 'Sgr A*', parentId: null, tags: [], classes: ['star/BH'], kind: 'body', roleHint: 'star', massKg: 4.3e6 * 1.989e30 }) as CelestialBody;
+  it('round a four-million-solar-mass hole the shell seeds at ~51 AU, where the hole pulls at one gravity', () => {
+    const d = def('birch-planet');
+    const params = defaultMegaParams(d, sgrA());
+    // r = sqrt(GM/g): 7.6e12 m. RED with the square root dropped.
+    expect(params.radiusAU).toBeGreaterThan(50); expect(params.radiusAU).toBeLessThan(52);
+    const out = d.derive(params, sgrA());
+    expect(out.surfaceGravityMs2! / EARTH_GRAVITY).toBeCloseTo(1, 9);
+    expect(out.areaEarths).toBeGreaterThan(1.3e12); expect(out.areaEarths).toBeLessThan(1.6e12);
+    expect(out.starOcclusion).toBe(1);   // a closed shell
+  });
+  it('the gravity follows the inverse square when the knob moves, and it is the HOLE\'s pull, not a spin', () => {
+    const d = def('birch-planet');
+    const params = defaultMegaParams(d, sgrA());
+    const out = d.derive({ ...params, radiusAU: params.radiusAU * 2 }, sgrA());
+    expect(out.surfaceGravityMs2! / EARTH_GRAVITY).toBeCloseTo(0.25, 9);
+    expect(out.spinGravityMs2).toBeUndefined();
+    expect(out.surfaceGravityMs2).toBeCloseTo((G * 4.3e6 * 1.989e30) / Math.pow(params.radiusAU * 2 * AU_KM * 1000, 2), 12);
+  });
+});

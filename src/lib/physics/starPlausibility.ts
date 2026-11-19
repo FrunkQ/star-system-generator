@@ -92,10 +92,20 @@ export function starImplausibilities(body: CelestialBody, pack?: RulePack): Impl
 	// (2) DOES IT MATCH THE CLASS IT CLAIMS? The pack's band is the definition of the class, so a body
 	// far outside its own band is asserting something its numbers contradict. An order of magnitude is
 	// the threshold: bands are typical ranges, not fences, and a GM nudging past the edge is ordinary.
+	//
+	// A BLACK HOLE HAS NO UPPER BAND TO BE OUTSIDE OF (ideas B22). Its pack band is the STELLAR-mass
+	// population - what a collapsing star leaves, 3 to about 100 solar masses - and that is a
+	// statement about one way of making a hole, not a ceiling on holes. Above it are the
+	// intermediate-mass and supermassive ones, which are real and which the editor's own
+	// supermassive switch offers up to 2.7e11. So a 120,000 solar-mass hole was being told it was
+	// "physically implausible, about 1200x outside its own band", by the same product that had just
+	// invited it. Only the LOW side is held against a hole: one far too light to have collapsed.
+	// (Past the growth limit the editor already says so in amber - `SUPERMASSIVE_AMBER_NOTE`.)
 	const band = pack ? starStatTemplate(pack, cls) : undefined;
+	const isBlackHole = /^star\/BH/.test(cls);
 	if (band?.mass_solar && mSolar > 0) {
 		const [lo, hi] = band.mass_solar;
-		if (mSolar < lo / 10 || mSolar > hi * 10) {
+		if (mSolar < lo / 10 || (!isBlackHole && mSolar > hi * 10)) {
 			out.push({
 				law: 'mass-outside-class',
 				detail: `A ${cls.replace('star/', '')} runs ${lo}–${hi} solar masses; this is ${mSolar.toFixed(3)}, `

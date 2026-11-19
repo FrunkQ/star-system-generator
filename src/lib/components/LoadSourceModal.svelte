@@ -36,10 +36,19 @@
   //
   // ONE COMPONENT, TWO KINDS. A campaign and a system differ in the words and the file filter and
   // in nothing else, so they are one screen parameterised rather than two screens to keep in step.
+  //
+  // AND BROWSE BECAME A LIST, for a campaign (R-20 / G98, 2026-09-11). The owner: *"a list INSIDE
+  // SSE to single click and load"*. So Load Starmap shows Explorers' maps right here, and a click
+  // asks the parent to open one BY ADDRESS - the parent hands it to the same function `?open=` uses,
+  // so this screen still classifies nothing and opens nothing. A SYSTEM keeps the plain link for now:
+  // the hub cannot yet hand out a system that opens in one click (R-18), and the door a system needs
+  // is the generation wizard's, not this one.
   import { createEventDispatcher } from 'svelte';
   import { parseHubReference } from '$lib/hub/hubClient';
   import { HUB } from '$lib/hub/hubConfig';
+  import type { HubMapSummary } from '$lib/hub/hubMapList';
   import { foreground } from '$lib/ui/foreground';
+  import HubMapPanel from './HubMapPanel.svelte';
 
   /** Which world this acts on. The tooltips in the rail already make this distinction; so does this. */
   export let kind: LoadSourceKind;
@@ -53,6 +62,11 @@
   $: parsed = parseHubReference(hubRef);
   function openShared() {
     if (parsed) dispatch('openHub', parsed);
+  }
+
+  /** A map picked from the list: its ADDRESS goes up, and the parent's one door does the rest. */
+  function openListed(event: CustomEvent<HubMapSummary>) {
+    dispatch('openFromExplorers', event.detail.downloadUrl);
   }
 
   const COPY = {
@@ -77,12 +91,20 @@
     <h2>{copy.title}</h2>
     <p class="load-caution">{copy.caution}</p>
 
-    <!-- FIRST, because it is the one that takes them to the other explorers. A real link rather
-         than a button, so it behaves like one - middle-click, copy, open in a background tab. -->
-    <a class="load-option primary" href={HUB.browseUrl} target="_blank" rel="noopener noreferrer">
-      <strong>Browse shared maps</strong>
-      <small>Opens the Explorers library in a new tab — maps other cartographers have shared. Every one of them has an "Open in Star System Explorer" button that brings it straight back here.</small>
-    </a>
+    <!-- FIRST, because it is the one that takes them to the other explorers. For a campaign that is
+         the list itself; for a system, a real link rather than a button, so it behaves like one -
+         middle-click, copy, open in a background tab. -->
+    {#if kind === 'campaign'}
+      <div class="load-explorers">
+        <h3>Shared on Explorers</h3>
+        <HubMapPanel on:open={openListed} />
+      </div>
+    {:else}
+      <a class="load-option primary" href={HUB.browseUrl} target="_blank" rel="noopener noreferrer">
+        <strong>Browse shared maps</strong>
+        <small>Opens the Explorers library in a new tab — maps other cartographers have shared. Every one of them has an "Open in Star System Explorer" button that brings it straight back here.</small>
+      </a>
+    {/if}
 
     <button type="button" class="load-option" on:click={() => dispatch('file')}>
       <strong>{copy.fileTitle}</strong>
@@ -127,7 +149,9 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 20px 22px;
-    width: min(520px, 100%);
+    /* Wider than the three plain options needed (520px): a list row carries a cover and two lines
+       of counts beside the title. Still `min(..., 100%)`, so a phone gets the whole width. */
+    width: min(600px, 100%);
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
@@ -170,6 +194,19 @@
   .load-option strong {
     display: block;
     margin-bottom: 3px;
+  }
+  .load-explorers {
+    border: 1px solid var(--accent, #7aa2f7);
+    border-radius: 4px;
+    padding: 8px 10px 8px;
+    margin-bottom: 8px;
+  }
+  .load-explorers h3 {
+    margin: 0 0 6px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
   }
   .load-option small {
     display: block;

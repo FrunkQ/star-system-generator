@@ -7,6 +7,9 @@
   import { getPlanetColor } from '$lib/rendering/colors';
   import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
   import { hostCandidates } from '$lib/system/reparent';
+  import { megaTypeDef } from '$lib/constructs/megaTypes';
+  import { canonicalPlacement, hostOrbitBands, orbitBandAtAltitude, ORBIT_BAND_PLACEMENTS, PLACEMENT_SURFACE, PLACEMENT_MEDIUM_ORBIT } from '$lib/constructs/placements';
+  import { effectiveMegaRequires, megaHardCheck, filterMegaPlacements, megaPlacementAllowed, megaIsSurfaceOnly, megaOrbitPlaneAuthorable, type MegaHost } from '$lib/constructs/megaPlacement';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -22,10 +25,34 @@
   // The orbit of a co-orbital construct is DERIVED from its secondary, so every element control
   // below is read-only for one — this is the single predicate they all gate on.
   $: selectedLagrangePoint = lagrangePlacementId(selectedPlacement);
+  // G53 relevance, on the EDIT surface as well as the create dialog (UI-B2): a mega type's own
+  // record says which placements and which hosts mean anything for it. An elevator is Surface or
+  // nothing - so no L-point is offered, no host without a surface is offered, and it has no
+  // altitude or orbital position to move (its position is its anchor, not an orbit).
+  // Handlers ask `typeDef()` directly: a `$:` value is one flush behind inside an event handler
+  // (see handleUpdate), and a gate must never be the stale half of a comparison.
+  const typeDef = () => megaTypeDef(construct?.megaType);
+  $: megaDef = megaTypeDef(construct?.megaType);
+  $: surfaceOnly = megaIsSurfaceOnly(megaDef);
+  function hostRefusal(parent: CelestialBody | undefined): string | undefined {
+    const def = typeDef();
+    if (!def || !parent) return undefined;
+    const r = megaHardCheck(effectiveMegaRequires(construct, def), parent as MegaHost, construct.explain ?? def.explain);
+    return r.ok ? undefined : r.reason;
+  }
   let auDistance: number = 0;
   let anomalyDeg: number = 0;
   let eccentricity = 0;
   let eccentricityAngle = 0;
+  // THE ORBIT'S PLANE, for a megastructure that orbits (a ring, shell or swarm; a battle station):
+  // inclination and the ascending node. Physics already honoured both; nothing authored them.
+  let inclinationDeg = 0;
+  let ascendingNodeDeg = 0;
+  $: planeAuthorable = megaOrbitPlaneAuthorable(megaDef, selectedPlacement);
+  $: planeHostIsStar = (() => {
+    const p = system.nodes.find(n => n.id === selectedParentId) as CelestialBody | undefined;
+    return !p || p.kind === 'barycenter' || p.roleHint === 'star';
+  })();
 
   // --- State for Planetary Orbital Slider ---
   type OrbitalZone = { name: string; startPos: number; endPos: number; color: string; };
@@ -54,13 +81,17 @@
     // ONE list rule for "what may this orbit", shared with a body's re-home control (G64).
     availableParents = hostCandidates(system) as CelestialBody[];
     selectedParentId = construct.parentId || undefined; // Use physical parent for editor
-    selectedPlacement = construct.placement;
+    // Read through the one vocabulary: a save written with the old middle-band spelling selects its zone here,
+    // where it used to select nothing at all.
+    selectedPlacement = canonicalPlacement(construct.placement);
     if (construct.orbit) {
         auDistance = construct.orbit.elements.a_AU;
         let trueDeg = (construct.orbit.elements.M0_rad || 0) * (180 / Math.PI);
         anomalyDeg = ((trueDeg + 90) % 360 + 360) % 360;
         eccentricity = construct.orbit.elements.e || 0;
         eccentricityAngle = construct.orbit.elements.omega_deg || 0;
+        inclinationDeg = construct.orbit.elements.i_deg || 0;
+        ascendingNodeDeg = construct.orbit.elements.Omega_deg || 0;
     }
     updateUIFromState();
   });
@@ -71,11 +102,14 @@
         anomalyDeg = ((trueDeg + 90) % 360 + 360) % 360;
         eccentricity = construct.orbit.elements.e || 0; 
         eccentricityAngle = construct.orbit.elements.omega_deg || 0;
+        inclinationDeg = construct.orbit.elements.i_deg || 0;
+        ascendingNodeDeg = construct.orbit.elements.Omega_deg || 0;
     }
   }
 
   function handleAnomalyChange() {
-      if (construct.orbit) {
+      // An emptied number box binds null/undefined; never write a non-number into an element.
+      if (construct.orbit && Number.isFinite(anomalyDeg) && !megaIsSurfaceOnly(typeDef())) {
           let trueDeg = anomalyDeg - 90;
           construct.orbit.elements.M0_rad = trueDeg * (Math.PI / 180);
           dispatch('update');
@@ -83,17 +117,26 @@
   }
 
   function handleEccentricityChange() {
-      if (construct.orbit) {
-          construct.orbit.elements.e = parseFloat(eccentricity.toFixed(3)); 
+      if (construct.orbit && Number.isFinite(eccentricity)) {
+          construct.orbit.elements.e = Math.min(0.999, Math.max(0, parseFloat(eccentricity.toFixed(3))));
           dispatch('update');
       }
   }
 
   function handleEccentricityAngleChange() {
-      if (construct.orbit) {
+      if (construct.orbit && Number.isFinite(eccentricityAngle)) {
           construct.orbit.elements.omega_deg = eccentricityAngle;
           dispatch('update');
       }
+  }
+
+  // The gate is asked of the record at the moment of the edit (a `$:` mirror is one flush behind
+  // in a handler): a structure on its anchor or at a Lagrange point has no plane of its own to set.
+  function handlePlaneChange() {
+      if (!construct.orbit || !megaOrbitPlaneAuthorable(typeDef(), selectedPlacement)) return;
+      if (Number.isFinite(inclinationDeg)) construct.orbit.elements.i_deg = Math.min(180, Math.max(0, inclinationDeg));
+      if (Number.isFinite(ascendingNodeDeg)) construct.orbit.elements.Omega_deg = ((ascendingNodeDeg % 360) + 360) % 360;
+      dispatch('update');
   }
 
   // Planet-dot colour for the slider is the canonical getPlanetColor (token-driven),
@@ -129,20 +172,8 @@
     } else if (parentBody.kind === 'body' && (parentBody.roleHint === 'planet' || parentBody.roleHint === 'moon')) {
       const boundaries = parentBody.orbitalBoundaries;
       const isGasGiant = parentBody.classes?.some(c => c.includes('gas-giant')) ?? false;
-      if (!isGasGiant) placements.push('Surface');
-      placements.push('Low Orbit');
-      
-      if (boundaries) {
-          if (boundaries.leoMoeBoundaryKm < boundaries.meoHeoBoundaryKm) {
-              placements.push('Medium Orbit');
-          }
-          if (boundaries.meoHeoBoundaryKm < boundaries.heoUpperBoundaryKm) {
-              placements.push('High Orbit');
-          }
-          if (boundaries.geoStationaryKm && !boundaries.isGeoFallback) {
-              placements.push('Geostationary Orbit');
-          }
-      }
+      if (!isGasGiant) placements.push(PLACEMENT_SURFACE);
+      placements.push(...hostOrbitBands(boundaries));
     }
     
     if (parentBody.parentId && parentBody.roleHint !== 'star') {
@@ -151,7 +182,8 @@
       placements.push(...LAGRANGE_PLACEMENTS);
     }
     
-    availablePlacements = placements;
+    // The type's half of the axis: the same narrowing the create dialog applies.
+    availablePlacements = filterMegaPlacements(megaTypeDef(construct?.megaType), placements);
   }
 
   function updateSliderState() {
@@ -162,7 +194,7 @@
     showOrbitalSlider = false;
     showInterplanetarySlider = false;
 
-    const isOrbital = ['Surface', 'Low Orbit', 'Medium Orbit', 'High Orbit', 'Geostationary Orbit'].includes(selectedPlacement || '');
+    const isOrbital = ([PLACEMENT_SURFACE, ...ORBIT_BAND_PLACEMENTS] as string[]).includes(selectedPlacement || '');
 
     if (parentBody.roleHint === 'star' || parentBody.kind === 'barycenter') {
       showInterplanetarySlider = true;
@@ -178,12 +210,14 @@
         color: getPlanetColorForSlider(p)
       }));
 
-    } else if (parentBody.orbitalBoundaries && isOrbital) {
+    } else if (parentBody.orbitalBoundaries && isOrbital && !megaIsSurfaceOnly(megaTypeDef(construct?.megaType))) {
       showOrbitalSlider = true;
       const boundaries = parentBody.orbitalBoundaries;
       parentRadiusKm = parentBody.radiusKm || 0;
       
-      orbitalSliderMinKm = boundaries.hasSurface ? 0 : boundaries.minLeoKm;
+      // (`boundaries.hasSurface` and `.surface` were read here and are produced by nothing, so the
+      // slider has always started at the lowest orbit; a surface placement is the Zone select's.)
+      orbitalSliderMinKm = boundaries.minLeoKm;
       orbitalSliderMaxKm = boundaries.heoUpperBoundaryKm;
 
       const logTransform = (km: number) => Math.log(Math.max(1, km) / Math.max(1, orbitalSliderMinKm)) / Math.log(orbitalSliderMaxKm / Math.max(1, orbitalSliderMinKm));
@@ -192,12 +226,7 @@
       orbitalSliderValue = currentAltitudeKm > orbitalSliderMinKm ? logTransform(currentAltitudeKm) : 0;
 
       const zones: OrbitalZone[] = [];
-      let lastPos = 0;
-      if (boundaries.hasSurface) {
-        const endPos = logTransform(boundaries.surface.max) * 100;
-        zones.push({ name: 'Surface', startPos: 0, endPos, color: '#5a5a5a' });
-        lastPos = endPos;
-      }
+      const lastPos = 0;
       const loEnd = logTransform(boundaries.leoMoeBoundaryKm) * 100;
       zones.push({ name: 'Low Orbit', startPos: lastPos, endPos: loEnd, color: '#3b82f6' });
       
@@ -227,22 +256,26 @@
     const linearValue = Math.max(0, Math.min(1, x / rect.width));
 
     if (type === 'orbital') {
-      orbitalSliderValue = linearValue;
-      const newAltitudeKm = orbitalSliderMinKm * Math.pow(orbitalSliderMaxKm / orbitalSliderMinKm, orbitalSliderValue);
-      if (construct.orbit) construct.orbit.elements.a_AU = (newAltitudeKm + parentRadiusKm) / AU_KM;
-      
+      // The inverse of updateSliderState's logTransform, floor and all: that one reads the minimum
+      // through Math.max(1, ...) and this one did not, so a zero minimum made 0 x Infinity = NaN and
+      // wrote it straight into the orbit. A slider may never write a non-number.
+      const minKm = Math.max(1, orbitalSliderMinKm);
+      const newAltitudeKm = minKm * Math.pow(orbitalSliderMaxKm / minKm, linearValue);
+      if (!Number.isFinite(newAltitudeKm)) return;
+      let zone = selectedPlacement;
       const parentBody = system.nodes.find(n => n.id === selectedParentId);
       if (parentBody && parentBody.orbitalBoundaries) {
-          const boundaries = parentBody.orbitalBoundaries;
-          if (boundaries.hasSurface && newAltitudeKm <= boundaries.surface.max) selectedPlacement = 'Surface';
-          else if (newAltitudeKm <= boundaries.leoMoeBoundaryKm) selectedPlacement = 'Low Orbit';
-          else if (newAltitudeKm <= boundaries.meoHeoBoundaryKm) selectedPlacement = 'Medium Orbit';
-          else if (boundaries.geosynchronousOrbit && newAltitudeKm <= boundaries.geoStationaryKm + 1000) selectedPlacement = 'Geostationary Orbit';
-          else selectedPlacement = 'High Orbit';
+          zone = orbitBandAtAltitude(parentBody.orbitalBoundaries, newAltitudeKm);
       }
+      // Relevance again: a drag may not carry a mega into a zone its type cannot take.
+      if (!megaPlacementAllowed(typeDef(), zone)) return;
+      orbitalSliderValue = linearValue;
+      if (construct.orbit) construct.orbit.elements.a_AU = (newAltitudeKm + parentRadiusKm) / AU_KM;
+      selectedPlacement = zone;
     } else { // Interplanetary
+      const newAu = interplanetarySliderMinAu * Math.pow(interplanetarySliderMaxAu / interplanetarySliderMinAu, linearValue);
+      if (!Number.isFinite(newAu) || !(newAu > 0)) return;
       interplanetarySliderValue = linearValue;
-      const newAu = interplanetarySliderMinAu * Math.pow(interplanetarySliderMaxAu / interplanetarySliderMinAu, interplanetarySliderValue);
       if (construct.orbit) construct.orbit.elements.a_AU = newAu;
 
       if (newAu < (sortedPlanets[0]?.orbit?.elements.a_AU || 0)) {
@@ -264,6 +297,13 @@
   }
 
   function handleParentChange() {
+    // A host the type has nothing to attach to is greyed in the list; this is the same answer for
+    // a value that arrives any other way. The pick is put back and nothing is written.
+    if (hostRefusal(system.nodes.find(n => n.id === selectedParentId) as CelestialBody | undefined)) {
+      selectedParentId = (construct.ui_parentId || construct.parentId) || undefined;
+      updatePlacementsForParent();
+      return;
+    }
     updatePlacementsForParent();
     selectedPlacement = availablePlacements[0];
     handleUpdate();
@@ -274,24 +314,36 @@
     const parentBody = system.nodes.find(n => n.id === selectedParentId);
     if (!parentBody) return;
 
+    // Relevance is a hard gate: a placement the type cannot take is not written, whatever route
+    // the value arrived by.
+    if (!megaPlacementAllowed(typeDef(), selectedPlacement)) {
+      selectedPlacement = construct.placement ?? null;
+      return;
+    }
+
     construct.placement = selectedPlacement;
+    // READ THE PICK ITSELF, NOT THE `$:` MIRROR OF IT. A reactive statement runs on the next flush,
+    // so inside this change handler `selectedLagrangePoint` still described the PREVIOUS pick: the
+    // first L-point chosen was written as a surface orbit labelled 'L2', and the next pick - even
+    // 'Surface' - was sent to the Lagrange point instead. One pick late, every time.
+    const lagrangePoint = lagrangePlacementId(selectedPlacement);
 
     if (!construct.orbit) {
         construct.orbit = { hostId: '', hostMu: 0, t0: 0, elements: { a_AU: 0, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 }};
     }
 
-    if (selectedLagrangePoint) {
+    if (lagrangePoint) {
       // G43: the structured marker is the load-bearing record — the processor re-derives the orbit
       // from the secondary every pass. The derivation here (same shared convention) is only the
       // instant feedback before the next process().
       construct.parentId = parentBody.parentId;
       construct.ui_parentId = parentBody.id;
-      construct.coOrbital = { hostId: parentBody.id, point: selectedLagrangePoint };
+      construct.coOrbital = { hostId: parentBody.id, point: lagrangePoint };
       const grandparent = parentBody.parentId ? system.nodes.find(n => n.id === parentBody.parentId) : null;
       const grandparentMassKg = grandparent
         ? ((grandparent as any).kind === 'barycenter' ? (grandparent as any).effectiveMassKg : (grandparent as any).massKg) || 0
         : 0;
-      const derived = deriveCoOrbitalOrbit(parentBody, grandparentMassKg, selectedLagrangePoint);
+      const derived = deriveCoOrbitalOrbit(parentBody, grandparentMassKg, lagrangePoint);
       if (derived) construct.orbit = derived;
       else if (parentBody.orbit) construct.orbit = JSON.parse(JSON.stringify(parentBody.orbit));
     } else {
@@ -325,7 +377,9 @@
 
         const mass = (parentBody.kind === 'barycenter' ? (parentBody as any).effectiveMassKg : parentBody.massKg) || 0;
 
-        // Create a perfect, circular, non-inclined orbit
+        // A fresh circular orbit at the new distance - IN THE PLANE THE GM ALREADY CHOSE. This
+        // used to write i 0 / node 0, so re-picking a zone flattened an authored tilt.
+        const keptPlane = { i_deg: construct.orbit?.elements.i_deg || 0, Omega_deg: construct.orbit?.elements.Omega_deg || 0 };
         construct.orbit = {
           hostId: parentBody.id,
           hostMu: mass * 6.67430e-11,
@@ -333,9 +387,9 @@
           elements: {
             a_AU: new_a_AU,
             e: 0, // Default to circular for these placements initially
-            i_deg: 0, // On the ecliptic plane
+            i_deg: keptPlane.i_deg,
             omega_deg: 0, // Not relevant for circular orbit
-            Omega_deg: 0, // Not relevant for non-inclined orbit
+            Omega_deg: keptPlane.Omega_deg,
             M0_rad: Math.random() * 2 * Math.PI // Random starting position on the circle
           }
         };
@@ -344,7 +398,7 @@
         switch (selectedPlacement) {
           case 'Surface': altitudeKm = 0; break;
           case 'Low Orbit': altitudeKm = ((boundaries?.minLeoKm || 0) + (boundaries?.leoMoeBoundaryKm || 0)) / 2; break;
-          case 'Medium Orbit': altitudeKm = ((boundaries?.leoMoeBoundaryKm || 0) + (boundaries?.meoHeoBoundaryKm || 0)) / 2; break;
+          case PLACEMENT_MEDIUM_ORBIT: altitudeKm = ((boundaries?.leoMoeBoundaryKm || 0) + (boundaries?.meoHeoBoundaryKm || 0)) / 2; break;
           case 'Geostationary Orbit': altitudeKm = boundaries?.geoStationaryKm || 0; break;
           case 'High Orbit': altitudeKm = ((boundaries?.meoHeoBoundaryKm || 0) + (boundaries?.heoUpperBoundaryKm || 0)) / 2; break;
         }
@@ -387,7 +441,8 @@
         <select id="parent-body" bind:value={selectedParentId} on:change={handleParentChange}>
           <option value={undefined} disabled>Select a body</option>
           {#each availableParents as parent}
-            <option value={parent.id}>{parent.name}</option>
+            {@const refusal = megaDef ? hostRefusal(parent) : undefined}
+            <option value={parent.id} disabled={!!refusal} title={refusal}>{parent.name}</option>
           {/each}
         </select>
       </div>
@@ -470,9 +525,12 @@
   <div class="form-group">
     <div class="label-row">
         <label for="anomaly">Orbital Position (°)</label>
-        <input type="number" step="any" min="0" max="360" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId} />
+        <input type="number" step="any" min="0" max="360" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId || surfaceOnly} />
     </div>
-    <input type="range" id="anomaly" min="0" max="360" step="0.01" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId} class="full-width-slider" />
+    <input type="range" id="anomaly" min="0" max="360" step="0.01" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId || surfaceOnly} class="full-width-slider" />
+    {#if surfaceOnly}
+      <p class="anchor-note">This structure stands on its anchor and turns with its world, so it has no orbit to move.</p>
+    {/if}
   </div>
 
   <div class="form-row-split">
@@ -511,6 +569,29 @@
         />
       </div>
   </div>
+
+  {#if planeAuthorable}
+    <div class="form-row-split">
+      <div class="form-group">
+        <div class="label-row">
+            <label for="inclination">Inclination (°)</label>
+            <input type="number" id="inclination-value" step="any" min="0" max="180" bind:value={inclinationDeg} on:input={handlePlaneChange} disabled={!selectedParentId} />
+        </div>
+        <input type="range" id="inclination" min="0" max="180" step="0.1" bind:value={inclinationDeg} on:input={handlePlaneChange} disabled={!selectedParentId} class="full-width-slider" />
+      </div>
+      <div class="form-group">
+        <div class="label-row">
+            <label for="ascendingNode">Ascending Node (°)</label>
+            <input type="number" id="ascendingNode-value" step="any" min="0" max="360" bind:value={ascendingNodeDeg} on:input={handlePlaneChange} disabled={!selectedParentId || !inclinationDeg} />
+        </div>
+        <input type="range" id="ascendingNode" min="0" max="360" step="0.1" bind:value={ascendingNodeDeg} on:input={handlePlaneChange} disabled={!selectedParentId || !inclinationDeg} class="full-width-slider" />
+      </div>
+    </div>
+    <p class="anchor-note">
+      Tilts the whole structure with its orbit - {planeHostIsStar ? 'measured from the system plane' : "measured from its world's equator, as a moon's is"}.
+      Its shadow and its docking ports follow; the flat map draws every orbit untilted.
+    </p>
+  {/if}
 </div>
 
 <style>
@@ -537,6 +618,7 @@
   }
 
   .full-width-slider { width: 100%; margin: 5px 0; }
+  .anchor-note { margin: 0; color: var(--text-muted); font-size: 0.85em; }
   input[type="color"] { height: 38px; padding: 2px; }
   hr { border: 1px solid var(--border); margin: 0.5em 0; }
   .icon-controls, .placement-controls { display: flex; gap: 15px; align-items: flex-end; }

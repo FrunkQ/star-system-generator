@@ -4,7 +4,9 @@ import { get } from 'svelte/store';
 import Page from './+page.svelte';
 import { starmapStore } from '$lib/starmapStore';
 import { systemStore } from '$lib/stores';
-import { hasSavedStarmap, loadSavedStarmap } from '$lib/starmapStorage';
+import { hasSavedStarmap, loadSavedStarmap, saveStarmap, savePreUpgradeStarmap } from '$lib/starmapStorage';
+import { settleBeforeReload } from '$lib/util/beforeReload';
+import { VIEW_RESTORE_KEY } from '$lib/viewRestore';
 import type { Starmap } from '$lib/types';
 import { vi, beforeEach, describe, it, expect } from 'vitest';
 
@@ -83,6 +85,7 @@ vi.mock('$lib/starmapStorage', async (importOriginal) => ({
   loadSavedStarmap: vi.fn(() => Promise.resolve(null)),
   migrateLegacyStarmapToIndexedDb: vi.fn(() => Promise.resolve()),
   saveStarmap: vi.fn(() => Promise.resolve()),
+  savePreUpgradeStarmap: vi.fn(() => Promise.resolve(true)),
 }));
 
 // +page.svelte destructures `exampleSystems` from its SvelteKit `data` prop.
@@ -94,9 +97,12 @@ describe('+page.svelte', () => {
     starmapStore.set(null);
     systemStore.set(null);
     localStorage.clear();
+    sessionStorage.clear();
     skit.reset();
     vi.mocked(hasSavedStarmap).mockResolvedValue(false);
     vi.mocked(loadSavedStarmap).mockResolvedValue(null);
+    vi.mocked(saveStarmap).mockReset().mockResolvedValue(undefined);
+    vi.mocked(savePreUpgradeStarmap).mockReset().mockResolvedValue(true);
   });
 
   // E3: these two used to look for a 'Create a New Starmap' heading. It has not existed since the
@@ -115,6 +121,53 @@ describe('+page.svelte', () => {
     await fireEvent.click(getByText('Create Vast Nothingness'));
     // The new starmap (default name "My Starmap") renders its title.
     expect(await findByText('My Starmap')).toBeInTheDocument();
+  });
+
+  // B4: "I can't delete the randomly generated solar system that spawns in after you delete all your
+  // data." The owner: "I will kill that initial star spawn. It's legacy." Three things follow from
+  // that and all three are pinned: an empty start IS empty, an empty map says how to begin, and the
+  // last system on a map can be deleted and stays deleted (which is what a reload reads back).
+  it('"Start empty" starts empty: no system is generated, and the map says how to add the first (B4)', async () => {
+    const { generateSystem } = await import('$lib/api');
+    vi.mocked(generateSystem).mockClear();
+    localStorage.setItem('sse_welcome_v3_2_seen', '1'); // the hint waits for the first-run welcome to go
+    const { findByText, getByText, container } = renderPage();
+    await findByText('Start empty');
+    await fireEvent.click(getByText('Create Vast Nothingness'));
+    await findByText('My Starmap');
+    expect(get(starmapStore)?.systems).toEqual([]);
+    expect(container.querySelectorAll('g[role="button"]'), 'no star on the map').toHaveLength(0);
+    expect(generateSystem).not.toHaveBeenCalled();
+    expect(await findByText(/This map is empty\. Right-click \(or press and hold\) anywhere on it and choose "Add System Here"/)).toBeInTheDocument();
+    // What the browser keeps is the empty map, so a reload does not conjure a system either.
+    await waitFor(() => expect((vi.mocked(saveStarmap).mock.calls.at(-1)?.[0] as Starmap)?.systems).toEqual([]));
+  });
+
+  it('the last system on a map can be deleted, stays deleted, and the map then says how to add one (B4)', async () => {
+    const mockStarmap = {
+      id: 'test-starmap', name: 'Test Starmap', routes: [],
+      systems: [{ id: 'only', name: 'The Only System', position: { x: 100, y: 100 }, system: { id: 'only', name: 'The Only System', seed: 's', nodes: [] } as any }],
+    } as unknown as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    localStorage.setItem('sse_welcome_v3_2_seen', '1');
+    try {
+      const { container, findByText, queryByText } = renderPage();
+      await findByText('Test Starmap', {}, { timeout: 8000 });
+      expect(queryByText(/This map is empty/), 'a map with a system in it needs no hint').toBeNull();
+
+      await fireEvent.contextMenu(container.querySelector('g[role="button"]') as SVGGElement);
+      await fireEvent.click(await findByText('Delete System'));
+
+      await waitFor(() => expect(get(starmapStore)?.systems).toEqual([]));
+      await waitFor(() => expect(container.querySelectorAll('g[role="button"]')).toHaveLength(0));
+      expect(await findByText(/This map is empty/)).toBeInTheDocument();
+      // And it is the EMPTY map that was written, so it does not come back on a reload.
+      await waitFor(() => expect((vi.mocked(saveStarmap).mock.calls.at(-1)?.[0] as Starmap)?.systems).toEqual([]));
+    } finally {
+      confirm.mockRestore();
+    }
   });
 
   it('loads and renders a saved starmap on mount', async () => {
@@ -157,5 +210,387 @@ describe('+page.svelte', () => {
     // SystemView is the god component 01.7 will split.)
     await waitFor(() => expect(get(systemStore)?.id).toBe('sys1'));
     expect(queryByText('Test Starmap')).not.toBeInTheDocument();
+  });
+
+  // B2: THE SAFE-MODE SCREEN MUST NOT APPEAR FOR A LOAD THAT WAS MERELY INTERRUPTED. The law and its
+  // corner cases are pinned in `lib/loadGuard.spec.ts`; these two prove the ROUTE obeys it, because a
+  // correct module the page does not use fixes nothing.
+  it('a reload part way through loading the saved campaign does not bring up safe mode next time (B2)', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockReturnValue(new Promise(() => {})); // this load is still running...
+    // Let the pages earlier tests mounted finish first: a load's "painted" clear is two animation
+    // frames behind it, and one landing here would remove the very stamp this test is watching.
+    await new Promise((r) => setTimeout(r, 120));
+    localStorage.clear();
+    const first = renderPage();
+    await waitFor(() => expect(localStorage.getItem('sse-load-guard')).toBe('reading browser storage'), { timeout: 8000 });
+    window.dispatchEvent(new Event('pagehide')); // ...when the page is reloaded
+    expect(localStorage.getItem('sse-load-guard')).toBeNull();
+    first.unmount();
+
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    const second = renderPage();
+    expect(await second.findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(second.queryByText("The last load didn't finish")).toBeNull();
+  });
+
+  it('a load that stopped without the page going anywhere still brings up safe mode', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    localStorage.setItem('sse-load-guard', 'physics: Sol'); // left by a visit that hung or was killed
+    const { findByText, queryByText } = renderPage();
+    expect(await findByText("The last load didn't finish", {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(await findByText('physics: Sol')).toBeInTheDocument();
+    expect(queryByText('Test Starmap'), 'it must not auto-load into the same hang').toBeNull();
+  });
+
+  // B-1: THE THREE THINGS THE ROUTE OWES A GM WHOSE PAGE IS ABOUT TO RELOAD. The storage law itself is
+  // pinned in `lib/starmapStorage.spec.ts`; these are the route's half.
+  it('says so when the campaign could not be saved, and stops saying so once it can be (B-1)', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    vi.mocked(saveStarmap).mockRejectedValue(new Error('QuotaExceededError'));
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const { findByText, queryByText } = renderPage();
+      expect(await findByText(/could not be saved in this browser, so a reload would lose them/, {}, { timeout: 8000 })).toBeInTheDocument();
+
+      // Storage recovers; the next change is written; the warning is no longer true and goes.
+      vi.mocked(saveStarmap).mockResolvedValue(undefined);
+      starmapStore.update((m) => (m ? { ...m, name: 'Test Starmap, edited' } : m));
+      await waitFor(() => expect(queryByText(/could not be saved in this browser/)).toBeNull(), { timeout: 8000 });
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it('a reload the app performs waits for the campaign to be written (B-1)', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    // A slow disk: the write is still going when the reload is decided on.
+    let finishWrite: () => void = () => {};
+    let written = false;
+    const { findByText } = renderPage();
+    await findByText('Test Starmap', {}, { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 50)); // let the load's own autosaves drain
+    vi.mocked(saveStarmap).mockImplementation(() => new Promise<void>((resolve) => { finishWrite = () => { written = true; resolve(); }; }));
+    starmapStore.update((m) => (m ? { ...m, name: 'Test Starmap, one more planet' } : m));
+    await findByText('Test Starmap, one more planet');
+
+    let mayReload = false;
+    const settled = settleBeforeReload().then(() => { mayReload = true; });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(mayReload, 'the reload must not go ahead with the write still in flight').toBe(false);
+    finishWrite();
+    await settled;
+    expect(written && mayReload).toBe(true);
+    const last = vi.mocked(saveStarmap).mock.calls.at(-1)?.[0] as Starmap;
+    expect(last.name).toBe('Test Starmap, one more planet');
+  });
+
+  it('"Start without loading it" keeps the campaign it did not load, one step back, before anything overwrites it (B-1)', async () => {
+    const stored = { id: 'the-campaign', name: 'Six Months Of Work', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(stored);
+    localStorage.setItem('sse-load-guard', 'physics: Sol');
+    const order: string[] = [];
+    vi.mocked(savePreUpgradeStarmap).mockImplementation(async (m) => { order.push(`kept:${m.name}`); return true; });
+    vi.mocked(saveStarmap).mockImplementation(async (m) => { order.push(`wrote:${m.name}`); });
+
+    const { findByText, getByText } = renderPage();
+    await fireEvent.click(await findByText('Start without loading it', {}, { timeout: 8000 }));
+    expect(order, 'nothing is copied or written until something is about to replace it').toEqual([]);
+    await fireEvent.click(await findByText('Create Vast Nothingness'));
+    await findByText('My Starmap');
+
+    await waitFor(() => expect(order.some((o) => o.startsWith('wrote:'))).toBe(true), { timeout: 8000 });
+    expect(order[0]).toBe('kept:Six Months Of Work');
+    expect(order[1]).toBe('wrote:My Starmap');
+    expect(order.filter((o) => o.startsWith('kept:')), 'kept once, not on every autosave').toHaveLength(1);
+    expect(getByText(/"Six Months Of Work" was not loaded and has been kept/)).toBeInTheDocument();
+  });
+
+  // UI-L10: AFTER A RELOAD, BACK INTO THE SYSTEM THE GM WAS IN. The law - what is remembered, and the
+  // one-shot that keeps a system which kills the tab from being re-opened on every start - is pinned
+  // in `lib/viewRestore.spec.ts`. These prove the ROUTE obeys it and stays out of the way of
+  // everything else that happens at start-up.
+  describe('after a reload, the system the GM was in (UI-L10)', () => {
+    const campaign = () => ({
+      id: 'test-starmap', name: 'Test Starmap', routes: [],
+      systems: [{ id: 'sys1', name: 'System 1', position: { x: 100, y: 100 }, system: { id: 'sys1', name: 'System 1', seed: 'test-seed', nodes: [] } as any }],
+    }) as unknown as Starmap;
+    const savedCampaign = (map: Starmap = campaign()) => {
+      vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+      vi.mocked(loadSavedStarmap).mockResolvedValue(map);
+    };
+    /** What a previous visit in this tab left behind. */
+    const wasIn = (systemId: string, settled: boolean, mapId = 'test-starmap') =>
+      sessionStorage.setItem(VIEW_RESTORE_KEY, JSON.stringify({ mapId, systemId, settled }));
+    const remembered = () => JSON.parse(sessionStorage.getItem(VIEW_RESTORE_KEY) ?? 'null');
+    /**
+     * The page goes away - by a reload or by the tab dying, which look the same from the next visit -
+     * and comes back. Nothing in memory survives, and SvelteKit starts every load with an empty
+     * `page.state`; only the two storages carry over.
+     */
+    const pageGoesAway = (visit: { unmount: () => void }) => { visit.unmount(); skit.reset(); starmapStore.set(null); systemStore.set(null); };
+    const reload = (visit: { unmount: () => void }) => { pageGoesAway(visit); return renderPage(); };
+    const DECLINED = /Did not go back into "System 1"/;
+    /**
+     * Every system the page opens from here on, and what this tab remembered AT THE MOMENT each was
+     * opened. "It is on the starmap a moment later" is not the same claim as "it never went in": a
+     * system that is opened and then closed has still been opened, and opening is what can crash.
+     */
+    const watchOpens = () => {
+      const opened: Array<{ id: string; remembered: string | null }> = [];
+      const stop = systemStore.subscribe((sys) => { if (sys) opened.push({ id: sys.id, remembered: sessionStorage.getItem(VIEW_RESTORE_KEY) }); });
+      return { opened, stop };
+    };
+
+    it('goes back into it, having disarmed itself before the attempt', async () => {
+      savedCampaign();
+      wasIn('sys1', true);
+      const opens = watchOpens();
+      try {
+        const { queryByText } = renderPage();
+        await waitFor(() => expect(get(systemStore)?.id).toBe('sys1'), { timeout: 8000 });
+        expect(queryByText('Test Starmap'), 'the system view, not the starmap').not.toBeInTheDocument();
+        // Absolute, and read at the instant the system was handed to the view: this is what the next
+        // start-up finds if that open takes the tab down.
+        expect(opens.opened[0]).toEqual({ id: 'sys1', remembered: '{"mapId":"test-starmap","systemId":"sys1","settled":false}' });
+        expect(localStorage.getItem(VIEW_RESTORE_KEY), 'this tab only: two tabs share one stored campaign').toBeNull();
+      } finally {
+        opens.stop();
+      }
+    });
+
+    it('THE CRASH LOOP: a restore that never settles is not attempted on the second start, and says so once', async () => {
+      savedCampaign();
+      wasIn('sys1', true);
+      const first = renderPage();
+      await waitFor(() => expect(get(systemStore)?.id).toBe('sys1'), { timeout: 8000 });
+      // ...and the tab dies in there, before the system has stayed open long enough to be trusted.
+
+      const second = reload(first);
+      expect(await second.findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+      expect(await second.findByText(DECLINED)).toBeInTheDocument();
+      expect(get(systemStore), 'on the starmap').toBeNull();
+      expect(remembered()).toBeNull();
+
+      const third = reload(second);
+      expect(await third.findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+      await new Promise((r) => setTimeout(r, 50));
+      expect(third.queryByText(DECLINED), 'said once, not on every start').toBeNull();
+      expect(get(systemStore)).toBeNull();
+    });
+
+    it('a system the GM opened and used is remembered as settled, and a reload goes back into it', async () => {
+      savedCampaign();
+      const first = renderPage();
+      await first.findByText('Test Starmap', {}, { timeout: 8000 });
+      await fireEvent.click(first.container.querySelector('g[role="button"]') as SVGGElement);
+      await waitFor(() => expect(get(systemStore)?.id).toBe('sys1'));
+      expect(remembered()).toEqual({ mapId: 'test-starmap', systemId: 'sys1', settled: false });
+      await new Promise((r) => setTimeout(r, 50)); // the system view is up
+      await fireEvent.keyDown(window, { key: 'e' });
+      expect(remembered()).toEqual({ mapId: 'test-starmap', systemId: 'sys1', settled: true });
+
+      reload(first);
+      await waitFor(() => expect(get(systemStore)?.id).toBe('sys1'), { timeout: 8000 });
+    });
+
+    it('does not go back in when the GM had left for the starmap before reloading', async () => {
+      savedCampaign();
+      wasIn('sys1', true);
+      const first = renderPage();
+      await waitFor(() => expect(get(systemStore)?.id).toBe('sys1'), { timeout: 8000 });
+      skit.setState({}); // "← Starmap": what `exitToStarmap` and the Back button both end in
+      await first.findByText('Test Starmap');
+      expect(remembered(), 'nothing to go back to').toBeNull();
+
+      const second = reload(first);
+      expect(await second.findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+      await new Promise((r) => setTimeout(r, 50));
+      expect(get(systemStore)).toBeNull();
+      expect(second.queryByText(DECLINED)).toBeNull();
+    });
+
+    it('restores nothing behind "The last load didn\'t finish", nor after "Try loading again"', async () => {
+      savedCampaign();
+      wasIn('sys1', true);
+      localStorage.setItem('sse-load-guard', 'physics: Sol');
+      const opens = watchOpens();
+      try {
+        const { findByText, queryByText } = renderPage();
+        expect(await findByText("The last load didn't finish", {}, { timeout: 8000 })).toBeInTheDocument();
+        expect(remembered(), 'safe mode forgets it, so no later start acts on it either').toBeNull();
+        await fireEvent.click(await findByText('Try loading again'));
+        expect(await findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+        await new Promise((r) => setTimeout(r, 50));
+        expect(opens.opened, 'no system was opened at any point').toEqual([]);
+        expect(queryByText(DECLINED)).toBeNull();
+      } finally {
+        opens.stop();
+      }
+    });
+
+    it('restores nothing when the GM chooses "Start without loading it"', async () => {
+      savedCampaign();
+      wasIn('sys1', true);
+      localStorage.setItem('sse-load-guard', 'physics: Sol');
+      const { findByText } = renderPage();
+      await fireEvent.click(await findByText('Start without loading it', {}, { timeout: 8000 }));
+      expect(await findByText('Start empty')).toBeInTheDocument();
+      expect(get(systemStore)).toBeNull();
+      expect(get(starmapStore)).toBeNull();
+      expect(remembered()).toBeNull();
+    });
+
+    it('does not go back in when the page was opened by an Explorers "Add System" link', async () => {
+      const { listFetch } = await import('$lib/hub/hubMapListFixtures');
+      const link = 'https://explorers.starsystemx.com/api/download/tau-ceti';
+      const tau = { id: 'tau-ceti', name: 'Tau Ceti', nodes: [{ id: 'tau-a', name: 'Tau Ceti', kind: 'body', roleHint: 'star', parentId: null }] };
+      const double = listFetch((url) => (url === link ? { json: tau } : { status: 404 }));
+      vi.stubGlobal('fetch', double.impl);
+      savedCampaign();
+      wasIn('sys1', true);
+      window.history.replaceState({}, '', '/?open=' + encodeURIComponent(link));
+      const opens = watchOpens();
+      try {
+        const { findByText, queryByText } = renderPage();
+        expect(await findByText(/Tau Ceti from Explorers is ready to add\./, {}, { timeout: 8000 })).toBeInTheDocument();
+        expect(opens.opened, 'the link is what this visit is for: no system was opened, even briefly').toEqual([]);
+        expect(queryByText('Test Starmap')).toBeInTheDocument();
+        expect(remembered()).toBeNull();
+      } finally {
+        opens.stop();
+        vi.unstubAllGlobals();
+        window.history.replaceState({}, '', '/');
+      }
+    });
+
+    it('lands on the starmap silently when that system is no longer in the campaign', async () => {
+      savedCampaign();
+      for (const settled of [true, false]) {
+        wasIn('deleted-since', settled);
+        const opens = watchOpens();
+        const visit = renderPage();
+        try {
+          expect(await visit.findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+          await new Promise((r) => setTimeout(r, 50));
+          expect(opens.opened).toEqual([]);
+          expect(visit.queryByText(/Did not go back into/), 'nothing useful to say about a system that is gone').toBeNull();
+          expect(remembered()).toBeNull();
+        } finally {
+          opens.stop();
+          pageGoesAway(visit);
+        }
+      }
+    });
+
+    // The one way a system can vanish from under the GM's feet. There is no route to this handler
+    // in jsdom short of driving the body editor on a real star, so the SHAPE is asserted, as
+    // `hubOneDoor.spec.ts` does and for its reason: the handler is instance scope, not an export.
+    it('deleting the system you are in leaves it the way every other exit does, state and all', async () => {
+      const { readFileSync } = await import('node:fs');
+      const { join } = await import('node:path');
+      const src = readFileSync(join(process.cwd(), 'src/routes/+page.svelte'), 'utf8');
+      const from = src.indexOf('function handleDeleteSystem(');
+      expect(from, 'the route no longer contains handleDeleteSystem').toBeGreaterThan(-1);
+      const body = src.slice(from, src.indexOf('\n  function ', from + 1));
+      expect(body, 'a deleted system must not keep its id in $page.state: leave through exitToStarmap')
+        .toMatch(/if \(\$page\.state\.systemId\) exitToStarmap\(\);/);
+    });
+
+    it('does not open a system of the same id in a different campaign', async () => {
+      savedCampaign();
+      wasIn('sys1', true, 'some-other-campaign');
+      const opens = watchOpens();
+      try {
+        const { findByText } = renderPage();
+        expect(await findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+        await new Promise((r) => setTimeout(r, 50));
+        expect(opens.opened).toEqual([]);
+      } finally {
+        opens.stop();
+      }
+    });
+
+    it('only the GM\'s own page restores a view: no player view, and no other route, reads the record', async () => {
+      const { readdirSync, readFileSync, statSync } = await import('node:fs');
+      const { join, relative, sep } = await import('node:path');
+      const root = join(process.cwd(), 'src');
+      const users: string[] = [];
+      const walk = (dir: string) => {
+        for (const name of readdirSync(dir)) {
+          const full = join(dir, name);
+          if (statSync(full).isDirectory()) { walk(full); continue; }
+          if (!/\.(svelte|ts)$/.test(name) || /\.(spec|test)\.ts$/.test(name)) continue;
+          if (/viewRestore|sse-view-restore/.test(readFileSync(full, 'utf8'))) users.push(relative(root, full).split(sep).join('/'));
+        }
+      };
+      walk(root);
+      expect(users.sort()).toEqual(['lib/viewRestore.ts', 'routes/+page.svelte']);
+    });
+  });
+
+  // R-20 / G98 (Stream AA job 1): A MAP PICKED FROM THE EXPLORERS LIST OPENS THROUGH THE ONE DOOR.
+  // The panel only hands up an address; what matters is that the ROUTE then fetches exactly that
+  // address, classifies the bytes, validates them and puts THAT campaign in the store - which is
+  // `openStarmapPayload`, reached the way `?open=` reaches it. The fetch is a double answering with a
+  // synthesised list and a minimal campaign; the live hub is never reached (`src/setup.ts`).
+  it('opens a map picked from the Explorers list on the New Starmap screen', async () => {
+    const { listFetch, hubListPage } = await import('$lib/hub/hubMapListFixtures');
+    const campaign = { id: 'hub-picked', name: 'Picked From Explorers', distanceUnit: 'ly', systems: [], routes: [] };
+    const double = listFetch((url) =>
+      url.includes('/api/maps?')
+        ? { json: hubListPage(3) }
+        : url === 'https://explorers.starsystemx.com/api/download/synthetic-map-2'
+          ? { json: campaign }
+          : { status: 404 }
+    );
+    vi.stubGlobal('fetch', double.impl);
+    try {
+      const { findByRole, findByText } = renderPage();
+      await fireEvent.click(await findByRole('button', { name: /Synthetic Map 2/ }, { timeout: 8000 }));
+      await waitFor(() => expect(get(starmapStore)?.id).toBe('hub-picked'), { timeout: 8000 });
+      expect(get(starmapStore)?.name).toBe('Picked From Explorers');
+      expect(await findByText(/Opened "Picked From Explorers" from the shared map library/)).toBeInTheDocument();
+      // The address fetched is the one the list named, with no credentials - the `?open=` path's own rules.
+      const download = double.calls.find((c) => c.url.includes('/api/download/'));
+      expect(download?.url).toBe('https://explorers.starsystemx.com/api/download/synthetic-map-2');
+      expect(download?.init?.credentials).toBe('omit');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // R-18 (Stream AA job 3): AN "ADD SYSTEM TO SSE" LINK. The owner, 2026-09-11: a link may bring a
+  // single system "but you pick the spot". So the link must NOT refuse it (the old R-17 answer) and
+  // must NOT place it: the campaign is untouched and a banner says how to choose where it goes.
+  it('holds a single system from a link for the GM to place, and changes nothing yet', async () => {
+    const { listFetch } = await import('$lib/hub/hubMapListFixtures');
+    const link = 'https://explorers.starsystemx.com/api/download/tau-ceti';
+    const tau = { id: 'tau-ceti', name: 'Tau Ceti', nodes: [{ id: 'tau-a', name: 'Tau Ceti', kind: 'body', roleHint: 'star', parentId: null }] };
+    const double = listFetch((url) => (url === link ? { json: tau } : { status: 404 }));
+    vi.stubGlobal('fetch', double.impl);
+    const mockStarmap = { id: 'mine', name: 'My Own Campaign', distanceUnit: 'ly', systems: [], routes: [] } as unknown as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    window.history.replaceState({}, '', '/?open=' + encodeURIComponent(link));
+    try {
+      const { findByText, queryByText } = renderPage();
+      expect(await findByText(/Tau Ceti from Explorers is ready to add\./, {}, { timeout: 8000 })).toBeInTheDocument();
+      expect(queryByText(/points at a single system rather than a campaign/)).toBeNull();
+      expect(get(starmapStore)?.id).toBe('mine');
+      expect(get(starmapStore)?.systems).toHaveLength(0);
+      expect(window.location.search, 'the link is taken off the address bar').toBe('');
+    } finally {
+      vi.unstubAllGlobals();
+      window.history.replaceState({}, '', '/');
+    }
   });
 });

@@ -97,8 +97,16 @@ and a pack author needs to know which is which.
   is read by `generation/generateBodyOfType.ts`, from `fp.formation`, never from `fp.match`. **A
   body that exists classifies as what it is regardless of whether it could have formed yet:** a
   hand-placed chthonian in a million-year-old system still classifies as a chthonian. Four types
-  declare one today (`protoplanet`, `crater`, `helium`, `chthonian`). Omit it and the type is
-  birthable at any age.
+  declare an age window today (`protoplanet`, `crater`, `helium`, `chthonian`). Omit it and the
+  type is birthable at any age.
+  **It takes a temperature too, `formation.Teq_K`, and where a type declares one the birth gate
+  reads it INSTEAD of the type's `match` temperature band.** `ice-giant` is the one that does: it
+  forms beyond the snow line (`formation.Teq_K [0, 200]`), but a Neptune that has migrated, been
+  placed by hand or been measured on a warm orbit is still an ice giant, so its `match.Teq_K` runs
+  to 700 K, where `hot-neptune` begins. Before the two were separated a Uranus-mass world at 1 AU
+  matched nothing at all and was named a gas giant by the mass fallback. Use the pair whenever
+  "where it forms" is narrower than "where it can be found"; widen `match` alone and the generator
+  starts building the type everywhere the classifier accepts it.
 - **`range` is EDITOR METADATA and the scorer never reads it either** (`system/typeRanges.ts`). It
   gives `mass_Me` / `radius_Re` / `density` / `Teq_K` spans for slider extents, for which types the
   "Add planet/moon here…" picker offers, and for filtering by the orbit's temperature. Because it is
@@ -154,10 +162,24 @@ specific type is shadowed by a catch‑all. Verify real systems with `physics-ba
 `mass_Me, radius_Re, density (g/cc), Teq_K, SurfaceTemp_K, a_AU, eccentricity, age_Gyr,
 stellarType, stellarIrradiation, escapeVelocity_kms, orbital_period_days, rotation_period_hours,
 tidalHeating, tidallyLocked, starTidallyLocked, radiation_flux, has_ring_child, hasSubsurfaceOcean,
-parentId, orbitsStar, makeup.metal, makeup.rock, makeup.carbon, makeup.ice, makeup.gas, atm.main,
-atm.pressure_bar, atm.composition.<gas>, hydrosphere.coverage, hydrosphere.composition`. The
-`makeup.*` interior fractions are how iron / silicate / coreless / carbon types classify. Missing
-atmosphere / hydrosphere default to `None` / `0` so airless/dry bodies match (e.g. `barren`).
+parentId, orbitsStar, porosity, lobes, makeup.metal, makeup.rock, makeup.carbon, makeup.ice,
+makeup.gas, atm.main, atm.pressure_bar, atm.composition.<gas>, hydrosphere.coverage,
+hydrosphere.composition`. The `makeup.*` interior fractions are how iron / silicate / coreless /
+carbon types classify. Missing atmosphere / hydrosphere default to `None` / `0` so airless/dry bodies
+match (e.g. `barren`).
+
+**`lobes` IS THE ONE FEATURE THE ENGINE DOES NOT DERIVE, and that is why it exists** (2026-09-08,
+[[G90]]). Every other name above is computed from the body; this one is STATED — by the GM in the
+body editor, or by the generator when it makes one. It is how many lobes the body is: 1 (or absent)
+for the ordinary single body, 2 for a contact binary like Arrokoth or comet 67P.
+
+Being two lobes is shape and HISTORY — a gentle low-velocity merger that happened once — and no
+mass, radius, density or mix carries it. Since the classifier re-derives every class on every pass
+from this map, a class with nothing here to band on could be assigned but never RE-assigned, and
+would disappear the next time the system was processed. So an authored fact is the ONLY way a
+shape-or-history class can exist at all. `asteroid/contact-binary` bands on it, as a MODIFIER, so it
+says how a rock is shaped without overruling what it is made of: comet + contact-binary is 67P,
+rubble-pile + contact-binary is Arrokoth.
 
 **Two of those features are easy to read as something they are not:**
 
@@ -167,6 +189,38 @@ atmosphere / hydrosphere default to `None` / `0` so airless/dry bodies match (e.
   it wants `radiation_flux`.
 - **`density` is a bulk figure the engine derives from the makeup**, so it is internally consistent —
   but a density that came *in* from a catalogue is not the same kind of number. See below.
+
+### Which picture a type shows — `planetImages`, and `planetImageVariants`
+A body's "standard picture" is looked up in `classifier.planetImages` by class: the first
+**modifier** that has a picture, else the base (`imageClassFor`). One picture per class means the
+picture is drawn in one particular STATE, and the class may not test that state at all:
+`planet/super-earth` is three bands of mass, radius and density, and its picture is a world wrapped
+in cloud.
+
+`classifier.planetImageVariants` is the pack's lever for that. Per class it lists conditions under
+which the class borrows **another class's existing picture**:
+
+```json
+"planetImageVariants": {
+  "planet/super-earth": [
+    { "note": "why", "match": { "atm.pressure_bar": [0, 0.01] }, "use": "planet/barren" }
+  ]
+}
+```
+
+- `match` uses the fingerprints' band language over the same feature map, but with **hard edges**:
+  a body is inside every band or the variant does not apply. There is no soft shoulder — a picture
+  is a yes or a no, not a score.
+- The first variant that applies wins; none applying means the class's own picture.
+- `use` names a key of `planetImages`. A variant that points at a class with no picture, or that
+  has an empty `match`, is ignored.
+- **The class does not change.** This is not a second classifier: only the illustration moves, and
+  a GM's custom uploaded image still wins over all of it.
+
+`starter-sf` ships two: an airless `planet/super-earth` (0–0.01 bar, the band `planet/barren` is
+itself defined by) shows the barren picture, and a `planet/subsurface-ocean` under 10 bar or more
+shows the sub‑Neptune instead of a bare ice shell. Read by `imageVariantFor` in
+`lib/system/classification.ts`; gated in `lib/system/typeImage.spec.ts`.
 
 ### GM‑only types (no fingerprint)
 `forest, jungle, swamp, ecumenopolis` need biome / industrialisation data the engine doesn't
@@ -268,12 +322,13 @@ every consumer — renderers, rules, the finder — reads the override exactly a
 | namespace | meaning | written by |
 |---|---|---|
 | `origin/*` | provenance, and it answers TWO different questions under one namespace. **How the body came to be where it is:** `origin/migrated`, `origin/captured`, `origin/generated` (a real-sky import invented this world around a confirmed star). **Where the body came from, as a document:** `origin/hub` on the root of anything pasted in from a map on the Explorers site, its value the link back — and `origin/hub-route-stood-down` on a pasted ship whose autopilot was switched off because its stops were never copied with it. The second pair are a BREADCRUMB and not the credit: the credit is recorded on the campaign and printed in `ATTRIBUTIONS.md`, so it survives the body being renamed, moved or deleted | generation; the paste pair: `io/hubClip.ts`, authored at paste |
+| `age/*` | WHEN the body formed, set against the system it is in: `age/young`, `age/old`, `age/ancient`, `age/primordial`. Only a body with an age of its own (`formationTimeGyr`) carries one; exactly one, with the age as its value. Separate from `origin/*` on purpose - where from and when are different facts and they compose. Bands are pack data (`deepTime`). | processor (pass 0d, `physics/ageTags.ts`) |
 | `orbit/*` | orbital traits (`retrograde`, `double`) | generation |
 | `atmosphere/*` | atmosphere conditions (`reducing`, `breathable`) | generation |
 | `climate/*` | climate states (`runaway-greenhouse`) | (was the accrete adapter, removed v2.1.898-beta) |
 | `hazard/*` | `hazard/flaring` (an active star) and `hazard/radiation` / `hazard/orbital-radiation` (the dose, as a survival time) | star generation **and** processor (classification) |
 | `stellar/*` | `stellar/activity` (the flare-activity bucket every star surface reads: quiet / moderate / active / flare-star), `stellar/jets` (moderate / strong — a relativistic well, an ordered field and a power source: a fed black hole, a neutron star, a magnetar), `stellar/shedding` (wind / shell — Reimers mass loss, L·R/M: giants and supergiants, hot O stars), `stellar/anomalous` (the VERDICT, and the one to pin if you pin one: `structure` = dimmed with no reddening, which dust cannot do, so something solid stands in the way; `dust` = dimmed AND reddened, which a solid occluder cannot do), `stellar/dimmed` (magnitudes fainter than its class should read, because something intercepts its light - as measured by an observer the obstruction actually covers), `stellar/ir-excess` (the share of the star's bolometric output coming back out as far-infrared waste heat from whatever intercepted it). The last two are what an OBSERVER measures rather than what the star is: grey attenuation cuts flux without touching colour or the absorption lines, so a swarmed G2V still reads G2V and the three measurements disagree | processor (the star pass, before pass 0) — **both starmaps and the system view draw exactly what these say**; remove the tag and the mark goes |
-| `mega/*` | Megastructures, two provenances in one namespace: the CREATION STEERS (`mega/goldilocks` and friends - authored at placement, prose in the value, survive re-derive) and `mega/shadowed-by` (PHYSICS, explicit origin: the engine re-earns it every pass from the starlight-occlusion chain and strips it when the structure goes; value = the occluder names) and `mega/eclipsed` (PHYSICS, same pattern: the shadow AS AN ECLIPSE - permanent for a world sharing a solid ring's plane beyond it, else twice an orbit for the stated hours). The G54 rungs apply: anonymous shows players that something dims this world without saying what | placement steers: AddConstructModal at creation; shadowed-by: processor, beside the temperature commit |
+| `mega/*` | Megastructures, two provenances in one namespace: the CREATION STEERS (`mega/goldilocks` and friends - authored at placement, prose in the value, survive re-derive) and `mega/shadowed-by` (PHYSICS, explicit origin: the engine re-earns it every pass from the starlight-occlusion chain and strips it when the structure goes; value = the occluder names) and `mega/eclipsed` (PHYSICS, same pattern: the shadow AS AN ECLIPSE - permanent for a world sharing a solid ring's plane beyond it, else twice an orbit for the stated hours) and `mega/lit-by` (PHYSICS, same pattern, the opposite sign: an orbital mirror stationed at this world adds starlight; value = the mirror names and how much more light arrives). The G54 rungs apply: anonymous shows players that something dims this world without saying what | placement steers: AddConstructModal at creation; shadowed-by / eclipsed / lit-by: processor, beside the temperature commit |
 | `flight/*` | `flight/ascent` — what it costs to leave; `flight/fuel-use` — what it costs a construct to STAY at a Lagrange point (`coasting` / `station-keeping` / `holding`) | processor (**flight dynamics, pass 4**; fuel-use in **co-orbital, pass 0c**) |
 | `tidal/*` | `tidal/hotspots` | processor (environment) |
 | `magnetic/*` | dynamo / induced / tenuous / **anomalous** / unshielded | processor (**interior, pass 2b**) |
@@ -308,7 +363,7 @@ depends on the temperature and the temperature depends on the rust. Second, that
 so the solve reports any world where it does not settle instead of presenting a marginal answer as a
 firm one. A world whose dominant atmospheric gas is below **its own** freezing point brightens the
 same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Triton's nitrogen.
-| `structure/*` | icy shell, subsurface ocean, cloud decks | processor (classification) |
+| `structure/*` | icy shell, subsurface ocean, cloud decks; `structure/overdense` on a heavy giant denser than hydrogen packs at its mass (it stays a giant - past ~1.9 Jupiter masses density no longer implies rock) | processor (classification) |
 | `volatiles/*` | which ices survive on the surface | processor (classification) |
 | `weather/*` | lightning, dust storms, monsoon, precipitation | processor (classification) |
 | `feature/*` | a giant's polar vortex (one tag per pole; a side count for a polygonal jet, or `round` for a plain eyed cyclone) | processor — but SEEDED, not derived: see "known fudges" on the physics page |

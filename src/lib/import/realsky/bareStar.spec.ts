@@ -225,3 +225,48 @@ describe('the inverted import brings back what the old one could not', () => {
 		for (const s of out.skipped) { expect(s.hostname).toBeTruthy(); expect(s.reason).toBeTruthy(); }
 	});
 });
+
+// THE OPPOSITE CASE, AND IT LOST REAL PLANETS: a star the archive DOES list as a host, but with a
+// hole in its stellar figures. GJ 667 C (SIMBAD's `HD 156384C`) is in the committed cache with no
+// `st_rad`. The converter built a matched host from the archive row or not at all, so the star was
+// skipped "missing stellar radius - not invented" and its FIVE confirmed planets went with it -
+// from a map that would have shown the star happily had it had no planets. Stars come from the
+// census (D18); the archive only enriches them.
+describe('a planet host the archive cannot fully describe still imports, from the census', () => {
+	const out = importAt(30);
+	const sys = out.systems.find((s: any) => s.system.nodes.some((n: any) => n.name === 'HD 156384C'));
+	const star = sys?.system.nodes.find((n: any) => n.name === 'HD 156384C');
+
+	it('the fixture still has the hole this test is about', () => {
+		const row = planetRows.find((r: any) => r.hostname === 'GJ 667 C');
+		expect(row.st_rad, 'if the cache gains a radius this block needs another host').toBeNull();
+	});
+
+	it('GJ 667 C is on the map, with a size, and is not in the skipped list', () => {
+		expect(star, 'the star is there').toBeTruthy();
+		expect(star.massKg).toBeGreaterThan(0);
+		expect(star.radiusKm).toBeGreaterThan(0);
+		expect(star.temperatureK).toBeGreaterThan(0);
+		expect(out.skipped.some((s: any) => s.hostname === 'HD 156384C')).toBe(false);
+	});
+
+	it('...and so are all five of its confirmed planets, in orbit round IT', () => {
+		const planets = sys.system.nodes.filter((n: any) => n.roleHint === 'planet' && n.parentId === star.id);
+		expect(planets.map((p: any) => p.name).sort()).toEqual(
+			['GJ 667 C b', 'GJ 667 C c', 'GJ 667 C e', 'GJ 667 C f', 'GJ 667 C g']
+		);
+		for (const p of planets) expect(p.orbit.hostId).toBe(star.id);
+	});
+
+	it('its description says the archive fell short and where the figures came from instead', () => {
+		expect(star.description).toMatch(/exoplanet archive lists this star as a planet host but gives no stellar radius/);
+		expect(star.description).toMatch(/imported from SIMBAD/);
+	});
+
+	it('no node anywhere is left pointing at a parent that is not in its system', () => {
+		for (const s of out.systems) {
+			const ids = new Set(s.system.nodes.map((n: any) => n.id));
+			for (const n of s.system.nodes) if (n.parentId) expect(ids.has(n.parentId), `${s.id}: ${n.id} -> ${n.parentId}`).toBe(true);
+		}
+	});
+});

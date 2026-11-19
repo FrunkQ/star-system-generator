@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
+  import { niceStepBelow, formatNice, gridCellLegible } from '$lib/map/niceInterval';
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import { tetherAltitudesKm } from '$lib/constructs/megaGeometry';
   import { effectiveAttachment } from '$lib/constructs/docking';
@@ -22,6 +22,9 @@
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatDistanceKm, distanceFlavour } from '$lib/units';
   import { panStore, zoomStore } from '$lib/viewport/stores';
+  import { setWidestView } from '$lib/viewport/camera';
+  import { placementLimitAu } from '$lib/system/systemReach';
+  import { starmapStore } from '$lib/starmapStore';
   import type { PanState } from '$lib/viewport/stores';
   import { clampZoom, dampedZoomStep, autoFrameStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, firstFrameLevel, nextFrameLevel, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
   import { gestures } from '$lib/input/gestures';
@@ -461,16 +464,25 @@
       setTimeout(() => isAnimatingFocus = false, totalDuration);
   }
 
+  // B23: the widest view fits the system's REACH - the same number the Orbit tab lets a body be
+  // typed out to (system/systemReach.ts) - on this canvas, whatever its size. Re-fitted when the
+  // system, the GM's System edge setting or the canvas changes.
+  $: reachAu = placementLimitAu(system, $starmapStore?.systemEdgeAu);
+  function syncWidestView() { if (canvas) setWidestView(reachAu, Math.min(canvas.width, canvas.height)); }
+  $: if (reachAu) syncWidestView();
+
   onMount(() => {
     const parent = canvas.parentElement;
     if (!parent) return;
     const resizeObserver = new ResizeObserver(() => {
         canvas.width = parent.clientWidth;
         canvas.height = fullScreen ? parent.clientHeight : parent.clientWidth * (3 / 4);
+        syncWidestView();
     });
     resizeObserver.observe(parent);
     canvas.width = parent.clientWidth;
     canvas.height = fullScreen ? parent.clientHeight : parent.clientWidth * (3 / 4);
+    syncWidestView();
     animationFrameId = requestAnimationFrame(render);
     return () => {
         if (parent) resizeObserver.unobserve(parent);
@@ -498,6 +510,9 @@
     // choosing "1 AU hexes" is that both renderings of the same system agree about what a cell is.
     // This map is linear (no radial compression at 2D), so the AU cell is the cell.
     const step = gridScaleAu > 0 ? gridScaleAu : niceStepBelow(90 / zoom);
+    // UI-L7: a PINNED cell is a world size, so the loops below run (view / cell) squared times - at
+    // the widest view a 1 AU hex grid is a million million hexes and the page never paints again.
+    if (!gridCellLegible(step, zoom)) return;
     const line = 1 / zoom;
     ctx.save();
     ctx.lineWidth = line;

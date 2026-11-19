@@ -10,6 +10,7 @@ import { stellarContextFor, calculateAllStellarZones } from '../physics/zones';
 import { gasThermalInflationFactor } from '../physics/makeup';
 import { giantComposition, GIANT_ANCHOR_BAR } from '../physics/giantTraces';
 import { spinProvenanceTags } from './spinProvenance';
+import { drawLobes } from './generateBodyOfType';
 
 // Debris-density proxy for belts/rings: a massKg drawn so its log maps to a density fraction in
 // [fracLo, fracHi] on the 1e-5..1.0 Earth-mass scale the orrery/telemetry read (see
@@ -351,6 +352,15 @@ export function _generatePlanetaryBody(
     if (planetType && pack.classifier?.planetImages?.[planetType]) {
         planet.image = { url: pack.classifier.planetImages[planetType] };
     }
+
+    // [[G90]] job 4: a SMALL body may be two lobes joined at a neck. Here rather than in either
+    // caller, because this function is the shared route BOTH generators and every moon go through
+    // (the comment at the mass-band block above says so, and `generation-duplication-map.md` is the
+    // record) - and the population this reaches is moons, since neither generator places a
+    // free-flying asteroid. `drawLobes` decides ON THE TYPE'S OWN BANDS and takes its number from a
+    // stream keyed on this body's id, so it consumes nothing from `rng` and no existing seed moves.
+    const lobes = drawLobes(planet, pack);
+    if (lobes) planet.lobes = lobes;
 
     newNodes.push(planet);
 

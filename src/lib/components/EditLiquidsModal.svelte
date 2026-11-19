@@ -15,6 +15,7 @@
   const familyHelp = "Groups a solvent. 'internal' = a derived cloud/interior fluid, NEVER a surface ocean (excluded from the ocean picker and from procedural generation). Any other family CAN appear as an ocean where it is liquid.";
   // Field help lives in `packs/fieldHelp.ts` - one table, four editors (G86).
   import FieldHelp from './FieldHelp.svelte';
+  import CopyDefinitionButton from './CopyDefinitionButton.svelte';
   import { LIQUID_FIELD_HELP } from '$lib/packs/fieldHelp';
   const biosolventHelp = 'Suitability as a solvent for life: ideal (water), alternative (ammonia, hydrocarbons…), or none.';
 
@@ -115,6 +116,9 @@
                     <div class="item-header">
                         <span class="formula">{liq.name}</span>
                         <input class="name-input" bind:value={liq.label} placeholder="Display label" />
+                        <!-- G99: a liquid this GM made can be copied into another campaign. -->
+                        <CopyDefinitionButton section="liquids" id={liq.name} definition={liq} pack={rulePack}
+                            overrides={starmap.rulePackOverrides} campaignName={starmap.name} />
                         {#if defaultNames.has(liq.name)}
                             <button class="delete-btn" on:click={() => resetLiquid(i)} title="Revert to Default">↺</button>
                         {:else}

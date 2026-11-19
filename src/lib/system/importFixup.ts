@@ -8,6 +8,7 @@
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
 import { megaTypeDef } from '$lib/constructs/megaTypes';
+import { megaIsSurfaceOnly } from '$lib/constructs/megaPlacement';
 import type { System, CelestialBody, Barycenter, Tag, RulePack, TemporalState } from '$lib/types';
 import { temporalForExport } from '$lib/temporal/defaults';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
@@ -18,7 +19,7 @@ import { spinProvenanceTags } from '$lib/generation/spinProvenance';
 import { starClassParts, starClassKeyFor, isBandKey } from '$lib/physics/starDesignation';
 import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
 import { determineSpectralClass } from '$lib/physics/stellar-evolution';
-import { SOLAR_RADIUS_KM } from '$lib/constants';
+import { SOLAR_RADIUS_KM, AU_KM, G } from '$lib/constants';
 import { stripUndoHistory } from '$lib/undo/historyKey';
 import { lagrangePlacementId } from '$lib/physics/lagrange';
 
@@ -75,7 +76,9 @@ export const NOT_STRIPPED: Record<string, string> = {
   tags: 'HANDLED SEPARATELY below by namespace. On a CONSTRUCT the processor only writes an empty [].',
   magneticField: 'CONDITIONAL below: AUTHORED for a star (never re-derived on load); derived and stripped for a planet or moon, whose GM pin lives in overrides.magneticFieldGauss (G37).',
   tidallyLocked: 'CONDITIONAL below: derived unless the GM pinned it with tidalLockManual.',
-  rotation_period_hours: 'AUTHORED: the engine rewrites it for a LOCKED body, but it is input for a spin-orbit resonance and stripping it made Mercury an eyeball world (B82).'
+  rotation_period_hours: 'AUTHORED: the engine rewrites it for a LOCKED body, but it is input for a spin-orbit resonance and stripping it made Mercury an eyeball world (B82).',
+  temperature0K: 'KEPT ON PURPOSE (G96): what a pinned stellar temperature displaced. Written when overrides.effectiveTempK is set, and it is the only record of the figure a reset must return, so stripping it would make the pin irreversible across a save.',
+  radiationOutput0: 'KEPT ON PURPOSE (G96): the brightness a pinned stellar temperature displaced. Same lifetime and same reason as temperature0K.'
 };
 
 // Tag namespaces the processor owns (re-derived every run).
@@ -88,7 +91,10 @@ const DERIVED_TAG_PREFIXES = [
   // saved — so the tag itself is a fossil in a file. The filter at the call site runs
   // `survivesRederive` first, which is what keeps a hand-added `anomaly/legend` with no override
   // behind it: that one is manual, and nothing re-creates it.
-  'anomaly/'
+  'anomaly/',
+  // G94: `age/*` is re-emitted every pass from the body's own `formationTimeGyr`, which IS authored
+  // and IS saved - so, like an anomaly tag, the tag in a file is a fossil and the field is the fact.
+  'age/'
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([
@@ -230,7 +236,7 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   if (!isStar) delete (body as { magneticField?: unknown }).magneticField;
 
   // (2) TIDAL LOCK is decided by the engine unless the GM pinned it (`tidalLockManual`, set by any
-  // hand-set rate or lock in BodyBasicsTab).
+  // hand-set rate or lock in BodySpinEditor, on the Orbit tab).
   const lockPinned = !!(body as any).tidalLockManual;
   const wasLocked = !!(body as any).tidallyLocked;
   if (!lockPinned) delete (body as any).tidallyLocked;
@@ -304,7 +310,13 @@ function backfillGiantAtmosphere(body: CelestialBody): void {
 // asserts its obliquity just as firmly". What it replaces is worse on both counts: the seasonal term
 // silently substituted a flat 25 deg for any body with no tilt, which is an invented number with no
 // provenance at all, and it was the same 25 deg for every world.
-function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack): void {
+//
+// EXPORTED FOR THE FOURTH ROUTE (B21): a body the GM adds from the type picker is built inline in
+// SystemView and reached none of the three routes above, so it arrived with no tilt at all - and the
+// editor then opened on it (see BodySpinEditor's one-way slider). It calls this, so there is still
+// one model. `despunHint` is for that caller alone: a brand-new body has no processed tags to read
+// the lock from, but its route does know its orbit, and can say whether tides will have despun it.
+export function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack | null, despunHint?: boolean): void {
   if (!bodyCanHaveTilt(body.roleHint)) return;      // belts, rings, stars, constructs have no spin axis
   if (body.axial_tilt_deg != null) return;          // authored or measured — never overwritten
   if (!body.id) return;
@@ -314,7 +326,7 @@ function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack): void {
   // holds. (A body first locked by a LATER process() keeps its formation roll — that residual case
   // is noted on the A70 row rather than solved by letting the processor rewrite authored fields.)
   const tags = body.tags ?? [];
-  const despun = body.tidallyLocked === true
+  const despun = despunHint === true || body.tidallyLocked === true
     || (body.tidallyLocked !== false && tags.some((t) =>
          t.key === 'orbit/tidally-locked' || t.key === 'orbit/spin-orbit-resonance'));
   const { tiltDeg, tipped } = inferAxialTilt(body.id, pack, despun);
@@ -415,12 +427,37 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
     // Heal a saved one: a surface-only mega type (registry allowedPlacements exactly ['Surface'])
     // becomes Surface at its host's radius. A GM cannot have chosen the broken state - the dialog
     // never offered it - so this is the template's stamp following the template, not an override.
+    // AND THE SAME HEAL FOR ONE THE ORBIT TAB SENT TO A LAGRANGE POINT (found live, 2026-09-26: "the
+    // planet is stationary at the center of the system screen ... re-entering the system froze the
+    // site"). The edit surface offered L1-L5 to an elevator, and a co-orbital node is re-homed onto
+    // its world's OWN host - so the ribbon was left hanging from a star, which has no surface, no
+    // geostationary and so no anchor, and the position walk had nowhere to put it. The marker names
+    // the world it was standing on; put it back there. Relevance, not plausibility (UI-B2): there
+    // is no reading of "an elevator at L2" to preserve.
     const mdef = megaTypeDef(cn.megaType);
-    if (mdef && mdef.allowedPlacements && mdef.allowedPlacements.length === 1
-        && mdef.allowedPlacements[0] === 'Surface' && cn.placement !== 'Surface') {
-      cn.placement = 'Surface';
-      const hostNode = system.nodes.find((h) => h.id === cn.parentId) as { radiusKm?: number } | undefined;
-      if (cn.orbit?.elements && hostNode?.radiusKm) cn.orbit.elements.a_AU = hostNode.radiusKm / 149597870.7;
+    if (megaIsSurfaceOnly(mdef)) {
+      const co = node as CelestialBody;
+      const stoodOn = co.coOrbital?.hostId ?? (lagrangePlacementId(cn.placement) ? co.ui_parentId : undefined);
+      const world = stoodOn ? system.nodes.find((h) => h.id === stoodOn) as CelestialBody | undefined : undefined;
+      if (co.coOrbital || world) {
+        delete co.coOrbital;
+        co.ui_parentId = null;
+        if (world) {
+          // The derived L-point orbit is a copy of the WORLD's own (its plane, its pinned rate, its
+          // frame) and means nothing about a thing standing on it: back to the create path's
+          // placeholder, a circle at the surface, which the anchor outranks in any case.
+          co.parentId = world.id;
+          co.orbit = {
+            hostId: world.id, hostMu: (world.massKg || 0) * G, t0: co.orbit?.t0 ?? 0,
+            elements: { a_AU: (world.radiusKm || 0) / AU_KM, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 }
+          };
+        }
+        cn.placement = 'Surface';
+      } else if (cn.placement !== 'Surface') {
+        cn.placement = 'Surface';
+        const hostNode = system.nodes.find((h) => h.id === cn.parentId) as { radiusKm?: number } | undefined;
+        if (cn.orbit?.elements && hostNode?.radiusKm) cn.orbit.elements.a_AU = hostNode.radiusKm / AU_KM;
+      }
     }
     if (node.kind === 'barycenter') { stripBarycenter(node as Barycenter); continue; }
     if (node.kind !== 'body') continue;

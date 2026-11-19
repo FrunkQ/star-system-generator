@@ -55,3 +55,34 @@ describe('A80 — the construct editor stays typeable at every scale', () => {
     expect(boxes.some((f) => f.unit === 'M⊕'), 'a 1e23 kg hull is typed in Earth masses').toBe(true);
   });
 });
+
+// A HAND-WRITTEN CONSTRUCT FILE NEED NOT CARRY `physical_parameters` AT ALL (found in the bug run:
+// the tab crashed on import). The guard used to run ONCE, when the tab was created, for whichever
+// construct it was created with - but the side panel keeps the tab mounted and swaps the construct
+// under it, so the next one selected arrived unguarded and the dimensions line threw. Seen RED
+// first: "Cannot read properties of undefined (reading 'dimensionsM')" on the swap.
+describe('a construct with no physical parameters is editable, not a crash', () => {
+  const bare = (id: string): CelestialBody =>
+    ({ id, name: 'Hand-written', kind: 'construct', roleHint: 'construct', parentId: null, placement: 'Orbit' }) as unknown as CelestialBody;
+
+  it('opens on one: three zero dimensions and a zero mass, ready to type into', () => {
+    unitPrefs.set({});
+    const node = bare('a');
+    const { container } = render(ConstructBasicsTab, { props: { construct: node, rulePack } });
+    expect(container.querySelectorAll('.unit-input').length).toBeGreaterThanOrEqual(4);
+    expect(node.physical_parameters?.dimensionsM).toEqual([0, 0, 0]);
+  });
+
+  it('survives one being SELECTED while the tab is already open, and a half-written one too', async () => {
+    unitPrefs.set({});
+    const { container, rerender } = render(ConstructBasicsTab, { props: { construct: hull([30, 10, 10]), rulePack } });
+    const node = bare('b');
+    await rerender({ construct: node, rulePack });
+    expect(container.querySelectorAll('.unit-input').length).toBeGreaterThanOrEqual(4);
+    expect(node.physical_parameters?.dimensionsM).toEqual([0, 0, 0]);
+    const half = { ...bare('c'), physical_parameters: { massKg: 5 } } as unknown as CelestialBody;
+    await rerender({ construct: half, rulePack });
+    expect(half.physical_parameters?.dimensionsM).toEqual([0, 0, 0]);
+    expect(half.physical_parameters?.massKg).toBe(5);
+  });
+});

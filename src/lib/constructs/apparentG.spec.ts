@@ -53,3 +53,19 @@ describe('apparentGravity - the record declares the wiring', () => {
     expect(apparentGravity(station, earth())).toBeNull();
   });
 });
+
+// Phase 6: a shell built ROUND its host (a Birch planet) declares 'surface' too, and its figure is
+// the pull of what it ENCLOSES - so the sentence must not say "the hull's own mass". Read off the
+// record's anchor, never a type key. Seen RED with the anchor test removed (the hull sentence).
+describe('apparentGravity - a shell round a black hole stands in the hole\'s pull', () => {
+  it('one gravity at the seeded radius, and the note names the hole and says the ground is outside', () => {
+    const hole = { id: 'bh', name: 'Gargantua', kind: 'body', roleHint: 'star', classes: ['star/BH'], massKg: 4.3e6 * 1.989e30 } as any;
+    const shell = { id: 's', kind: 'construct', megaType: 'birch-planet', parentId: 'bh' } as any;
+    const g = apparentGravity(shell, hole)!;
+    expect(g.wiring).toBe('surface');
+    expect(g.ms2 / 9.80665).toBeCloseTo(1, 9);
+    expect(g.note).toContain('Gargantua');
+    expect(g.note).toContain('outside');
+    expect(g.note).not.toContain("hull's own mass");
+  });
+});

@@ -3,7 +3,8 @@
 // every ring a whole multiple of its step — rather than about particular values.
 import { describe, it, expect } from 'vitest';
 import {
-  niceStepBelow, nextNiceStep, prevNiceStep, niceStep, niceSeries, gridLevels, formatNice, gridLevelOpacity, GRID_LEVEL_PEAK, CROSSFADE_START } from './niceInterval';
+  niceStepBelow, nextNiceStep, prevNiceStep, niceStep, niceSeries, gridLevels, formatNice, gridLevelOpacity, GRID_LEVEL_PEAK, CROSSFADE_START,
+  gridCellLegible, MIN_GRID_CELL_PX } from './niceInterval';
 
 /** Is this a 1, 2 or 5 times a power of ten? The property every step here must have. */
 function isNice(v: number): boolean {
@@ -223,5 +224,24 @@ describe('the level opacity is ONE law and it is continuous across the handover'
   it('...and the OLD schedule is what popped (the regression this pins): 0.30 ghost to 0.42 dominant at the handover', () => {
     const oldFine = (t: number) => 0.30 * t, oldCoarse = (t: number) => 0.42 * (1 - t);
     expect(Math.abs(oldFine(1) - oldCoarse(0))).toBeCloseTo(0.12, 9);
+  });
+});
+
+// B23 widened the 2D system view to the system's reach; a PINNED grid cell under that view is the
+// UI-L7 loop (steps in world units over view/zoom). The gate is on the cell's SCREEN size.
+describe('a grid cell below a few pixels is not drawn - the gate that keeps a pinned lattice bounded', () => {
+  it('ABSOLUTE: 1 AU hexes at the widest desktop view (0.0008 px/AU) are refused; the count they would cost is 1e12', () => {
+    expect(MIN_GRID_CELL_PX).toBe(3);
+    expect(gridCellLegible(1, 0.0008)).toBe(false);
+    expect((2000 / 0.0008) * (1500 / 0.0008) / (Math.sqrt(3) * 1.5)).toBeGreaterThan(1e12);
+    expect(gridCellLegible(1, 3)).toBe(true);
+    expect(gridCellLegible(1, 2.99)).toBe(false);
+  });
+  it('a ladder-chosen cell is always legible, at any zoom the view can reach', () => {
+    for (const zoom of [1e-5, 1.6e-4, 0.001, 1, 1e6, 1e12]) {
+      expect(gridCellLegible(niceStepBelow(90 / zoom), zoom)).toBe(true);
+    }
+    expect(gridCellLegible(0, 1)).toBe(false);
+    expect(gridCellLegible(NaN, 1)).toBe(false);
   });
 });

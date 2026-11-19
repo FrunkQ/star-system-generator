@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+import { isHubHost } from './lib/hub/hubConfig';
 
 // jsdom doesn't implement matchMedia; components that query it would throw in tests.
 if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
@@ -31,12 +32,26 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 // with a stack for every mount. There is no server under test, so answer a plain 404: that is the
 // truth, it is what callers already handle, and it never opens a socket. A test that wants a body
 // back mocks the module or fetch itself, as several already do.
+//
+// AND THE LIVE HUB IS NEVER REACHED FROM A TEST (Stream AA, 2026-09-11). The load screens list
+// Explorers maps as soon as they mount (R-20), so every spec that renders the page or a load screen
+// would otherwise fetch `explorers.starsystemx.com` for real - a suite that passes or fails on the
+// hub's weather, and a request per run on somebody else's server. A request to any hub host REJECTS,
+// which is exactly what being offline looks like, so an unmocked panel shows its offline line. A
+// spec that wants a list stubs `fetch` itself, which replaces this wrapper for that spec.
 if (typeof globalThis.fetch === 'function') {
 	const realFetch = globalThis.fetch;
 	globalThis.fetch = ((input: any, init?: any) => {
 		const url = typeof input === 'string' ? input : input?.url;
 		if (typeof url === 'string' && url.startsWith('/')) {
 			return Promise.resolve(new Response(null, { status: 404, statusText: 'Not Found (no server under test)' }));
+		}
+		if (typeof url === 'string') {
+			let host = '';
+			try { host = new URL(url).hostname; } catch { /* not an absolute URL; let the real fetch say so */ }
+			if (host && isHubHost(host)) {
+				return Promise.reject(new TypeError(`Failed to fetch: the live hub (${host}) is never reached from a test`));
+			}
 		}
 		return realFetch(input, init);
 	}) as typeof globalThis.fetch;

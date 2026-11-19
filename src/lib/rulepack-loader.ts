@@ -1,5 +1,19 @@
 import type { RulePack } from './types';
 import { warnIfLegacyRules } from './system/classification';
+import { APP_VERSION } from './constants';
+
+// THE PACK CACHE KEY. Rule-pack files are NOT content-hashed and they DO change with a release,
+// so they cannot simply be cached hard - a stale pack is wrong game rules, not just stale content.
+// Stamping the build version onto every pack URL makes them safe to cache as `immutable`: the URL
+// changes the instant the version does, so nothing stale can survive a release. On beta the patch
+// bumps on EVERY push, so testers get the latest by construction - which is why beta needs no
+// separate cache policy, and why this must not be replaced by a hand-maintained constant.
+// Owner, 2026-09-23: "there will always be a version change that changes rulepacks".
+function withPackVersion(href: string): string {
+    const u = new URL(href);
+    u.searchParams.set('v', APP_VERSION);
+    return u.href;
+}
 
 // Helper function for deep merging objects. This is a simple implementation.
 function deepMerge(target: any, source: any): any {
@@ -39,7 +53,7 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
     // Ensure the initial URL is absolute
     const absoluteUrl = new URL(url, window.location.origin).href;
 
-    const response = await fetch(absoluteUrl);
+    const response = await fetch(withPackVersion(absoluteUrl));
     if (!response.ok) {
         throw new Error(`Failed to fetch rule pack from ${absoluteUrl}: ${response.statusText}`);
     }
@@ -49,7 +63,7 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
     const baseUrl = new URL('.', absoluteUrl).href;
 
     // Fetch construct templates
-    const constructTemplatesResponse = await fetch(new URL('construct_templates.json', baseUrl).href);
+    const constructTemplatesResponse = await fetch(withPackVersion(new URL('construct_templates.json', baseUrl).href));
     if (constructTemplatesResponse.ok) {
         mainPack.constructTemplates = await constructTemplatesResponse.json();
     } else {
@@ -57,7 +71,7 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
     }
 
     // Fetch engine definitions
-    const engineDefinitionsResponse = await fetch(new URL('engine-definitions.json', baseUrl).href);
+    const engineDefinitionsResponse = await fetch(withPackVersion(new URL('engine-definitions.json', baseUrl).href));
     if (engineDefinitionsResponse.ok) {
         mainPack.engineDefinitions = await engineDefinitionsResponse.json();
     } else {
@@ -65,7 +79,7 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
     }
 
     // Fetch fuel definitions
-    const fuelDefinitionsResponse = await fetch(new URL('fuel-definitions.json', baseUrl).href);
+    const fuelDefinitionsResponse = await fetch(withPackVersion(new URL('fuel-definitions.json', baseUrl).href));
     if (fuelDefinitionsResponse.ok) {
         mainPack.fuelDefinitions = await fuelDefinitionsResponse.json();
     } else {
@@ -93,7 +107,7 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
     // normally absent, because the browser logs the 404 whatever the code does with it.
 
     // Fetch classification definitions (including tagVocab, planetImages etc.)
-    const classificationResponse = await fetch(new URL('classification.json', baseUrl).href);
+    const classificationResponse = await fetch(withPackVersion(new URL('classification.json', baseUrl).href));
     if (classificationResponse.ok) {
         const classificationData = await classificationResponse.json();
         console.log('Loaded Classification Data:', Object.keys(classificationData));
@@ -109,7 +123,7 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
         // Use the absolute URL of the main pack as the base for imports
         const importPromises = mainPack.imports.map(async (importPath: string) => {
             const importUrl = new URL(importPath, absoluteUrl).href;
-            const importResponse = await fetch(importUrl);
+            const importResponse = await fetch(withPackVersion(importUrl));
             if (!importResponse.ok) {
                 throw new Error(`Failed to fetch imported rule pack from ${importUrl}: ${importResponse.statusText}`);
             }

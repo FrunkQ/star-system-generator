@@ -71,3 +71,55 @@ describe('a docked ship rides its structure - one answer for every view', () => 
     expect(Math.atan2(p.y, p.x)).toBeCloseTo(0.5, 9);
   });
 });
+
+// THE WALK TERMINATES ON ANY DATA (found live, 2026-09-26: an elevator sent to L2 from the Orbit tab
+// froze the system view and then the site). A ladder structure is attached to ITSELF at its anchor;
+// with nothing to stand on it used to ask for its own position, forever - a stack overflow on every
+// frame in every view. The assertions are absolute: the call RETURNS, and what it returns is finite.
+describe('a ladder with nothing to stand on is still somewhere - the walk never recurses on itself', () => {
+  const finite = (p: any) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z ?? 0);
+  const withEarthOrbit = (): any => {
+    const sys = system();
+    sys.nodes.find((n: any) => n.id === 'earth').orbit = { hostId: 'sol', hostMu: 1.327e20, t0: 0, elements: { a_AU: 1, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } };
+    return sys;
+  };
+  it('an elevator re-homed onto the star (the saved L2 state) is placed by its orbit, in all three walks', () => {
+    const sys = withEarthOrbit();
+    const sea = sys.nodes.find((n: any) => n.id === 'sea');
+    sea.parentId = 'sol'; sea.ui_parentId = 'earth'; sea.coOrbital = { hostId: 'earth', point: 'l2' };
+    sea.orbit = { hostId: 'sol', hostMu: 1.327e20, t0: 0, elements: { a_AU: 1.01, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } };
+    const p2 = computeWorldPositions(sys, 0).get('sea')!;
+    expect(finite(p2)).toBe(true);
+    expect(norm(p2)).toBeCloseTo(1.01, 9);                       // on its own orbit, not at the origin
+    expect(finite(computeWorldPositions3D(sys, 0).get('sea')!)).toBe(true);
+    expect(finite(computeWorldStates3D(sys, 0).get('sea')!.r)).toBe(true);
+    // and the climber docked to it rides along rather than taking the walk down with it
+    expect(finite(computeWorldPositions(sys, 0).get('lift')!)).toBe(true);
+  });
+  it('an elevator whose world LOST its geostationary (a rotation edit) stays put on its placeholder orbit', () => {
+    const sys = withEarthOrbit();
+    sys.nodes.find((n: any) => n.id === 'earth').orbitalBoundaries.isGeoFallback = true;
+    const p = computeWorldPositions(sys, 0);
+    const sea = p.get('sea')!, earth = p.get('earth')!;
+    expect(Math.hypot(sea.x - earth.x, sea.y - earth.y) * AU_KM).toBeCloseTo(6371, 3);
+  });
+  it('a circular attachment and a circular parentage both resolve to finite positions', () => {
+    const sys = withEarthOrbit();
+    sys.nodes.push(
+      { id: 'a', name: 'A', kind: 'construct', parentId: 'earth', tags: [], attachedTo: { id: 'b' } },
+      { id: 'b', name: 'B', kind: 'construct', parentId: 'earth', tags: [], attachedTo: { id: 'a' } },
+      { id: 'c', name: 'C', kind: 'body', roleHint: 'moon', parentId: 'd', tags: [] },
+      { id: 'd', name: 'D', kind: 'body', roleHint: 'moon', parentId: 'c', tags: [] }
+    );
+    const p = computeWorldPositions3D(sys, 0);
+    for (const id of ['a', 'b', 'c', 'd', 'earth', 'sea']) expect(finite(p.get(id)!)).toBe(true);
+  });
+  it('a missing phase or epoch reads as zero, never as NaN', () => {
+    const sys = withEarthOrbit();
+    const e = sys.nodes.find((n: any) => n.id === 'earth');
+    delete e.orbit.elements.M0_rad; delete e.orbit.t0;
+    const p = computeWorldPositions3D(sys, 86400000).get('earth')!;
+    expect(finite(p)).toBe(true);
+    expect(norm(p)).toBeCloseTo(1, 9);
+  });
+});

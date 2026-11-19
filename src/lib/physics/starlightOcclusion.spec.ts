@@ -19,8 +19,11 @@ import {
 	starOccluders,
 	starlightTransmission,
 	bandAlignmentShare,
-	relativeInclinationRad
+	relativeInclinationRad,
+	starlightBoost,
+	STARLIGHT_BOOST_TAG
 } from './starlightOcclusion';
+import { receivedLuminosityWatts } from './luminosity';
 import {
 	calculateEquilibriumTemperature,
 	calculateEquilibriumTemperatureRange,
@@ -384,4 +387,130 @@ describe('the processor commits the shadow and deletes it with the structure', (
 		const tag = (earth.tags ?? []).find((t) => t.key === 'mega/eclipsed');
 		expect(String(tag?.value ?? '')).toContain('permanent');
 	}, 60000);
+});
+
+// ── PHASE 6: THE SOLETTA - the amplify case, through the whole chain ─────────────────────────────
+// `receivedLuminosityWatts` used to clamp everything to at most inverse-square ("nothing between a
+// star and a world manufactures light"). True of every occluder and false of a MIRROR. The gain is
+// a second, typed argument; these gates were run with it forced back to 1 in luminosity.ts and
+// seen RED (the lit world stayed at exactly the unlit 254.97 K, and the processor test's Mars did
+// not warm) before the consumer change was trusted.
+describe('a soletta lights its world: MORE than inverse-square, through the one chain', () => {
+	const soletta = (id: string, hostId: string, over: Record<string, unknown> = {}): CelestialBody =>
+		({
+			id, name: id, parentId: hostId, tags: [], kind: 'construct', megaType: 'soletta', placement: 'High Orbit',
+			orbit: { hostId, hostMu: 3.986e14, t0: 0, elements: el(1e-4) }, ...over
+		}) as unknown as CelestialBody;
+
+	it('the clamp learns the amplify case - and still only darkens on the transmission side', () => {
+		const base = receivedLuminosityWatts(696340, 5778, 1);
+		expect(receivedLuminosityWatts(696340, 5778, 1, 1.2) / base).toBeCloseTo(1.2, 12);
+		expect(receivedLuminosityWatts(696340, 5778, 0.5, 1.2) / base).toBeCloseTo(0.6, 12); // lit AND shaded: both apply
+		expect(receivedLuminosityWatts(696340, 5778, 1.7)).toBe(base);        // a transmission above 1 is still a fault
+		expect(receivedLuminosityWatts(696340, 5778, 1, 0.4)).toBe(base);     // a "gain" cannot darken
+		expect(receivedLuminosityWatts(696340, 5778, 1, NaN)).toBe(base);
+	});
+
+	it('THE ABSOLUTE ANCHOR (PHY-34): a default soletta takes a 1 AU world from 254.97 K to 266.86 K at albedo 0.3', () => {
+		const p = planet('p1', 1);
+		const clear = calculateEquilibriumTemperature(p, [sol(), p], 0.3);
+		const lit = calculateEquilibriumTemperature(p, [sol(), p, soletta('mirror1', 'p1')], 0.3);
+		// By hand: the default mirror adds 0.9 x (D/2)^2 / R^2 = 0.2 of the disc's own light, so the
+		// world receives 1.2 x inverse-square and T rises by 1.2^(1/4): 254.97 K -> 266.86 K.
+		expect(starlightBoost(p, [sol(), p, soletta('mirror1', 'p1')]).gain).toBeCloseTo(1.2, 12);
+		expect(clear).toBeGreaterThan(254.4); expect(clear).toBeLessThan(255.5);
+		expect(lit).toBeGreaterThan(266.3); expect(lit).toBeLessThan(267.4);
+		expect(lit).toBeGreaterThan(clear);   // MORE than bare inverse-square - the sentence the brief asked for
+		expect(lit / clear).toBeCloseTo(Math.pow(1.2, 0.25), 9);
+		const range = calculateEquilibriumTemperatureRange(p, [sol(), p, soletta('mirror1', 'p1')], 0.3);
+		expect(range.minK).toBeCloseTo(lit, 6);
+		expect(range.maxK).toBeCloseTo(lit, 6);
+	});
+
+	it('only its own world: a neighbour, the mirror itself and a moon of the lit world are untouched', () => {
+		const p = planet('p1', 1), q = planet('p2', 1.5);
+		const moon = { ...planet('m1', 0.0026), parentId: 'p1', roleHint: 'moon' } as CelestialBody;
+		const nodes = [sol(), p, q, moon, soletta('mirror1', 'p1')];
+		expect(starlightBoost(q, nodes).gain).toBe(1);
+		expect(starlightBoost(moon, nodes).gain).toBe(1);
+		expect(starlightBoost({ id: 'mirror1', radiusKm: 0 }, nodes).gain).toBe(1);
+		expect(calculateEquilibriumTemperature(q, nodes, 0.3)).toBe(calculateEquilibriumTemperature(q, [sol(), p, q], 0.3));
+	});
+
+	it('a mirror at the inner Lagrange point lights the world whose point it rides, not the star it orbits', () => {
+		const p = planet('p1', 1);
+		const atL1 = soletta('mirror1', 'sol', { coOrbital: { hostId: 'p1', point: 'l1' }, ui_parentId: 'p1', placement: 'L1' });
+		expect(starlightBoost(p, [sol(), p, atL1]).gain).toBeCloseTo(1.2, 12);
+		expect(starlightBoost(sol(), [sol(), p, atL1]).gain).toBe(1);
+	});
+
+	it('the knobs reach physics, two mirrors add, and light and shadow compose', () => {
+		const p = planet('p1', 1);
+		const big = soletta('m1', 'p1', { megaParams: { reflectivityFrac: 0.45 } });   // half the seed: +0.1
+		expect(starlightBoost(p, [sol(), p, big]).gain).toBeCloseTo(1.1, 12);
+		expect(starlightBoost(p, [sol(), p, big, soletta('m2', 'p1')]).gain).toBeCloseTo(1.3, 12);
+		// Behind a 0.3 swarm AND under a default mirror: 0.7 x 1.2 of inverse-square.
+		const both = calculateEquilibriumTemperature(p, [...swarmSystem(0.5, [p]), soletta('m2', 'p1')], 0.3);
+		const clear = calculateEquilibriumTemperature(p, [sol(), p], 0.3);
+		expect(both / clear).toBeCloseTo(Math.pow(0.7 * 1.2, 0.25), 9);
+		// A record that does not DECLARE the amplify capability lights nothing, whatever its orbit.
+		expect(starlightBoost(p, [sol(), p, { ...soletta('d', 'p1'), megaType: 'death-star' } as CelestialBody]).gain).toBe(1);
+	});
+
+	it('the processor warms Mars, moves its tags by physics, stamps the mirror, holds over three passes, and leaves cleanly', () => {
+		const pack = loadPack();
+		const clearSys = systemProcessor.process(bundledSol(), pack);
+		const clearMars = clearSys.nodes.find((n) => n.name === 'Mars') as CelestialBody;
+		expect(clearMars.starlightBoost).toBeUndefined();
+		expect((clearMars.tags ?? []).some((t) => t.key === STARLIGHT_BOOST_TAG)).toBe(false);
+
+		const withMirror = bundledSol();
+		const mars = withMirror.nodes.find((n) => n.name === 'Mars')!;
+		// A mirror wide enough to matter to a thermometer: 2.5x the seed diameter, 6.25x the light.
+		const seedKm = 2 * ((mars as CelestialBody).radiusKm ?? 3389.5) * Math.sqrt(0.2 / 0.9);
+		withMirror.nodes.push(soletta('mirror1', mars.id, { name: 'Mirror One', megaParams: { mirrorDiameterKm: seedKm * 2.5 } }));
+
+		let cur = withMirror;
+		const snaps: string[] = [];
+		for (let pass = 0; pass < 3; pass++) {
+			cur = systemProcessor.process(JSON.parse(JSON.stringify(cur)), pack);
+			snaps.push(JSON.stringify(cur.nodes.map((n) => {
+				const b = n as CelestialBody;
+				return [b.name, b.equilibriumTempK, b.temperatureK, (b as any).equilibriumTempMinK, (b as any).equilibriumTempMaxK,
+					b.starlightBoost ?? null, (b.tags ?? []).map((t) => `${t.key}=${t.value ?? ''}`).sort()];
+			})));
+		}
+		expect(snaps[1]).toBe(snaps[0]);   // nothing reads a value a later pass writes
+		expect(snaps[2]).toBe(snaps[1]);
+
+		const litMars = cur.nodes.find((n) => n.name === 'Mars') as CelestialBody;
+		expect(litMars.starlightBoost!.gain).toBeCloseTo(2.25, 9);
+		expect(litMars.starlightBoost!.mirrors).toEqual([{ name: 'Mirror One', addedFrac: expect.closeTo(1.25, 9) }]);
+		// Luminosity -> insolation -> temperature: equilibrium rises by exactly gain^(1/4) at the
+		// albedo the lit pass settled on, and the surface figure a GM reads rises with it.
+		expect(litMars.equilibriumTempK!).toBeGreaterThan(clearMars.equilibriumTempK! * 1.15);
+		expect(litMars.temperatureK!).toBeGreaterThan(clearMars.temperatureK! + 20);
+		// ... -> habitability: the score the GM reads moves with the warmth (7.5 -> 11.3 on this map),
+		// and the tags physics hangs off temperature move too (Mars loses its water-ice wisps).
+		expect((litMars as any).habitabilityScore).toBeGreaterThan((clearMars as any).habitabilityScore + 1);
+		const derivedTags = (b: CelestialBody) => (b.tags ?? []).filter((t) => t.key !== STARLIGHT_BOOST_TAG).map((t) => `${t.key}=${t.value ?? ''}`).sort();
+		expect(derivedTags(litMars)).not.toEqual(derivedTags(clearMars));
+		// ... -> tags: the engine's own tag names the mirror, physics origin.
+		const tag = (litMars.tags ?? []).find((t) => t.key === STARLIGHT_BOOST_TAG);
+		expect(tag?.value).toBe('Mirror One - 125% more starlight');
+		expect(tag?.origin).toBe('physics');
+		// Nobody else was lit, and nobody was shaded: a hull at a node is not an occluder.
+		const earth = cur.nodes.find((n) => n.name === 'Earth') as CelestialBody;
+		const clearEarth = clearSys.nodes.find((n) => n.name === 'Earth') as CelestialBody;
+		expect(earth.equilibriumTempK).toBe(clearEarth.equilibriumTempK);
+		expect(earth.starlightBoost).toBeUndefined();
+
+		// Remove the mirror: the light, the stamp and the tag leave with it.
+		cur.nodes = cur.nodes.filter((n) => n.id !== 'mirror1');
+		const after = systemProcessor.process(JSON.parse(JSON.stringify(cur)), pack);
+		const marsAfter = after.nodes.find((n) => n.name === 'Mars') as CelestialBody;
+		expect(marsAfter.starlightBoost).toBeUndefined();
+		expect((marsAfter.tags ?? []).some((t) => t.key === STARLIGHT_BOOST_TAG)).toBe(false);
+		expect(marsAfter.equilibriumTempK!).toBeCloseTo(clearMars.equilibriumTempK!, 6);
+	}, 120000);
 });

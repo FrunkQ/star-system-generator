@@ -101,6 +101,14 @@ function cloneRegistry(registry: TemporalState['temporal_registry']): TemporalSt
   return JSON.parse(JSON.stringify(registry));
 }
 
+/** This build's OWN definition of the calendar filed under `key` - a fresh copy - or undefined when
+ *  the key is not one we ship. The calendar editor asks so it can say "this one is built in" and
+ *  put a built-in back the way it shipped. */
+export function shippedCalendar(key: string): TemporalState['temporal_registry'][string] | undefined {
+  const calendar = runtimeTemporalRegistry[key];
+  return calendar ? JSON.parse(JSON.stringify(calendar)) : undefined;
+}
+
 function getTemporalRegistryDefaults(): { registry: TemporalState['temporal_registry']; activeKey: string } {
   const registry = cloneRegistry(runtimeTemporalRegistry);
   const keys = Object.keys(registry);

@@ -2178,3 +2178,237 @@ the right order is to get eyes on what has already shipped first.
 > pile and confirm the modifier reads sensibly on both.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM Z - every object carries its own age (G94, and the fix for B150)
+
+> You are giving every body an age of its own. [[G94]], decided by the owner 2026-09-08; it is the groundwork V4
+> needs and the fix [[B150]] needs, built once. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
+> push daily). Work in your OWN worktree (`git worktree add ../sse2-bodyage -b wt/bodyage origin/beta`); the main
+> checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` - PHYSICS
+> DRIVES TAGS DRIVES VISUALS and NOTHING READS A VALUE A LATER PASS WRITES both bite here; the [[G94]] row (the
+> owner's decision and the whole measurement) and [[B150]] (the bug it fixes); engine map [[G62]] on the
+> absolute clock and the stake in the sand; `src/lib/system/idempotence.test.ts` before you touch the processor.
+>
+> **THE OWNER'S DECISION:** *"EVERY object should have an independent age anyway as V4 will track formation
+> times, captured bodies and rebuilding planets smashed in system."*
+>
+> **WHAT IS MEASURED - verify it, do not re-derive it.** One age exists: `System.age_Gyr` (`types.ts:990`), read
+> into `SystemProcessor.systemAgeGyr` (`:93,:98`) and consumed at 21 sites. The per-body consumers that matter:
+> `brownDwarfThermal` (`:155,:689`), `flareActivity` (`:127`), `estimateInternalHeatK` (`:782`), atmospheric
+> escape (`:956`, which already computes `planetAgeGyr = systemAgeGyr - FORMATION_DELAY_GYR`). The clock is
+> already absolute ([[G62]]), so a formation time has an axis to live on.
+>
+> **THE THREE DECISIONS ALREADY TAKEN, so do not reopen them:**
+> 1. **An age is a PROPERTY, not an override.** It does not fire the anomaly engine. A body older than its
+>    system is a history, not a cheat.
+> 2. **Store a FORMATION TIME on the absolute clock**, and derive age from it. A duration would have to be
+>    migrated the moment V4 tracks formation properly.
+> 3. **ABSENT MEANS INHERIT.** No age of its own means the system's age, and the system's age is NEVER stamped
+>    onto bodies when saving - that would freeze it and stop a later change reaching anything.
+>
+> **THE QUESTION THIS BRIEF ONCE LEFT OPEN IS SETTLED - the owner, same day:** *"No clock is changed as you can
+> slide the age of a body independently - t=0 is big bang, t for comparison = star formation, and that is fine."*
+> **A body's age is STORED AND INDEPENDENTLY EDITABLE, and the campaign clock is not involved in deriving it.**
+> Sliding an age does not move the clock; scrubbing the clock does not change an age. The trap this brief warned
+> about - physics depending on the display clock - is not guarded against, it simply is not created. Storing a
+> formation time on the absolute axis is still the better representation for V4, because a body rebuilt after a
+> collision moves its own forward; but with nothing re-deriving against a moving "now", that is a representation
+> choice with no behavioural risk. **DO NOT introduce a dependency on the scrub position.**
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The field and `ageOf(body)`**, with absent-means-inherit proven both ways: a body without one follows the
+>    system when the system's age changes; a body with one does not. Nothing else changes yet.
+> 2. **Switch the per-body consumers** from `this.systemAgeGyr` to `ageOf(body)` - the substellar cooling track
+>    first, since that is B150 - then radiogenic heat, then escape and flare activity. **Not all 21**: the
+>    system's own age control and the map summary stay system-wide. One commit per consumer, each with its own
+>    gate, because each is a physics change.
+> 3. **The control**, on the body's own panel and labelled **Age** - not "time", which in this app means the
+>    campaign date and already has a clock, a calendar and transit times attached to it. Say underneath what it
+>    drives, the way the other derived readings on that panel already do.
+>
+>    **WHERE, decided by the owner 2026-09-11 ([[G96]]):** on a PLANET or MOON the slider lives on the
+>    **Temperature tab** (`BodyTemperatureTab.svelte`, which already receives `systemAgeGyr` from
+>    `BodySidePanel.svelte:103` - the inherited age is in its hands today). On a STAR it **REPLACES the
+>    Effective Temperature block** on the Star tab (`BodyStarTab.svelte:970-988`; a star has no Temperature
+>    tab) and shows the resulting temperature beneath it. On a BROWN DWARF likewise, which is job 5.
+> 4. **The inversion, which is what answers the user who started this.** `worlds/orbitSolver.ts` (Stream V,
+>    same day) already does *"ask where a star would keep a body at a given temperature"*. Do the same here: the
+>    GM types a temperature into the field B150 is about, and the app answers *"that is a 9.2 Gyr dwarf - set
+>    its age to that?"* Physics stays the single source and the GM still gets to type what he wanted.
+> 5. **[[B150]]'s interface half**, last, and it is a REMOVAL rather than an explanation - the owner has told
+>    the user *"that temp slider WILL disappear, but you can mess with its age instead"*. For a SUBSTELLAR body
+>    the temperature control goes and the age slider takes its place.
+>
+>    **SUPERSEDED 2026-09-11 - READ [[G96]] FIRST.** The owner moved the fusing-star case: *"On stars it
+>    REPLACES the temp control which also shows temp... direct temp control is now in overrides."* So the
+>    removal is NOT scoped to substellar any more: the temperature control goes on a star too, the age
+>    slider takes its place, and the star's direct temperature becomes a NEW OVERRIDE KEY in
+>    `physics/overrides.ts` - effective temperature, `appliesTo: ['star']`, its own band (not
+>    `surfaceTempK`, which is a planet's mean-surface pin banded on equilibrium). The physics uses whatever
+>    the override says. What a star's AGE then drives is [[G97]], which needs his word on seed-versus-
+>    current-state before you switch a stellar consumer. The paragraph below is kept as the record of
+>    what was true for three days; its "gate it BOTH ways" becomes: control gone on a star AND on a brown
+>    dwarf, override present on the star only.
+>
+>    **GUARD, AND A REAL REGRESSION RISK: A FUSING STAR KEEPS ITS TEMPERATURE CONTROL.** The owner: *"probably
+>    still look to have a stellar temp override on stars available, to do a manual tweak if they want. The
+>    physics just uses the actual values - even if they don't make a huge amount of sense."* It already works
+>    that way - `applySubstellarSelfLuminosity` only fires inside the 8-80 M_Jup window, so above the
+>    hydrogen-burning limit nothing overwrites `temperatureK` and an authored temperature already sticks, with
+>    luminosity deriving from it and the radius. **Scope the removal to substellar, and gate it BOTH ways: the
+>    control is gone on a brown dwarf and STILL THERE on a star.**
+>
+>    (One existing exception, flagged not changed: `SystemProcessor.ts:721-725` raises a fusing star below about
+>    1900-2100 K to that floor, on the argument that an object at the hydrogen-burning limit sits there whether
+>    or not it has just started fusing. It only ever raises. Leave it, and mention it in your report.)
+> 6. **THE AGE SCALE AND ITS TAG FAMILY** - the owner's extension, and the part with the most product in it.
+>    *"The basis of EVERY body should have an age slider from now until end of universe - pinned to an orange
+>    point based on the stellar age... We need a new set of AGE tags now to highlight young, old and ancient
+>    objects. young - is younger than host star, old is older and ancient is 2-3 stars ago - primordial is early
+>    universe stuff."* And: *"It fires the tag engine rather than anomaly."*
+>
+>    **The slider's bound is DERIVED, not typed.** `temporal/utre.ts:14` already holds
+>    `BIG_BANG_TO_UNIX_EPOCH_T` = 13.787 Gyr, and [[G62]] made the axis absolute - so the range runs 0 to the
+>    CAMPAIGN'S OWN cosmic time (a far-future campaign has more room), and nothing may be older than the
+>    universe was on the day the campaign is set. The orange pin is the host star's age on the same scale.
+>
+>    **A NEW `age/` FAMILY, not an extension of `origin/`.** `origin/` already carries `captured`, `migrated`,
+>    `generated` and the hub pair (`tagPresentation.ts:254-274`, emitted at `generation/planet.ts:239,304`) and
+>    it answers WHERE a body came from; `age/` answers WHEN it formed. They compose, and the composition is the
+>    owner's own example: `origin/captured` + `age/primordial` is the primordial rock this system picked up.
+>
+>    **Four bands, two relative and two absolute - do not blur them.** `age/young` younger than the host star;
+>    `age/old` older than it; `age/ancient` older by at least two stellar generations (his "2-3 stars ago"),
+>    with **the generation length as PACK DATA** because it is exactly the number a human will want to tune;
+>    `age/primordial` an ABSOLUTE band at the big-bang end, Population III territory. The relative pair keeps
+>    working for a young host; the absolute pair keeps meaning something whatever it orbits.
+>
+>    **THE TEST THIS DESIGN MUST PASS**, because the owner named the destination: *"as we move on to galactic
+>    mergers and stellar collisions we need a robust system."* Since origin and age are separate axes, a merger
+>    or a collision must be a NEW MEMBER OF `origin/` and touch the age model not at all - a star flung in by a
+>    merger keeps its formation time and gains an origin; a body rebuilt after a collision moves its formation
+>    time forward and its age tags follow by themselves. **If you find yourself needing to change the age model
+>    to describe a merger, the split is wrong - stop and say so.**
+>
+>    **AND SAY WHAT WAS MEASURED.** There is NO metallicity in this engine (grepped: nothing), so `ancient` and
+>    `primordial` come from age alone. That is honest but incomplete - a primordial rock should also be
+>    metal-poor - so word the tag descriptions to say the age is what was measured, and leave metallicity as the
+>    cross-check it will one day be.
+>
+> 7. **THE SLIDER AND ITS COMPOSITION FLOOR.** The scale: a RED point at the host star's formation, an ORANGE
+>    band across accretion, a GREEN line to the campaign's reference date at the right-hand end, and **a FOURTH
+>    ZONE from the composition floor up to stellar formation** - the region where captured, ancient and
+>    primordial bodies live, which must be drawn rather than left as the blank part of the scale.
+>
+>    **The floor is a function of what the body is MADE OF** - `physics/makeup.ts makeupFractions` already gives
+>    `metal / rock / carbon / ice / gas`. Gas reaches cosmic dawn (the first stars, ~100-250 Myr after the big
+>    bang, NOT the big bang); ice about one generation, because C, N and O come from the first massive stars;
+>    rock three to four, because a substantial rocky body needs enough Si, Mg and Fe to have ACCUMULATED - a
+>    threshold on abundance, not a switch on availability. **A BLACK HOLE's floor is the big bang itself**, since
+>    a primordial one forms in the first second before any star - so the floor reads KIND as well as makeup, and
+>    is a curve over the fractions rather than a two-way test. Every number in it is PACK DATA.
+>
+>    **The floor RESISTS, it does not refuse** - passing it corrupts nothing and is merely implausible, which is
+>    the case steer-don't-stop was written for. Detent, take a deliberate push, then tag the body beyond it
+>    ([[G45]] is the precedent). Contrast [[A102]], where the solvents ARE disabled because choosing one would
+>    corrupt the coupled atmosphere: refuse only when a choice would break a neighbour.
+>
+>    **Rogue planets and primordial black holes fall out for free** - a rogue has no host so no red pin, only the
+>    cosmic axis; a primordial black hole sits at the far left with a floor nothing else has. That is a fair test
+>    of the design, and the owner's own observation.
+>
+> **THE FULL MODEL LIVES IN `docs/dev/deep-time-design.md`** - written 2026-09-08 at the owner's word (*"feel
+> free to start a NEW system to store and work with this stuff"*), because this is the groundwork for 3.2 and V4
+> stellar and galactic evolution and had outgrown a board row. **Read it before job 1, keep it true as you go,
+> and correct it in the same commit as anything that proves it wrong.**
+>
+> **GATES, red-first and absolute.** A dwarf at a given mass and radius reports a specific temperature at 1 Gyr
+> and a specific LOWER one at 9 Gyr, in kelvin, not "cooler"; the same value survives a reprocess (it is an
+> input, and `idempotence.test.ts` is the gate that proves nothing reads it out of order); a body with no age
+> tracks the system's when that changes, and one with an age does not; and the two `tests/` fixtures WILL move -
+> commit them and read the diff as the record of what shifted.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the stash stack is shared - WIP commits, never bare stash/pop; claim ids
+> in both forms and expect a race (one was lost to another stream while this row was being written); B99's
+> rarity-dial spec is a known statistical flake that passes alone. **THE MACHINE IS BUSY** - several streams are
+> live and the owner has asked for lighter runs, so prefer targeted gates while you work.
+>
+> **EYEBALL FOR THE OWNER:** open the brown dwarf from the user's report, set its age older, and watch the
+> temperature fall by the same law rather than snapping back; then type a temperature and be offered the age
+> that produces it.
+>
+> **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM AA — the Explorers hub becomes where maps and presets come from (G98, G99, R-18; briefed 2026-09-11)
+
+> **THE OWNER'S DECISIONS, 2026-09-11, verbatim:** *"the load/new map modals are going to link to those available on
+> the Explorers site RATHER than default ones shipped - reduce hosting costs on Vercel."* And on presets: *"we should
+> be able to add copy options on the various worlds/tech settings in (not default ones) as the paster knows how to
+> deal with them. A quick easy way of getting new drive/atmo/liquid presets"* - *"that extra copy option is part of
+> the new copy paste scope from explorers site."* The board rows are [[G98]] (the list and the hosting move) and
+> [[G99]] (copy); [[A107]] is the bug the owner's own hub map hit today and is FIXED - read it for the shape of a
+> hub round-trip gone wrong. The hub's contract is `docs/dev/hub-requirements-for-sse.md` R-13, R-17, R-18, R-19,
+> R-20, and its interface note is `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-11-map-list-api.md`
+> - read where it lives, never copied here.
+>
+> **WHAT IS MEASURED (re-verify the lines; the tree moves daily):**
+> - The list: `GET https://explorers.starsystemx.com/api/maps` - no credentials, CORS `*`, OPTIONS answered, 60 s
+>   edge cache. `sort=new|loved|discussed|detailed` (default loved; the hub suggests `detailed` for a panel),
+>   `limit` 1-50 (pass 10), `page` 1-based, `kind=starmap|system`, `tag` x8, `q`. Read ONLY: `slug title blurb kind
+>   url downloadUrl coverUrl openUrl system_count body_count construct_count hearts_count comments_count
+>   download_count information auto_tags tags updated_at`. `openUrl` is NULL for a single system - R-18.
+> - The one loader: `openStarmapPayload(data, models)` in `src/routes/+page.svelte` - `?open=` (R-17) already
+>   fetches a hub `downloadUrl` and hands it here; the panel's click is the same call. Validation failures speak
+>   for themselves and leave the current campaign untouched; [[A107]] added the duplicate-id repair before it.
+> - The wizard's single-system door: `GenerationWizard.svelte loadExample` fetches `/examples/<name>` and
+>   dispatches `generate`; `placeGeneratedSystem` puts it at the clicked position (now with `uniqueSystemId`).
+>   That is the door R-18 needs: a `kind=system` hub map goes through it, not through `?open=`.
+> - What READS the shipped maps, all of which must be re-pointed at the hub or retired WITH the maps, in the same
+>   commit: `src/lib/map/baseMapManifest.ts` + `upgradeOffer.ts` + `static/example-starmaps/manifest.json` (the
+>   base-map EDITION offer, [[A101]] - an edition is a property of a shipped map; decide with the owner what an
+>   edition means once maps are hub-hosted); `GenerationWizard.svelte` + `+page.svelte` `exampleSystems` (from the
+>   route's `data`); `static/shipped-content.json` (R-13 - the hub uses it to know what is the app's, not a GM's);
+>   `static/sw.js` precache; the first-run / welcome path. `git grep -n "example-starmaps\|/examples/"` is the list.
+> - The paste half of copy: `src/lib/io/clipRules.ts` and friends (R-19, Stream X, v3.1.37-46): `compareClipOverrides`
+>   per definition against the EFFECTIVE pack (`src/lib/rulepack/effectivePack.ts`), merge as DELTAS, rename a clash,
+>   report. The hub's fixtures live in its `docs/clips/` and are read where they live. `HubClipPasteModal` is the
+>   fourth door and already accepts a rules-only clip.
+>
+> **THE JOBS, in order, each its own commit and push:**
+>
+> 1. **THE PANEL** in the Load Starmap and New Starmap modals: ten Explorers maps at a time (`kind=starmap`,
+>    `sort=detailed` first, the other sorts a click away, page through), cover thumbnail scaled hard (the hub uses
+>    it at ~240 px), title, blurb, the three counts, the creator, and a click that calls `openStarmapPayload` via
+>    `downloadUrl` - never a second loader. `credentials: 'omit'`. Offline or a failed fetch is an honest line in
+>    the panel, never a blank list. The card design is the app's, not a copy of the hub's.
+> 2. **THE SHIPPED MAPS LEAVE THE BUNDLE.** This is the point (Vercel hosting). Coordinate the order with the
+>    owner: the maps must be ON the hub (his account, a tag to filter on) before they leave here. Then every reader
+>    in the measured list above moves or retires in the same commit, and the engine map gets an entry for what now
+>    depends on the network. **RECOMMEND, THEN ASK:** keep ONE small map bundled (Local Neighbourhood) for offline
+>    and first run. If he says no, first run shows the panel.
+> 3. **R-18 - A SINGLE SYSTEM THROUGH THE WIZARD'S DOOR.** `kind=system` maps listed in the wizard's Quick-start
+>    in place of `/examples/<name>`, fetched by `downloadUrl`, placed at the clicked position through the existing
+>    `generate` dispatch. When it works, write the hub a note so it fills `openUrl` for systems - and say in it
+>    whether `?open=` should ALSO take a system (it need not; the wizard is the right door).
+> 4. **COPY ([[G99]]).** In Settings, every NON-DEFAULT definition (liquids, gases, fuels and drives, tech
+>    settings - exactly the sections R-19 merges as deltas) gets a Copy that writes a RULES-ONLY clip in the hub's
+>    format to the clipboard, with the campaign's credit. The shipped definitions get no button - every campaign
+>    already has them. Gate: round trip copy -> paste into a fresh campaign -> arrives as a delta -> second paste
+>    says nothing to add; and the hub's own fixtures still paste. Red-first, as always.
+> 5. **TELL THE HUB** about the silent loss [[A107]] found (bodies dropped on a `unique (system_id, node_id)` clash
+>    behind `tolerantWriteMany`, counts still listing them): the note is already at
+>    `starsystemx-creator-hub/docs/note-from-sse-2026-09-11-duplicate-node-ids.md`; keep it true if your work
+>    changes what the app can produce.
+>
+> **GATES:** the panel renders ten cards from a recorded response and the click reaches `openStarmapPayload` with
+> the map's bytes (mock the fetch; never hit the live hub in a test); the offline line appears when fetch rejects;
+> removing a shipped map removes every reader of it (grep-gate: no reference to `example-starmaps/` or
+> `/examples/` survives outside the engine map and the changelog); the copy round trip above.
+>
+> **HAND BACK:** [[G98]], [[G99]] and the R-18/R-20 lines in `hub-requirements-for-sse.md` updated in the same push
+> as each job; a changelog line a GM would understand per push; a thirty-second eyeball list. Anything that changes
+> what the product IS - and job 2 does - recommend, then ask him.

@@ -35,8 +35,9 @@
 // record in phase 5 with the transit-planner work, not before.
 import type { CelestialBody, MegaRequires } from '$lib/types';
 import type { ExoticCapabilities } from './exotics';
-import { G, AU_KM, EARTH_GRAVITY, EARTH_RADIUS_KM } from '$lib/constants';
+import { G, AU_KM, EARTH_GRAVITY, EARTH_RADIUS_KM, C_MS } from '$lib/constants';
 import type { ConstructIconShape } from './constructIcon';
+import { ORBIT_BAND_PLACEMENTS } from './placements';
 
 // ── The placement vocabulary, as DATA (§4.2) ─────────────────────────────────────────────────────
 // The clause interfaces live in `$lib/types` because they are PACK DATA (templates author them);
@@ -135,6 +136,25 @@ export interface MegaDerived {
   /** A rigid ring around a mass has no restoring force against lateral displacement (the classic
    *  result) and needs active station-keeping forever. A tag-and-explain fact, never a refusal. */
   ringUnstable?: true;
+  /** EXTRA starlight a mirror turns onto its TARGET - the world it is stationed at - as a fraction
+   *  of what that world's own disc intercepts unaided: reflectivity x mirror area / (pi x target
+   *  radius squared), >= 0. FED TO PHYSICS (phase 6): `starlightOcclusion.starlightBoost` reads it
+   *  and the target receives (1 + this) x inverse-square. Dimensionless on purpose - no luminosity
+   *  is computed here (B110). ASSUMES every reflected photon lands on the target, which is true of
+   *  a mirror stationed close to its world; the beam's spread with distance is not traced. */
+  starAmplification?: number;
+  /** Thrust this structure puts on its HOST STAR, as a fraction of the star's photon momentum flux
+   *  L/c (a mirror cap of half-angle psi: (1 - cos psi) / 2). Dimensionless - the multiply into
+   *  newtons happens presentation-side through the one luminosity function (B110).
+   *  PUBLISHED, NOT APPLIED: nothing in this engine moves a star (no event driver exists - board
+   *  row G41), so this is a figure a GM can read and use, never a motion the map performs. */
+  starThrustPhotonFrac?: number;
+  /** Thrust on the host star in NEWTONS, for an engine whose thrust needs no luminosity (a jet:
+   *  mass flow x exhaust speed). PUBLISHED, NOT APPLIED - as `starThrustPhotonFrac`. */
+  starThrustN?: number;
+  /** Mass the structure removes from its host star for good, kg per second. PUBLISHED, NOT
+   *  APPLIED: the star's authored mass is never reduced by it. */
+  starMassLossKgPerS?: number;
 }
 
 /** `shape()`'s output: a geometry SPEC, still no THREE (§5b.3). The one generator is the
@@ -279,7 +299,19 @@ function equatorialBand(radiusKm: number, widthKm: number): Extract<MegaShapeSpe
   };
 }
 
-const ORBIT_BAND_PLACEMENTS = ['Low Orbit', 'Mid Orbit', 'High Orbit', 'Geostationary Orbit'] as const;
+
+/** The distance, AU, at which this host's own pull is one Earth gravity - the Birch shell's SEED
+ *  (a human-comfort default on the output side: move the knob and the figure follows). */
+function oneGravityRadiusAU(host: CelestialBody): number {
+  const m = host.massKg ?? 0;
+  return m > 0 ? Math.sqrt((G * m) / EARTH_GRAVITY) / (AU_KM * 1000) : 1;
+}
+
+/** The host's Schwarzschild radius, AU (0 without a mass). */
+function schwarzschildRadiusAU(host: CelestialBody): number {
+  const m = host.massKg ?? 0;
+  return m > 0 ? (2 * G * m) / (C_MS * C_MS) / (AU_KM * 1000) : 0;
+}
 
 // ── THE ROSTER ───────────────────────────────────────────────────────────────────────────────────
 export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
@@ -757,6 +789,299 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     shape(params) {
       const dM = params.diameterKm * 1000;
       return { family: 'spheroid', dimensionsM: [dM, dM, dM] };
+    }
+  },
+  // ── PHASE 6: THE CATALOGUE WIDENS (design §8 "add others?") ────────────────────────────────────
+  // Each is a PARAMETER SET on what already exists - a generator, a capability record, a placement
+  // word - and each says in its own hint what the engine does NOT yet do with it. The two stellar
+  // engines PUBLISH their thrust and never move their star: that needs the event driver of board
+  // row G41, which is V4 design, and a star that crept across the map on a faked clock would be
+  // the renderer inventing a fact.
+  {
+    key: 'soletta',
+    label: 'Soletta / Orbital Mirror',
+    family: 'spheroid',
+    hint: 'A mirror array stationed at a world, turning extra starlight onto it - terraforming a GM can build and watch work.',
+    icon: 'diamond',
+    requires: {
+      hard: { hostKind: ['planet', 'moon'] }   // it lights the WORLD it is stationed at; no world, nothing to light
+    },
+    capabilities: {
+      // THE AMPLIFY CASE (design §3, nonstandard-objects §3): its target receives MORE than bare
+      // inverse-square. Consumed by `starlightOcclusion.starlightBoost` and
+      // `receivedLuminosityWatts`'s gain - declaration and consumer landed in one batch.
+      apparentG: 'none',
+      flux: { amplifies: 'target' },
+      render3d: { generator: 'hull', anchor: 'node' },
+      docking: 'point',
+      render2d: { structure: 'glyph' },
+      framing: 'point'
+    },
+    explain: 'A soletta lights the world it is stationed at. {host} is not a planet or moon.',
+    // Close stations only: the derivation assumes every reflected photon lands on the target,
+    // which holds from a low orbit out to about the inner and outer Lagrange points and fails
+    // from 60 degrees round the orbit, where the beam has spread far wider than the world.
+    allowedPlacements: [...ORBIT_BAND_PLACEMENTS, 'L1', 'L2'],
+    params: [
+      {
+        key: 'mirrorDiameterKm',
+        label: 'Mirror diameter',
+        unit: 'km',
+        hint: 'Across the whole array. The default adds about a fifth to this world\'s starlight - move it and the temperature follows.',
+        soft: [10, 100000], hard: [0.001, 1e8], step: 10, decimals: 0, log: true,
+        seed: (host) => Math.max(1, 2 * (host.radiusKm ?? 3000) * Math.sqrt(0.2 / 0.9)),
+        plausible: (host) => {
+          const r = host.radiusKm ?? 0;
+          return r > 0 ? [0.01 * r, 20 * r] : null;
+        },
+        absurd: 'smaller than this adds nothing a thermometer could find; larger, and the mirror is a second sun with a world attached.'
+      },
+      {
+        key: 'reflectivityFrac',
+        label: 'Reflectivity',
+        unit: '',
+        hint: 'Share of the light striking the mirror that reaches the world, 0 to 1.',
+        soft: [0, 1], hard: [0, 1], step: 0.01, decimals: 2,
+        seed: () => 0.9,
+        plausible: () => [0.3, 0.98],
+        absurd: 'no real mirror array holds this figure across its whole face for long.',
+        possible: () => [0, 1],
+        breaks: 'delivering more light than strikes the mirror breaks conservation.'
+      }
+    ],
+    derive(params, host) {
+      const out: MegaDerived = {};
+      const mirrorKm2 = Math.PI * Math.pow(params.mirrorDiameterKm / 2, 2);
+      if (mirrorKm2 > 0) out.areaKm2 = mirrorKm2;   // collecting area; not "Earths of floor"
+      const r = host.radiusKm ?? 0;
+      if (mirrorKm2 > 0 && r > 0 && params.reflectivityFrac > 0) {
+        out.starAmplification = (params.reflectivityFrac * mirrorKm2) / (Math.PI * r * r);
+      }
+      return out;
+    },
+    shape(params) {
+      const dM = params.mirrorDiameterKm * 1000;
+      return { family: 'spheroid', dimensionsM: [dM, dM, dM * 0.01] };
+    }
+  },
+  {
+    key: 'shkadov-thruster',
+    label: 'Shkadov Thruster',
+    family: 'sphere-section',
+    hint: 'A mirror cap held over a star on its own light. The star\'s output leaves lopsided, and the star - with everything bound to it - is pushed. The thrust is published; nothing moves on the map.',
+    icon: 'diamond',
+    requires: {
+      hard: { hostIsStar: true }
+    },
+    capabilities: {
+      // No flux, deliberately: untilted, the cap stands over the pole of the system plane and its
+      // shadow cone misses everything orbiting near that plane. A TILTED cap does shadow worlds
+      // and that cone is not traced - a third occlusion geometry beside 'isotropic' and 'band',
+      // recorded in the handover rather than approximated as either.
+      apparentG: 'none',
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
+    },
+    explain: 'A Shkadov thruster rides a star\'s light. {host} is not a star.',
+    allowedPlacements: ['AU Distance'],
+    params: [
+      {
+        key: 'radiusAU',
+        label: 'Mirror distance',
+        unit: 'AU',
+        hint: 'How far from the star the cap is held. Light pressure and gravity both thin with the square of distance, so the balance - and the thrust - do not care; the size of the mirror does.',
+        soft: [0.05, 5], hard: [0.001, 1000], step: 0.01, decimals: 2, log: true,
+        seed: () => 0.5,
+        plausible: () => [0.02, 50],
+        absurd: 'this close the mirror is in the corona; this far it is a mirror the size of a planetary system.'
+      },
+      {
+        key: 'halfAngleDeg',
+        label: 'Cap half-angle',
+        unit: '°',
+        hint: 'How much of the star\'s sky the mirror covers, measured from its centre. Thrust is (1 - cos angle) / 2 of the star\'s light pressure: a hemisphere gives half of it.',
+        soft: [1, 90], hard: [0.1, 180], step: 1, decimals: 0,
+        seed: () => 30,
+        plausible: () => [1, 90],
+        absurd: 'past a right angle the mirror wraps the far side of the star too - a Dyson shell with a hole in it, cooking its own star.',
+        possible: () => [0, 180],
+        breaks: 'a cap cannot cover more than the whole sky.'
+      }
+    ],
+    derive(params) {
+      const out: MegaDerived = {};
+      const psi = (Math.min(180, Math.max(0, params.halfAngleDeg)) * Math.PI) / 180;
+      // Momentum conservation, nothing more: the star's whole output L leaves through the open
+      // part of the sky, and the net momentum of that light along the axis is (L/2c)(1 - cos psi).
+      out.starThrustPhotonFrac = (1 - Math.cos(psi)) / 2;
+      const radiusKm = params.radiusAU * AU_KM;
+      if (radiusKm > 0) out.areaKm2 = 2 * Math.PI * radiusKm * radiusKm * (1 - Math.cos(psi));
+      return out;
+    },
+    shape(params) {
+      // A polar cap of the one sphere-section generator: the structure's axis is its orbit normal
+      // (RENDER-S61), so the Orbit tab's inclination and ascending node AIM the thruster.
+      return {
+        family: 'sphere-section',
+        radiusKm: params.radiusAU * AU_KM,
+        thetaStartRad: 0,
+        thetaLengthRad: (Math.min(180, Math.max(0.1, params.halfAngleDeg)) * Math.PI) / 180,
+        phiStartRad: 0,
+        phiLengthRad: 2 * Math.PI,
+        drawnAs: 'faces'
+      };
+    }
+  },
+  {
+    key: 'caplan-thruster',
+    label: 'Caplan Thruster',
+    family: 'sphere-section',
+    hint: 'A collector swarm focuses starlight to lift the star\'s own material, fuses it, and fires one jet away and a hydrogen jet back to hold station. Far more thrust than a mirror, paid for in the star\'s mass. The figures are published; the star neither moves nor shrinks on the map.',
+    icon: 'diamond',
+    requires: {
+      hard: { hostIsStar: true }
+    },
+    capabilities: {
+      apparentG: 'none',
+      flux: { occludes: 'isotropic' },   // the collector swarm that feeds it dims the star, as any swarm
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
+    },
+    explain: 'A Caplan thruster feeds on a star. {host} is not a star.',
+    allowedPlacements: ['AU Distance'],
+    params: [
+      {
+        key: 'radiusAU',
+        label: 'Collector radius',
+        unit: 'AU',
+        hint: 'The shell of orbits the collector swarm shares.',
+        soft: [0.05, 5], hard: [0.001, 1000], step: 0.01, decimals: 2, log: true,
+        seed: () => 0.5,
+        plausible: () => [0.02, 50],
+        absurd: 'this close the collectors are in the corona; this far they focus starlight that barely arrives.'
+      },
+      {
+        key: 'densityFrac',
+        label: 'Collector density',
+        unit: '',
+        hint: 'How much of the sky the collector swarm fills, 0 to 1. It dims the star for every world outside it, exactly as a Dyson swarm does.',
+        soft: [0, 1], hard: [0, 1], step: 0.01, decimals: 2,
+        seed: () => 0.1,
+        plausible: () => [0, 1],
+        absurd: 'a swarm cannot fill more than the whole sky.',
+        possible: () => [0, 1],
+        breaks: 'intercepting more light than the star emits, or a negative amount of it, is not interception.'
+      },
+      {
+        key: 'massFlowKgPerS',
+        label: 'Jet mass flow',
+        unit: 'kg/s',
+        hint: 'Stellar material fused and thrown away each second. Thrust is this times the jet speed - and it leaves the star for good.',
+        soft: [1e9, 1e15], hard: [1, 1e20], step: 1e9, decimals: 0, log: true,
+        seed: () => 1e12,
+        plausible: () => [1e6, 1e15],
+        absurd: 'at this rate the engine eats a sun-like star in well under a hundred million years.'
+      },
+      {
+        key: 'jetSpeedFracC',
+        label: 'Jet speed',
+        unit: 'c',
+        hint: 'Exhaust speed as a fraction of light speed. A fusion jet runs at about a hundredth.',
+        soft: [0.001, 0.1], hard: [0.000001, 0.999], step: 0.001, decimals: 3, log: true,
+        seed: () => 0.01,
+        plausible: () => [0.0001, 0.05],
+        absurd: 'no fusion exhaust runs this fast - this is a different engine wearing the name.',
+        possible: () => [0, 1],
+        breaks: 'an exhaust at or past light speed is not an exhaust.'
+      }
+    ],
+    derive(params) {
+      const out: MegaDerived = { starOcclusion: params.densityFrac };
+      const beta = params.jetSpeedFracC;
+      if (params.massFlowKgPerS > 0 && beta > 0 && beta < 1) {
+        // The outward jet's momentum flux IS the thrust on star-plus-engine; the hydrogen jet
+        // fired back is caught by the star and nets to nothing. Relativistic momentum, so a GM
+        // who types 0.5 c is told the truth.
+        out.starThrustN = (params.massFlowKgPerS * beta * C_MS) / Math.sqrt(1 - beta * beta);
+        out.starMassLossKgPerS = params.massFlowKgPerS;
+      }
+      return out;
+    },
+    shape(params) {
+      return {
+        family: 'sphere-section',
+        radiusKm: params.radiusAU * AU_KM,
+        thetaStartRad: 0,
+        thetaLengthRad: Math.PI,
+        phiStartRad: 0,
+        phiLengthRad: 2 * Math.PI,
+        drawnAs: 'points',
+        pointDensityFrac: params.densityFrac
+      };
+    }
+  },
+  {
+    key: 'birch-planet',
+    label: 'Birch Planet',
+    family: 'sphere-section',
+    hint: 'A shell built round a black hole, at the distance where the hole\'s own pull is a comfortable gravity. People live on the OUTSIDE, on ground a million worlds wide.',
+    icon: 'circle',
+    requires: {
+      hard: { hostIsBlackHole: true }
+    },
+    capabilities: {
+      // 'surface': the pull of what it ENCLOSES, at its outer face - the same quantity as a
+      // world's surface gravity. Nothing here is spun, and no interior is derived (phase 5c).
+      apparentG: 'surface',
+      flux: { occludes: 'isotropic' },   // a closed shell: nothing the hole emits gets out
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
+    },
+    explain: 'A Birch planet is a shell built round a black hole. {host} is not one.',
+    allowedPlacements: ['AU Distance'],
+    params: [
+      {
+        key: 'radiusAU',
+        label: 'Shell radius',
+        unit: 'AU',
+        hint: 'From the hole to the ground. The default is where this hole pulls at one Earth gravity - a comfort choice; move it and the gravity follows the inverse square.',
+        soft: [0.001, 1000], hard: [1e-9, 1e7], step: 0.001, decimals: 3, log: true,
+        seed: (host) => oneGravityRadiusAU(host),
+        plausible: (host) => {
+          const rs = schwarzschildRadiusAU(host);
+          return rs > 0 ? [3 * rs, 1e6 * rs] : null;
+        },
+        absurd: 'within three horizon radii nothing built can hold its place; a million out, the hole\'s pull on the ground is a rumour.'
+      }
+    ],
+    derive(params, host) {
+      const out: MegaDerived = { starOcclusion: 1 };
+      const rM = params.radiusAU * AU_KM * 1000;
+      const m = host.massKg ?? 0;
+      if (rM > 0) {
+        if (m > 0) out.surfaceGravityMs2 = (G * m) / (rM * rM);
+        const radiusKm = rM / 1000;
+        out.areaKm2 = 4 * Math.PI * radiusKm * radiusKm;
+        out.areaEarths = out.areaKm2 / EARTH_AREA_KM2;
+      }
+      return out;
+    },
+    shape(params) {
+      return {
+        family: 'sphere-section',
+        radiusKm: params.radiusAU * AU_KM,
+        thetaStartRad: 0,
+        thetaLengthRad: Math.PI,
+        phiStartRad: 0,
+        phiLengthRad: 2 * Math.PI,
+        drawnAs: 'faces'
+      };
     }
   }
 ];

@@ -1458,6 +1458,33 @@ retention figures, and the goldilocks steer's promised temperature actually deli
 **Phase 6 — the catalogue widens.** Shkadov, soletta, Birch, aerostat. All are parameter sets on
 families that exist by now.
 
+> **STATUS 2026-11 (the "finish what was half-built" run). FOUR SHIPPED, ONE NOT, and "all are
+> parameter sets" turned out true of three and a half.**
+> - **Soletta - SHIPPED WHOLE.** A hull at a node (`spheroid`), `flux.amplifies: 'target'`, and the
+>   consumer in the same batch: `starlightBoost` (who lights whom) and a typed gain on
+>   `receivedLuminosityWatts`. Its target is the world it is stationed at; the lit world's
+>   temperature, weather tags and habitability score follow through the existing chain, and the
+>   world carries `mega/lit-by`. Offered in orbit bands and at L1/L2 only, because the derivation
+>   assumes every reflected photon lands. Engine map PHY-46.
+> - **Birch planet - SHIPPED.** The shell generator round a black hole, seeded at the radius where
+>   the hole pulls at one gravity; apparent g is `surface` (the pull of what it encloses); a closed
+>   shell occludes isotropically. ONE vocabulary addition: the hard clause `hostIsBlackHole`, so it
+>   is offered only where a hole exists. No ground chain - that is phase 5c.
+> - **Shkadov thruster - SHIPPED AS A STRUCTURE WITH A PUBLISHED PUSH.** A polar cap of the
+>   sphere-section generator, aimed by the Orbit tab's inclination and node (RENDER-S61). derive()
+>   publishes `(1 - cos psi) / 2` of the star's light pressure; the summary line states the
+>   acceleration and a million years of drift. THE STAR DOES NOT MOVE - that needs the event
+>   driver of board row G41. Also not built: a TILTED cap's shadow cone (a third occlusion
+>   geometry, with four consumers).
+> - **Caplan thruster - SHIPPED THE SAME WAY (owner's addition, 2026-11).** A collector swarm
+>   (points, isotropic occlusion - it really dims the star) with a jet mass flow and a jet speed;
+>   derive() publishes thrust = flow x speed and the star's mass loss. The star neither moves nor
+>   shrinks.
+> - **Aerostat habitat - NOT BUILT.** It is not a parameter set on what exists: it floats IN an
+>   atmosphere, and the only attached placement is `Surface`, which no gas giant offers and which
+>   about ten consumers read by name. It wants a placement word of its own and a float level from
+>   the cloud-deck T(P) model. Estimated in the 2026-11 handover.
+
 ---
 
 ## 11. Open questions for the owner

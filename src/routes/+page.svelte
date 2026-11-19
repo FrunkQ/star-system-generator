@@ -7,9 +7,9 @@
   import { pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import { get } from 'svelte/store';
-  import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
+  import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route, ContentCredit } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
+  import { renameNode, computePlayerSnapshot } from '$lib/api';
   import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
   import { openSystemReport } from '$lib/reports/openReport';
   import { validateStarmap, generateId } from '$lib/utils';
@@ -40,11 +40,14 @@
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import { createPersistQueue } from '$lib/persistQueue';
+  import { createLoadGuard } from '$lib/loadGuard';
+  import { createViewRestore, declinedRestoreNotice } from '$lib/viewRestore';
+  import { onBeforeReload } from '$lib/util/beforeReload';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
   import RealSkyImportModal from '$lib/components/RealSkyImportModal.svelte';
-  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { fillOutImported } from '$lib/import/realsky/fillout';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
   import { PIXELS_PER_LY } from '$lib/import/realsky/constants.mjs';
   import GenerationWizard from '$lib/components/GenerationWizard.svelte';
@@ -64,7 +67,7 @@
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
   import { applyListDelta } from '$lib/rulepackDelta';
-  import { buildEffectiveRulePack } from '$lib/rulepack/effectivePack';
+  import { buildEffectiveRulePack, applyEditorOverrides, campaignRulePack } from '$lib/rulepack/effectivePack';
   import { allLiquids } from '$lib/physics/liquids';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel } from '$lib/physics/pigments';
@@ -73,23 +76,28 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
   import WelcomeModal from '$lib/components/WelcomeModal.svelte';
-  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds, temporalForExport } from '$lib/temporal/defaults';
+  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, temporalForExport } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
   import { buildFlightUpdate } from '$lib/constructs/flightState';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
+  import { dedupeSystemIds } from '$lib/starmap/systemIds';
+  import { placeSystemOnMap } from '$lib/starmap/placeSystem';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { registriesForStarmap } from '$lib/io/saveRegistries';
   import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
-  import { classifySaveFile } from '$lib/io/classify';
+  import { classifySaveFile, type ClassifiedSaveFile } from '$lib/io/classify';
+  import { systemFromSave } from '$lib/io/systemFromSave';
+  import { landCarriedRules, type CarriedRules } from '$lib/io/systemRules';
+  import { fetchHubMapCredit } from '$lib/hub/hubMapList';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
-  import { fetchHubMap, fetchHubMapFromUrl, type HubFetch } from '$lib/hub/hubClient';
+  import { fetchHubMap, fetchHubMapFromUrl, parseHubReference, hubMapUrl, type HubFetch } from '$lib/hub/hubClient';
   import LoadSourceModal, { FILE_ACCEPT } from '$lib/components/LoadSourceModal.svelte';
-  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, isRulesOnlyClip, type HubClip } from '$lib/io/hubClip';
+  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, isRulesOnlyClip, creditDownloadedSystem, type HubClip } from '$lib/io/hubClip';
   import { mergeClipOverrides, describeMerge } from '$lib/io/clipRules';
   import { detectedClip, noteClipText } from '$lib/io/clipDetect';
   import { guessSystemAge } from '$lib/physics/systemAge';
@@ -104,7 +112,7 @@
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import KeepACopyModal from '$lib/components/KeepACopyModal.svelte';
   import { shouldAskToKeepACopy, recordKeptCopy } from '$lib/map/keepACopy';
-  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig, poiPacks, countStrandedRuleTags, removeStrandedRuleTags } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
   import { foreground } from '$lib/ui/foreground';
@@ -167,7 +175,7 @@
   // First-run V2 welcome (shown once — returning V1 users need to know what changed).
   // Bumped with the welcome itself: anyone who dismissed the V2 one has this flag
   // already set, so a new welcome needs a new key or nobody ever sees it.
-  const WELCOME_KEY = 'sse_welcome_v3_1_seen';
+  const WELCOME_KEY = 'sse_welcome_v3_2_seen';
   let showWelcome = false;
   function dismissWelcome() {
     showWelcome = false;
@@ -199,15 +207,10 @@
     returnToSettings();
   }
   function applyStarmapOverrides(overrides: any) {
-    starmapStore.update((s) => {
-      if (!s) return s;
-      const next: any = { ...s.rulePackOverrides, ...overrides };
-      // An editor that hands back `undefined` for a section is saying "no override at all" — the GM
-      // changed nothing, or changed it back. REMOVE the key rather than storing an empty one, or a
-      // campaign accumulates a set of overrides that say nothing and read as if they said something.
-      for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
-      return { ...s, rulePackOverrides: next };
-    });
+    // The fold itself lives in `$lib/rulepack/effectivePack` (`applyEditorOverrides`), moved there
+    // unchanged so the gates that prove a second custom gas does not delete the first can drive the
+    // SAME merge the page does rather than a copy of it.
+    starmapStore.update((s) => (s ? { ...s, rulePackOverrides: applyEditorOverrides(s.rulePackOverrides, overrides) } : s));
   }
 
   // Begin an interstellar journey from the transit planner: stamp it with the current game clock so
@@ -586,8 +589,26 @@
   // B131: ONE pending snapshot, cloned when the write happens - never a promise chain holding a clone per
   // store emission. A ship in transit emits once per frame; the chain held a full campaign per frame.
   const starmapPersist = createPersistQueue<StarmapType>((snapshot) => persistStarmap(snapshot), {
-    onError: (e) => console.error('Failed to persist starmap:', e)
+    onError: (e) => { console.error('Failed to persist starmap:', e); noteSaveFailed(); }
   });
+  // B-1: A RELOAD THE APP PERFORMS ITSELF WAITS FOR THE AUTOSAVE - `$lib/util/beforeReload`. Without
+  // this the deploy-skew recovery and the "new version" reload could leave with the last edit unwritten.
+  if (browser) onDestroy(onBeforeReload(() => starmapPersist.flush()));
+
+  // B-1: A SAVE THAT FAILED IS SAID OUT LOUD. `saveStarmap` rejects only when NEITHER store would take
+  // the campaign, and that used to reach the console and nobody else - so a GM worked on for an
+  // evening with nothing being kept, and found out at the next reload. One banner per run of
+  // failures, not one per edit; it is withdrawn by the next save that lands, because by then the
+  // campaign as it stands IS stored and the warning would no longer be true.
+  let saveFailing = false;
+  let saveProblem: string | null = null;
+  function noteSaveFailed() {
+    if (saveFailing) return;
+    saveFailing = true;
+    saveProblem = 'Your latest changes could not be saved in this browser, so a reload would lose them. ' +
+      'Save your campaign to a file now (Save Starmap) — a file is safe whatever the browser does. ' +
+      'This message goes away by itself if saving starts working again.';
+  }
 
   $: currentSystemId = $page.state.systemId || null;
 
@@ -613,7 +634,10 @@
           saveSystemState(previousSystemId);
           // Clear system store to free memory/reset views
           systemStore.set(null);
+          // UI-L10: the GM left for the starmap, so a reload stays on the starmap.
+          viewRestore.forget();
       }
+      if (currentSystemId) noteSystemOpen(currentSystemId);
       previousSystemId = currentSystemId;
   }
 
@@ -683,6 +707,7 @@
     // still has the offer waiting in Settings.
     await refreshPreUpgradeSnapshot();
     hasSavedStarmap = await hasPersistedStarmap();
+    let campaignLoadedOnStart = false;
     if (hasSavedStarmap) {
       // Safe-mode brake: if the guard stamp survived from last time, the previous load never
       // reached a painted frame — auto-loading again would just repeat the hang. Ask instead.
@@ -692,6 +717,7 @@
         loadGuardPrompt = tripped;
       } else {
         await handleLoadStarmap();
+        campaignLoadedOnStart = true;
       }
     } else if (!hubOpenRequest()) {
       // R-05/R-17: a `?hub=` or `?open=` link is a request to open THAT map. Putting the
@@ -699,6 +725,9 @@
       // something else.
       showNewStarmapModal = true;
     }
+    // UI-L10: back into the system the GM was in. Called on EVERY path, because the paths that
+    // restore nothing must also forget what was remembered.
+    restoreViewAfterStartup(campaignLoadedOnStart);
     // R-05/R-17 runs LAST, deliberately: it has to know whether there is already a campaign in
     // this browser before it can decide whether it is allowed to open anything.
     await maybeOpenHubMap();
@@ -826,18 +855,14 @@
     // already knows it. Merging afterwards would leave the first pass wrong.
     const rules = mergeClipRules(d.clip, map, built.nodes);
     const processed = systemProcessor.process(system, buildEffectiveRulePack(selectedRulepack, rules.overrides) ?? selectedRulepack);
-    const displayTimeSec = parseClockSeconds(map.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
-    const node: any = { id, name: system.name, position: at, system: processed, time: { displayTimeSec } };
 
     starmapStore.update((m) => {
       if (!m) return m;
       // R-16 again: the credit goes on the CAMPAIGN. A system pasted from somebody's map earns its
       // attribution exactly as a branch pasted into one does - this was the easiest place in the
-      // whole feature for a credit to quietly evaporate.
-      let next: any = { ...m, systems: [...m.systems, node], rulePackOverrides: rules.overrides };
-      next = addContentCredit(next, built.credit);
-      for (const c of built.carried) next = addContentCredit(next, c);
-      return next;
+      // whole feature for a credit to quietly evaporate. Placed by `placeSystemOnMap`, the one
+      // function the wizard's door uses too (R-18).
+      return placeSystemOnMap({ ...m, rulePackOverrides: rules.overrides }, processed, at, [built.credit, ...built.carried]).map;
     });
 
     const who = built.credit?.creator ? ` (credited to ${built.credit.creator})` : '';
@@ -1036,16 +1061,35 @@
    */
   // Where the GM was when they asked, so declining puts them back rather than somewhere else.
   //
-  // FALSE SINCE 2026-09-06, and the reason is the move: the paste field left the welcome screen for
-  // `LoadSourceModal`, which is only reachable from the rail - and the rail is only reachable with
-  // a campaign already open. So declining leaves the GM exactly where they were standing. The
-  // no-campaign case is still covered, by `declineHubMap`'s own `!$starmapStore` test.
+  // FALSE FOR A PASTED CODE SINCE 2026-09-06, and the reason is the move: the paste field left the
+  // welcome screen for `LoadSourceModal`, which is only reachable from the rail - and the rail is only
+  // reachable with a campaign already open. So declining leaves the GM exactly where they were
+  // standing. The no-campaign case is still covered, by `declineHubMap`'s own `!$starmapStore` test.
+  // TRUE AGAIN FOR ONE CASE SINCE 2026-09-11 (R-20): a map picked from the Explorers list on the New
+  // Starmap screen, which may be up over an open campaign (File > New Starmap) - `openHubFromList`
+  // sets it, so a decline returns to that screen rather than dropping the GM behind it.
   let hubCameFromLoadScreen = false;
   async function openHubBySlug(slug: string) {
     hubCameFromLoadScreen = false;
     showLoadStarmapSource = false;
     showNewStarmapModal = false;
     await runHubOpen(slug);
+  }
+
+  /**
+   * A MAP PICKED FROM THE EXPLORERS LIST (R-20 / G98) - in Load Starmap or on the New Starmap screen.
+   * It arrives as the map's `downloadUrl`, so it is opened BY ADDRESS, through `runHubOpenFromUrl`:
+   * the allow-list, the classification, the replace-or-keep question and the one-step-back are all
+   * the ones a `?open=` link gets. There is deliberately no fetch here.
+   *
+   * Picked on the New Starmap screen, a decline or a failure puts the GM back on that screen rather
+   * than on whatever was behind it; picked in Load Starmap, the campaign behind it is where they were.
+   */
+  async function openHubFromList(url: string) {
+    hubCameFromLoadScreen = showNewStarmapModal;
+    showLoadStarmapSource = false;
+    showNewStarmapModal = false;
+    await runHubOpenFromUrl(url);
   }
 
   async function maybeOpenHubMap() {
@@ -1058,7 +1102,7 @@
   /** BY CODE. One of two ways to get the bytes; `openHubBytes` is what happens to them. */
   async function runHubOpen(slug: string) {
     hubOpenParam = 'hub';
-    await openHubBytes(() => fetchHubMap(slug));
+    await openHubBytes(() => fetchHubMap(slug), slug);
   }
 
   /**
@@ -1069,14 +1113,16 @@
    */
   async function runHubOpenFromUrl(url: string) {
     hubOpenParam = 'open';
-    await openHubBytes(() => fetchHubMapFromUrl(url));
+    await openHubBytes(() => fetchHubMapFromUrl(url), parseHubReference(url));
   }
 
   /**
    * THE ONE DOOR: classify, ask, open. Everything from here down is identical whether the map was
-   * named by a code or by an address, which is the point of the split above.
+   * named by a code or by an address, which is the point of the split above. `slug` is the map's code
+   * when it can be read off the link (null otherwise); only a single system needs it, to credit its
+   * cartographer when it is placed.
    */
-  async function openHubBytes(getBytes: () => Promise<HubFetch>) {
+  async function openHubBytes(getBytes: () => Promise<HubFetch>, slug: string | null) {
     hubBusy = true;
     hubProblem = null;
     try {
@@ -1090,8 +1136,12 @@
         hubProblem = classified.problem ?? 'That shared map is not a file this app can open.';
         return;
       }
-      if (classified.kind !== 'starmap') {
-        hubProblem = 'That link points at a single system rather than a campaign. Download it from the hub and open it with Load System.';
+      // R-18: A SINGLE SYSTEM IS ADDED, NOT OPENED. This used to refuse ("That link points at a single
+      // system rather than a campaign"), which is why the hub hid its button on every system. The
+      // owner, 2026-09-11: yes, a link may bring a system - "but you pick the spot", and the hub's
+      // button reads "Add System to SSE". So it waits for the GM to choose where it goes.
+      if (classified.kind === 'system') {
+        offerHubSystem(classified, slug);
         return;
       }
       const name = String(classified.doc?.name ?? 'a shared map');
@@ -1140,6 +1190,45 @@
     } catch (e) {
       hubProblem = `That shared map loaded but could not be opened: ${(e as Error)?.message ?? e}`;
     }
+  }
+
+  // --- R-18: a single system from a link, placed where the GM chooses ------------------------------
+  //
+  // The owner, 2026-09-11: a link may bring a single system, "but you pick the spot" - and the hub's
+  // button for one reads "Add System to SSE". A link carries no position, so the system WAITS: a
+  // banner says what to do, and the starmap's empty-space menu offers "Add <name> here" beside "Add
+  // System Here", which is the gesture that already chooses a spot. Nothing is placed, and nothing in
+  // the campaign changes, until the GM does that. With no campaign open the New Starmap screen stays
+  // up and the banner says to start or load one first.
+  //
+  // Placing it is the wizard's Explorers door exactly: `systemFromSave` for the bytes, the
+  // cartographer's credit through `creditDownloadedSystem`, processed against the same pack the
+  // wizard uses, and onto the map through `landSystem` -> `placeSystemOnMap`.
+  let pendingHubSystem: { classified: ClassifiedSaveFile; name: string; slug: string | null } | null = null;
+
+  function offerHubSystem(classified: ClassifiedSaveFile, slug: string | null) {
+    pendingHubSystem = { classified, name: String(classified.doc?.name ?? 'The shared system'), slug };
+    clearHubParam();
+    if (!$starmapStore) showNewStarmapModal = true;
+    else if (currentSystemId) exitToStarmap();
+  }
+
+  async function placePendingHubSystem(at: { x: number; y: number; z?: number }) {
+    const pending = pendingHubSystem;
+    if (!pending || !$starmapStore || !selectedRulepack) return;
+    const got = await systemFromSave(pending.classified, selectedRulepack);
+    if (!got.ok) { pendingHubSystem = null; hubProblem = got.problem; return; }
+    // Who made it: the link named a download and nothing else, so the hub is asked. A failure there
+    // credits the map's page and the system's own name, and names nobody rather than guessing.
+    const meta = pending.slug ? await fetchHubMapCredit(pending.slug) : { title: null, creator: null };
+    const credit = creditDownloadedSystem(got.system, {
+      url: pending.slug ? hubMapUrl(pending.slug) : undefined,
+      title: meta.title ?? pending.name,
+      creator: meta.creator ?? undefined
+    });
+    const system = systemProcessor.process(got.system, selectedRulepack);
+    pendingHubSystem = null;
+    landSystem(system, at, credit, got.rules);
   }
 
   /** Acknowledge a failed hub open. Clears the param so a refresh is a fresh start, not a replay. */
@@ -1671,17 +1760,24 @@
   }
 
   async function persistStarmap(starmap: StarmapType) {
+    if (unloadedCampaignAtRisk) {
+      unloadedCampaignAtRisk = false;
+      await keepUnloadedCampaign(starmap);
+    }
     await saveStarmap(starmap);
     hasSavedStarmap = true;
+    if (saveFailing) { saveFailing = false; saveProblem = null; }
   }
 
   function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean; mapMode: 'diagrammatic' | 'scaled' }>) {
     const { name, rulepack, distanceUnit, unitIsPrefix, mapMode } = event.detail;
     selectedRulepack = rulepack;
 
-    const seed = `seed-${Date.now()}`;
-    const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
-    const anchoredTimeSec = defaultCampaignStartSeconds().toString();
+    // B4: "START EMPTY" STARTS EMPTY. This used to generate one random system at the centre of
+    // every new map - a leftover from before the map had a wizard of its own - which is not what
+    // the button ("Create Vast Nothingness") says, and which a GM then had to find out how to
+    // delete before they could begin. The first system is now placed by the GM, through the same
+    // "Add System Here" every later one uses; `emptyMapHint` below says how while the map is bare.
     const newStarmap: StarmapType = {
       id: `starmap-${Date.now()}`,
       name,
@@ -1694,17 +1790,7 @@
         pixelsPerUnit: 25,
         showScaleBar: true
       },
-      systems: [
-        {
-          id: newSystem.id,
-          name: newSystem.name,
-          position: { x: 0, y: 0 },
-          system: newSystem,
-          time: {
-            displayTimeSec: anchoredTimeSec
-          }
-        },
-      ],
+      systems: [],
       routes: [],
       temporal: createAnchoredTemporalState()
     };
@@ -1712,8 +1798,23 @@
     showNewStarmapModal = false;
   }
 
+  // B4: a bare map says how to put the first system on it, because the only way to add one is a
+  // menu that is invisible until asked for. Shown whenever the open map has no systems - a new one,
+  // or one whose last system was just deleted - and dismissible, coming back only if the map empties
+  // again.
+  let emptyMapHintDismissed = false;
+  $: mapIsEmpty = !!$starmapStore && ($starmapStore.systems?.length ?? 0) === 0;
+  $: if (!mapIsEmpty) emptyMapHintDismissed = false;
+  $: emptyMapHint = mapIsEmpty && !emptyMapHintDismissed && !currentSystemId && !showNewStarmapModal
+    && !showGenerationWizard && !pendingHubSystem && !showWelcome;
+
   function handleSystemClick(event: CustomEvent<string>) {
-    const sysId = event.detail; // Local var to ensure immediate availability
+    enterSystem(event.detail);
+  }
+
+  // `navigate` is `pushState` for the GM's own click and `replaceState` for the start-up restore,
+  // which re-enters the history entry the reload left it on rather than stacking a second one.
+  function enterSystem(sysId: string, navigate: typeof pushState = pushState): boolean {
     const currentMap = get(starmapStore);
     const systemNode = currentMap?.systems.find(s => s.id === sysId);
     if (systemNode) {
@@ -1746,8 +1847,69 @@
       }
       systemStore.set(JSON.parse(JSON.stringify(refreshedNode.system)));
       // Push state to enter the system
-      pushState('', { systemId: sysId });
+      navigate('', { systemId: sysId });
+      return true;
     }
+    return false;
+  }
+
+  // --- UI-L10: after a reload, back into the system the GM was in ---------------------------------
+  //
+  // THE LAW IS IN `$lib/viewRestore` - what is remembered, why it is this TAB's and not the
+  // device's, and the one-shot rule that stops a system which kills the tab from being re-opened
+  // on every start. Read the head of that module before changing when anything here is called.
+  let systemViewComponent: SystemView | null = null;
+  const viewRestore = createViewRestore({
+    // Reached through functions, never held, for the reason the load guard gives below.
+    storage: browser
+      ? {
+          getItem: (key) => sessionStorage.getItem(key),
+          setItem: (key, value) => sessionStorage.setItem(key, value),
+          removeItem: (key) => sessionStorage.removeItem(key)
+        }
+      : null,
+    win: browser ? window : null,
+    doc: browser ? document : null,
+    // A system view that threw while mounting was never bound, so it never counts as open.
+    ready: () => !!systemViewComponent && !!currentSystemId
+  });
+  onDestroy(() => viewRestore.destroy());
+
+  // Every way into a system ends in `$page.state.systemId`, so this is called from the one
+  // reactive block that watches it rather than from each of them.
+  function noteSystemOpen(id: string) {
+    const map = get(starmapStore);
+    // The state can carry the map node's id or the system's own (SystemView's focus changes write
+    // the latter); they are one system, and it is remembered by its node.
+    const node = map?.systems.find((s) => s.id === id || s.system?.id === id);
+    if (map && node) viewRestore.entered(map.id, node.id);
+    else viewRestore.forget(); // state naming a system this campaign does not have
+  }
+
+  function restoreViewAfterStartup(campaignLoaded: boolean) {
+    // Already in a system (a remount with the campaign still in memory, and a quick click): what
+    // is remembered is THIS visit's, written by `noteSystemOpen`, and start-up has no say.
+    if (currentSystemId) return;
+    // Nothing is restored behind the safe-mode screen or a stopped load, nor when the page was
+    // opened by a link that brings a shared map or a system of its own.
+    const blocked = !campaignLoaded || loadGuardPrompt !== null || diagnosticOffer !== null || !!hubOpenRequest();
+    const view = viewRestore.startup(blocked ? null : get(starmapStore), blocked);
+    if (view.kind === 'declined') {
+      remoteNotice = declinedRestoreNotice(view.name);
+      if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+      remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 12000);
+      return;
+    }
+    if (view.kind !== 'restore') return;
+    // The load guard is still armed (its clears are a painted frame and a timer, both ahead of
+    // us), so name this stage: if the open hangs, the safe-mode screen says where (UI-L1).
+    const name = get(starmapStore)?.systems.find((s) => s.id === view.systemId)?.name || 'the last system';
+    loadGuardStage(`re-opening ${name}`);
+    perfStage('view.restore');
+    let opened = false;
+    try { opened = enterSystem(view.systemId, replaceState); }
+    catch (e) { console.warn('[sse-load] could not re-open the last system:', e); }
+    if (!opened) viewRestore.forget();
   }
 
   function handleSystemZoom(event: CustomEvent<string>) {
@@ -1791,13 +1953,29 @@
   // startup, the previous load never finished — so we do not auto-load, and instead offer: try
   // again, start without the map (data untouched), or download the stored map as a file.
   // The stamp doubles as the diagnosis: it names the last stage that started.
-  const LOAD_GUARD_KEY = 'sse-load-guard';
-  let loadGuardArmed = false;
+  //
+  // B2: THE STAMP ITSELF LIVES IN `$lib/loadGuard`, with the one rule that stopped it misfiring - a
+  // page that goes away or goes into the background mid-load is not a load that hung. Read the head
+  // of that module before changing when the stamp is written or removed.
+  const loadGuard = createLoadGuard({
+    // Reached through functions, never held: merely touching `localStorage` can throw in a locked-down
+    // browser, and the guard catches whatever its storage throws.
+    storage: browser
+      ? {
+          getItem: (key) => localStorage.getItem(key),
+          setItem: (key, value) => localStorage.setItem(key, value),
+          removeItem: (key) => localStorage.removeItem(key)
+        }
+      : null,
+    win: browser ? window : null,
+    doc: browser ? document : null
+  });
+  onDestroy(() => loadGuard.destroy());
   let loadGuardPrompt: string | null = null; // non-null = show the safe-mode screen (value = stalled stage)
-  function loadGuardArm(stage: string) { if (!browser) return; loadGuardArmed = true; loadGuardStage(stage); }
-  function loadGuardStage(stage: string) { if (browser && loadGuardArmed) { try { localStorage.setItem(LOAD_GUARD_KEY, stage); } catch { /* private mode */ } } }
-  function loadGuardClear() { loadGuardArmed = false; if (browser) { try { localStorage.removeItem(LOAD_GUARD_KEY); } catch { /* private mode */ } } }
-  function loadGuardTripped(): string | null { if (!browser) return null; try { return localStorage.getItem(LOAD_GUARD_KEY); } catch { return null; } }
+  function loadGuardArm(stage: string) { loadGuard.arm(stage); }
+  function loadGuardStage(stage: string) { loadGuard.stage(stage); }
+  function loadGuardClear() { loadGuard.clear(); }
+  function loadGuardTripped(): string | null { return loadGuard.tripped(); }
   // Emergency export: the stored map straight to a .json file WITHOUT rendering anything — the
   // escape hatch for a map that cannot load. Plain JSON on purpose: it is what the ordinary .json
   // load path reads back, and this path must not depend on any machinery that might be the hang.
@@ -1813,6 +1991,38 @@
     a.download = `${(saved.name || 'starmap').replace(/[^\w\- ]+/g, '').trim() || 'starmap'}-recovered.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  // B-1: "START WITHOUT LOADING IT" MUST NOT BE THE STEP THAT DESTROYS THE CAMPAIGN. The screen says
+  // the starmap is still saved and nothing has been lost, which is true - until the GM starts a new
+  // map from here, and the first autosave of that overwrites the only stored copy with no question
+  // asked (the New Starmap confirm looks at the campaign that is OPEN, and none is). So this only
+  // raises a flag, and `persistStarmap` - the one place every way of starting a map ends up - copies
+  // the stored campaign to the one-step-back slot before it writes over it. That is the same single
+  // undo an upgrade or a map opened from Explorers keeps, and Settings offers the way back.
+  let unloadedCampaignAtRisk = false;
+  function startWithoutLoading() {
+    loadGuardPrompt = null;
+    loadGuardClear();
+    unloadedCampaignAtRisk = true;
+    showNewStarmapModal = true;
+  }
+  // Storage to storage: nothing rendered and nothing processed, for the reason `downloadStoredStarmap`
+  // gives (engine map UI-L4) - the campaign being kept may be the one that would not load.
+  async function keepUnloadedCampaign(aboutToWrite: StarmapType) {
+    try {
+      const stored = await loadSavedStarmap();
+      // The same campaign coming back in (its own recovered file, say) replaces nothing.
+      if (!stored || stored.id === aboutToWrite.id) return;
+      if (await savePreUpgradeStarmap(stored)) {
+        preUpgradeSnapshotName = stored.name ?? 'your previous campaign';
+        remoteNotice = `"${preUpgradeSnapshotName}" was not loaded and has been kept — it is one step back, in Settings.`;
+        if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+        remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 12000);
+      }
+    } catch (e) {
+      console.warn('[sse-load] could not keep a copy of the campaign that was not loaded', e);
+    }
   }
 
   let physicsProgress: { done: number; total: number; joke: string; current: string } | null = null;
@@ -1956,6 +2166,9 @@
     const systems = starmap.systems ?? [];
     if (!selectedRulepack || systems.length === 0) return starmap;
     recalcCancelRequested = false;
+    // 3.1.1: against THIS CAMPAIGN'S rules, not the shipped pack alone - or every world using a custom
+    // gas or liquid is derived as though it did not exist until its system is opened. See the helper.
+    const pack = campaignRulePack(selectedRulepack, starmap);
     const nameOf = (i: number) => systems[i]?.name || `system ${i + 1}`;
     physicsProgress = { done: 0, total: systems.length, joke: PHYSICS_JOKES[0], current: nameOf(0) };
     perfStage('physics.start');
@@ -1978,7 +2191,7 @@
           // a stored body keeps its old class/tags — the processor's guard won't re-classify a body that
           // already has a (stale) non-empty class — so an engine fix (e.g. the moon-eyeball correction)
           // would never show on a refresh of an existing map. Authored inputs + GM-pinned types survive.
-          node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack);
+          node.system = systemProcessor.process(fixUpImportedSystem(node.system, pack), pack);
         }
       } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
       loadProcessed.push(nameOf(i));
@@ -2055,14 +2268,15 @@
   // (deterministic per star, tagged origin/generated), and runs the same
   // physics recalc every loaded map gets.
   async function handleRealSkyImport(event: CustomEvent<any>) {
-    const { systems, fillOut, name, description } = event.detail;
+    const { systems, name, description } = event.detail;
     if (!selectedRulepack && rulePacks.length) selectedRulepack = rulePacks[0];
     if (!selectedRulepack) return;
     // The catalogues carry no stellar magnetic field or spin tilt; complete
     // them from the rule pack's bands, deterministically per star, exactly as
     // the generator does for its own stars.
     completeImportedStars(systems, selectedRulepack);
-    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), selectedRulepack);
+    // The dials the GM set in the dialogue go with it - one call shared with the append door.
+    fillOutImported(event.detail, systems, selectedRulepack);
     const newStarmap: StarmapType = {
       id: `starmap-realsky-${Date.now()}`,
       name,
@@ -2106,14 +2320,44 @@
   }
 
   // The wizard produced a fully-processed system — drop it at the remembered position.
-  function placeGeneratedSystem(event: CustomEvent<{ system: System }>) {
+  // A107: the bundled examples carry STABLE ids (both Sols are `solar-system`), so the same example
+  // placed twice, or two variants of it, must not share one - `placeSystemOnMap` takes the first free
+  // spelling at the door. R-18 (Stream AA job 3): a system picked from the wizard's Explorers list
+  // arrives with a `credit` naming its cartographer, and it lands on the campaign exactly as a pasted
+  // system's does, through the same function.
+  function placeGeneratedSystem(event: CustomEvent<{ system: System; credit?: ContentCredit; rules?: CarriedRules }>) {
     showGenerationWizard = false;
     const pos = pendingWizardPosition; pendingWizardPosition = null;
     if (!$starmapStore || !pos) return;
-    const newSystem = event.detail.system;
-    const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
-    const newSystemNode: StarSystemNode = { id: newSystem.id, name: newSystem.name, position: pos, system: newSystem, time: { displayTimeSec } };
-    starmapStore.update(starmap => { if (starmap) starmap.systems = [...starmap.systems, newSystemNode]; return starmap; });
+    landSystem(event.detail.system, pos, event.detail.credit, event.detail.rules);
+  }
+
+  /**
+   * A PROCESSED SYSTEM ONTO THE MAP, and when it came from Explorers, a sentence saying whose it is.
+   * The wizard's door and the "Add System to SSE" link's placement both end here (R-18).
+   */
+  function landSystem(system: System, pos: { x: number; y: number; z?: number }, credit?: ContentCredit, rules?: CarriedRules) {
+    // 3.1.1: A SAVED SYSTEM BRINGS THE RULES ITS CAMPAIGN MADE (`io/systemRules.ts`). They are folded
+    // into THIS campaign per definition - added, discarded when identical, renamed when this campaign
+    // already uses the name differently, never overwritten - and the system is then re-derived against
+    // the pack that knows them, by the same strip-then-process every reload uses (a processed body
+    // keeps its class, so processing again without the strip would keep the first pass's answer).
+    const map = $starmapStore;
+    const landed = map && rules && selectedRulepack
+      ? landCarriedRules(rules, map.rulePackOverrides, selectedRulepack, system.nodes)
+      : null;
+    const placed = landed ? systemProcessor.process(fixUpImportedSystem(system, landed.pack), landed.pack) : system;
+    const rulesNote = landed?.note ?? '';
+    starmapStore.update((m) => (m
+      ? placeSystemOnMap(landed ? { ...m, rulePackOverrides: landed.overrides } : m, placed, pos, [credit]).map
+      : m));
+    if (credit || rulesNote) {
+      const who = credit?.creator ? ` (credited to ${credit.creator})` : '';
+      const arrived = credit ? `Added ${system.name} from Explorers${who}.` : `Placed ${system.name}.`;
+      clipNotice = `${arrived}${rulesNote ? ' ' + rulesNote : ''}`;
+      if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+      clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
+    }
   }
 
 
@@ -2250,8 +2494,11 @@
       return starmap;
     });
     selectedSystemForLink = null; // Deselect after deletion
-    currentSystemId = null; // If the deleted system was being viewed, go back to starmap
-    systemStore.set(null);
+    // If the deleted system was being viewed, go back to starmap - the way every other exit does.
+    // Setting `currentSystemId` alone left the id in `$page.state`, to come back at the store's next
+    // emission and (UI-L10) to be written down as the system to re-open.
+    if ($page.state.systemId) exitToStarmap();
+    else { currentSystemId = null; systemStore.set(null); }
   }
 
   function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
@@ -2286,6 +2533,26 @@
     });
     const open = get(systemStore);
     if (open) { annotateReasonsToVisit(open); systemStore.set({ ...open }); }
+  }
+
+  // TAGS LEFT BEHIND BY A VANISHED RULE - counted only while the category editor is open, which is
+  // where a GM deletes or renames the category that strands them. The rules pass never clears these
+  // by itself (it cannot tell a deleted category from one belonging to whoever made the map), so
+  // the removal is the GM's explicit act, here.
+  $: strandedRuleTagCount = showTagEditor
+    ? countStrandedRuleTags([...($starmapStore?.systems ?? []).map((n) => n?.system), $systemStore], $poiPacks)
+    : { tags: 0, bodies: 0 };
+  function cleanStrandedRuleTags() {
+    const n = strandedRuleTagCount;
+    if (!n.tags) return;
+    if (!confirm(`Remove ${n.tags} tag${n.tags === 1 ? '' : 's'} from ${n.bodies} ${n.bodies === 1 ? 'body' : 'bodies'}?\n\nOnly tags seeded by rules that are no longer here are removed. Tags you added by hand, physics tags and tags from your current rules are not touched.`)) return;
+    starmapStore.update((map) => {
+      if (!map) return map;
+      for (const node of map.systems) if (node?.system) removeStrandedRuleTags(node.system);
+      return { ...map };
+    });
+    const open = get(systemStore);
+    if (open) { removeStrandedRuleTags(open); systemStore.set({ ...open }); }
   }
 
   // G42 phase 3: the rail's Save Starmap now goes through the save screen, which states in plain
@@ -2417,11 +2684,26 @@
     // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
     // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
     if (selectedRulepack && Array.isArray(sanitized.systems)) {
+      // 3.1.1: against the rules THIS FILE carries, not the shipped pack alone (`campaignRulePack`).
+      const pack = campaignRulePack(selectedRulepack, sanitized);
       for (const node of sanitized.systems) {
         if (node?.system?.nodes) {
-          try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
+          try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, pack), pack); }
           catch (e) { console.warn('Fix-up failed for system', node.name, e); }
         }
+      }
+    }
+
+    // A107: two systems sharing an id (the two bundled Sols, placed by the wizard with their stable id
+    // verbatim) used to fail the validation below and lose the GM the WHOLE campaign. Repair it here
+    // instead - the second keeps its bodies and gains a suffix - and say so; the next save writes it.
+    if (Array.isArray(sanitized.systems)) {
+      const fixed = dedupeSystemIds(sanitized.systems);
+      if (fixed.renamed.length) {
+        sanitized.systems = fixed.systems;
+        clipNotice = fixed.renamed.map((r) => `Two systems shared the id "${r.from}" - ${r.name} is now "${r.to}".`).join(' ') + ' Both are kept; save to make it permanent.';
+        if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+        clipNoticeTimer = setTimeout(() => (clipNotice = null), 15000);
       }
     }
 
@@ -2546,6 +2828,14 @@
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept={FILE_ACCEPT.campaign} />
 
+  <!-- B4: first in the list on purpose - every banner sits in the same place, and a real notice
+       must cover this standing hint rather than the other way round. -->
+  {#if emptyMapHint}
+    <div class="mem-banner" role="status">
+      <span>This map is empty. Right-click (or press and hold) anywhere on it and choose "Add System Here" to place your first star system.</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (emptyMapHintDismissed = true)}>×</button>
+    </div>
+  {/if}
   {#if remoteNotice}
     <div class="mem-banner" role="status">
       <span>{remoteNotice}</span>
@@ -2558,10 +2848,27 @@
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (clipNotice = null)}>×</button>
     </div>
   {/if}
+  <!-- R-18: a system from an "Add System to SSE" link, waiting for the GM to choose its spot. It
+       stays until placed or cancelled, because the instruction is the only way to find the menu item. -->
+  {#if pendingHubSystem}
+    <div class="mem-banner" role="status">
+      <span>
+        {pendingHubSystem.name} from Explorers is ready to add.
+        {#if $starmapStore && !showNewStarmapModal}Right-click (or press and hold) an empty spot on your map and choose "Add {pendingHubSystem.name} here".{:else}Start or load a campaign first, then right-click where it should go.{/if}
+      </span>
+      <button type="button" class="mem-banner-close" aria-label="Cancel adding it" title="Cancel adding it" on:click={() => (pendingHubSystem = null)}>×</button>
+    </div>
+  {/if}
   {#if createdWithNotice}
     <div class="mem-banner" role="status">
       <span>{createdWithNotice}</span>
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (createdWithNotice = null)}>×</button>
+    </div>
+  {/if}
+  {#if saveProblem}
+    <div class="mem-banner critical" role="alert">
+      <span>{saveProblem}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (saveProblem = null)}>×</button>
     </div>
   {/if}
   {#if memBanner}
@@ -2625,7 +2932,7 @@
         </p>
         <div class="physics-guard-actions">
           <button type="button" class="physics-guard-btn primary" on:click={async () => { loadGuardPrompt = null; await handleLoadStarmap(); }}>Try loading again</button>
-          <button type="button" class="physics-guard-btn" on:click={() => { loadGuardPrompt = null; loadGuardClear(); showNewStarmapModal = true; }}>Start without loading it</button>
+          <button type="button" class="physics-guard-btn" on:click={startWithoutLoading}>Start without loading it</button>
           <button type="button" class="physics-guard-btn" on:click={downloadStoredStarmap}>Download a copy (.json)</button>
           <button type="button" class="physics-guard-btn" disabled={diagnosticBuilding} on:click={() => downloadDiagnosticBundle({
             reason: `the previous load never finished (safe mode; stopped at "${loadGuardPrompt}")`,
@@ -2669,6 +2976,7 @@
       kind="campaign"
       on:file={() => { showLoadStarmapSource = false; handleUploadStarmap(); }}
       on:openHub={(e) => openHubBySlug(e.detail)}
+      on:openFromExplorers={(e) => openHubFromList(e.detail)}
       on:close={() => (showLoadStarmapSource = false)} />
   {/if}
 
@@ -2718,6 +3026,7 @@
         on:load={handleLoadStarmap} 
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
+        on:openFromExplorers={(e) => openHubFromList(e.detail)}
         on:realSkyImport={() => (showRealSkyImportModal = true)}
     />
     {#if showRealSkyImportModal}
@@ -2727,8 +3036,10 @@
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
     {#if $systemStore && effectiveRulePack}
       <SystemView
+        bind:this={systemViewComponent}
         on:pasteClip={(e) => pasteClipInto(e.detail)}
-        system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
+        system={$systemStore} rulePack={effectiveRulePack} shippedRulePack={selectedRulepack} {exampleSystems}
+        on:notice={(e) => { clipNotice = e.detail; if (clipNoticeTimer) clearTimeout(clipNoticeTimer); clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000); }}
         {broadcastSessionId}
         routesAttention={routesData.worstAttention}
         on:new={handleRequestNewStarmap}
@@ -2768,6 +3079,8 @@
       on:addsystemat={handleAddSystemAt}
       on:pasteintosystem={(e) => pasteIntoSystemFromMap(e.detail)}
       on:pasteasnewsystem={(e) => pasteClipAsNewSystem(e.detail)}
+      pendingSystemName={pendingHubSystem?.name ?? null}
+      on:placependingsystem={(e) => placePendingHubSystem(e.detail)}
       on:selectsystemforlink={handleSelectSystemForLink}
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}
@@ -2832,7 +3145,7 @@
     />
   {/if}
   {#if showTagEditor}
-    <TagCategoryEditor existingTags={allTagKeys} on:close={() => { showTagEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
+    <TagCategoryEditor existingTags={allTagKeys} stranded={strandedRuleTagCount} on:cleanstranded={cleanStrandedRuleTags} on:close={() => { showTagEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}
@@ -2843,7 +3156,7 @@
     <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showFuelModal = false; returnToSettings(); }} />
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
-    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} effectivePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showBiospheresModal && $starmapStore && selectedRulepack}
     <EditBiospheresModal showModal={showBiospheresModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />
@@ -2940,6 +3253,7 @@
       system={shipPanel.system}
       hostBody={shipPanel.host}
       rulePack={effectiveRulePack || selectedRulepack}
+      shippedRulePack={selectedRulepack}
       status={shipPanel.status}
       frac={shipPanel.frac}
       fromName={shipPanel.fromName}

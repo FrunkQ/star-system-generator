@@ -5,8 +5,8 @@
 // and the layout's "new version available" prompt only fires when THIS FILE's bytes change, so it
 // had been dead since then. Until the bump rides the release recipe automatically, bump it on any
 // push that changes what the offline shell needs.
-const STATIC_CACHE = 'sse-static-v3.1.48';
-const RUNTIME_CACHE = 'sse-runtime-v3.1.48';
+const STATIC_CACHE = 'sse-static-v3.2.0';
+const RUNTIME_CACHE = 'sse-runtime-v3.2.0';
 
 const PRECACHE_URLS = [
   '/',
@@ -17,13 +17,14 @@ const PRECACHE_URLS = [
   '/pwa/icon-512.png'
 ];
 
+// B3: INSTALL DOES NOT SKIP WAITING. It used to (`.then(() => self.skipWaiting())` on the end of the
+// precache), which took over every open page the moment a new version finished installing - so the
+// app's "Reload now to update?" prompt reloaded the page whichever button was pressed, in the middle
+// of whatever the GM was doing. A new worker now WAITS until the page says the GM agreed (the
+// SKIP_WAITING message below), or until every tab of the app has closed. A first install is not
+// affected: with no older worker to wait for, it activates straight away by itself.
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches
-      .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_URLS)));
 });
 
 self.addEventListener('activate', (event) => {

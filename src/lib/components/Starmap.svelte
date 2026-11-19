@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { playerConnections } from '$lib/playerConnections';
+  import { uniqueSystemId } from '$lib/starmap/systemIds';
   import { constructIconPath, constructIconShape } from '$lib/constructs/constructIcon';
   import { gestures } from '$lib/input/gestures';
   // G26/C17: the glyph is a SCREEN quantity — its size, its members' spread and its band scale come
@@ -31,7 +32,7 @@
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import RealSkyImportModal from './RealSkyImportModal.svelte';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
-  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { fillOutImported } from '$lib/import/realsky/fillout';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
@@ -47,7 +48,7 @@
   // MAP HIGHLIGHTS — a system badges the union of what everything INSIDE it carries, not just its
   // star. The interesting cases are never on the star: a faction holding one moon, a refuelling stop
   // at a gas giant. Several factions in one system is a real answer, so they all show.
-  import { rollUpMarkers, capMarkers, type MapHighlights } from '$lib/tags/mapHighlights';
+  import { rollUpMarkers, capMarkers, describeHighlightRef, type MapHighlights } from '$lib/tags/mapHighlights';
   import type { TagCategory } from '$lib/tags/tagCategories';
   // A system's badge IS the panel's tag chip, drawn small — see tags/tagPill.ts. The pill's width is
   // now MEASURED; it used to be guessed from the character count, so a wide label overflowed its own
@@ -67,7 +68,7 @@
   // The starmap had no idea anything was in hand: every paste affordance lived in the system view,
   // which is not where a GM lands when they come back from the map library (owner, 2026-09-06).
   import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture, clipboardHint } from '$lib/io/clipDetect';
-  import { systemNodesFromClip } from '$lib/io/hubClip';  import { systemRootNode } from '$lib/system/barycentres';
+  import { systemNodesFromClip, isRulesOnlyClip } from '$lib/io/hubClip';  import { systemRootNode } from '$lib/system/barycentres';
   import { buildClip } from '$lib/io/hubClip';
   import { putClip } from '$lib/io/clipBuffer';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
@@ -98,12 +99,41 @@
     }
     return [...seen.values()];
   })();
+  // THE NOTE THAT SAYS WHY STARS HAVE FADED (UI-C23). The fade above is a filter with no control
+  // of its own, the selection that drives it is PERSISTED (it survives a reload and was probably
+  // made in another panel), and the key only ever appeared when something MATCHED - so a
+  // selection nothing on the map carries dimmed every system and said nothing at all. A user
+  // asked exactly that: "why are stars faded in the starmap?"
+  //
+  // The count is taken with `systemMatches`, the very call the fade's `class:hl-dim` makes, so the
+  // number in the note and the number of dimmed systems are one answer.
+  $: highlightNames = activeHighlights.map((h) => describeHighlightRef(h.ref, $tagCategories).label);
+  $: fadedSystemCount = highlightsActive
+    ? (starmap?.systems ?? []).filter((s) => !systemMatches(s, activeHighlights, $tagCategories)).length
+    : 0;
+  $: totalSystemCount = starmap?.systems?.length ?? 0;
+  // Dismissing hides the NOTE, not the highlight, and only for the selection it was dismissed on:
+  // a different selection is a different question and brings the note back.
+  $: highlightSelectionKey = activeHighlights.map((h) => h.ref).join('|');
+  let highlightNoteDismissedFor: string | null = null;
+  $: highlightNoteOpen = highlightsActive && highlightNoteDismissedFor !== highlightSelectionKey;
+  // The selection is one store shared by every map, the GM's and the players' - the same write
+  // Find by tag and the Player Views panel make. Clearing here clears it everywhere, as theirs does.
+  function clearHighlights() {
+    liveOverrides.update((o) => ({ ...o, mapHighlights: [] }));
+  }
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
   export let linkingMode: boolean = false;
   export let selectedSystemForLink: string | null = null;
+  /**
+   * R-18: a single system that arrived by an "Add System to SSE" link and is waiting for the GM to
+   * choose where it goes. The owner, 2026-09-11, asked for exactly that - "you pick the spot" - so
+   * the empty-space menu offers it beside "Add System Here", the gesture that already picks a spot.
+   */
+  export let pendingSystemName: string | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -932,8 +962,13 @@
   // Re-asked each time a menu opens, because a gesture read may have just settled the answer.
   let clipHint: string | null = null;
 
+  // A RULES CLIP IS PASTEABLE HERE TOO (G99). It is not a system, so `systemNodesFromClip` rightly
+  // says no - and the menu used to grey "Paste Rules (a liquid) here" on that answer, although the
+  // route's `pasteClipAsNewSystem` has merged a rules clip at this exact door since R-19. With Copy on
+  // the Settings editors a rules clip is the thing most often in hand here, so the item is enabled
+  // and the route does what it already did.
   $: pasteAsSystem = $detectedClip
-    ? systemNodesFromClip($detectedClip.clip)
+    ? (isRulesOnlyClip($detectedClip.clip) ? ({ ok: true } as const) : systemNodesFromClip($detectedClip.clip))
     : ({ ok: false, problem: 'Nothing is copied.' } as const);
 
   /**
@@ -962,7 +997,8 @@
     if (!sysNode || !root) return;
     const clip = buildClip(sysNode.system, String((root as any).id), {
       credits: starmap.contentCredits ?? [],
-      systemName: sysNode.name
+      systemName: sysNode.name,
+      rulePackOverrides: starmap.rulePackOverrides
     });
     if (!clip) return;
     putClip(clip, String(sysNode.name ?? 'system'));
@@ -986,6 +1022,13 @@
     const at = contextMenuClickCoords;
     showContextMenu = false;
     dispatch('pasteasnewsystem', at);
+  }
+
+  /** R-18: put the system a link delivered here. Same coordinates as a paste or "Add System Here". */
+  function handleContextMenuPlacePending() {
+    const at = contextMenuClickCoords;
+    showContextMenu = false;
+    dispatch('placependingsystem', at);
   }
 
   let contextMenuClickCoords = { x: 0, y: 0 };
@@ -1083,13 +1126,13 @@
   }
 
   function handleRealSkyAppend(event: CustomEvent<any>) {
-    const { systems, fillOut, infillKnobs } = event.detail;
+    const { systems } = event.detail;
     // Same completion + processing every imported system gets on load:
     // pack-band star field/tilt, then the full physics pass (the Traveller
     // importer processes before dispatching for the same reason).
     completeImportedStars(systems, rulePack);
     // G33: the dials the GM set in the modal, not the defaults.
-    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), rulePack, { knobs: infillKnobs });
+    fillOutImported(event.detail, systems, rulePack);
     for (const entry of systems) {
       entry.system = systemProcessor.process(fixUpImportedSystem(entry.system, rulePack), rulePack);
     }
@@ -1317,10 +1360,13 @@
 
       // G33: the dials the GM set in the modal reach the infill step, which is what
       // importer.ts's own comment always promised.
-      const system = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr, placeMainWorldInHabitableZone });
-      
+      const generated = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr, placeMainWorldInHabitableZone });
+      // A107: the first free spelling of the id at the door, the same rule as the wizard's.
+      const id = uniqueSystemId(generated.id, starmap.systems.map((s) => s.id));
+      const system = id === generated.id ? generated : { ...generated, id };
+
       const newSystemNode = {
-          id: system.id,
+          id,
           name: data.name,
           position: { x: travellerImportCoords.x, y: travellerImportCoords.y },
           system: system,
@@ -1790,13 +1836,35 @@
         on:close={() => (sizeCompareOn = false)}
       />
     {/if}
-    {#if highlightKey.length}
-      <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. -->
-      <div class="hl-key">
-        <span class="hl-key-head">Highlighted</span>
+    {#if highlightKey.length || highlightNoteOpen}
+      <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. While a
+           highlight is fading systems it is also the NOTE that says so: what is highlighted, how
+           many systems that has faded, and a Clear. -->
+      <div class="hl-key" class:hl-note={highlightNoteOpen} role={highlightNoteOpen ? 'status' : undefined}>
+        {#if highlightNoteOpen}
+          <span class="hl-key-top">
+            <span class="hl-key-head">Highlighting: <span class="hl-key-names">{highlightNames.join(', ')}</span></span>
+            <button type="button" class="hl-key-x" aria-label="Hide this note"
+              title="Hide this note. The highlight stays on."
+              on:click={() => (highlightNoteDismissedFor = highlightSelectionKey)}>×</button>
+          </span>
+        {:else}
+          <span class="hl-key-head">Highlighted</span>
+        {/if}
         {#each highlightKey as k (k.label)}
           <span class="hl-key-row"><span class="hl-key-dot" style="background:{k.color}"></span>{k.label}</span>
         {/each}
+        {#if highlightNoteOpen}
+          <span class="hl-key-foot">
+            <span class="hl-key-count">
+              {#if fadedSystemCount === 0}Every system carries it.
+              {:else if fadedSystemCount === totalSystemCount}Nothing on this map carries it, so all {totalSystemCount} {totalSystemCount === 1 ? 'system is' : 'systems are'} faded.
+              {:else}{fadedSystemCount} {fadedSystemCount === 1 ? 'system' : 'systems'} faded.{/if}
+            </span>
+            <button type="button" class="hl-key-clear" on:click={clearHighlights}
+              title="Stop highlighting. Clears the selection on your maps and the players'.">Clear</button>
+          </span>
+        {/if}
       </div>
     {/if}
     <StarmapScaleBar
@@ -1890,6 +1958,9 @@
             </li>
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
+                    {#if pendingSystemName}
+                      <li class="pending-place" on:click={handleContextMenuPlacePending}>Add {pendingSystemName} here</li>
+                    {/if}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
                     <!-- SHOWN, AND GREYED WHEN IT DOES NOT APPLY (owner, 2026-09-06: "show but grey
                          out if not applicable"). Only a star and what orbits it can become a system
@@ -2085,6 +2156,11 @@
     box-shadow: 0 0 15px rgba(229, 62, 62, 0.5);
   }
 
+  /* The system a link is waiting to place is the one thing the GM came to this menu for. */
+  .context-menu li.pending-place {
+    color: var(--accent, #7aa2f7);
+    font-weight: 600;
+  }
   .context-menu li.disabled {
     opacity: 0.45;
     cursor: default;
@@ -2486,4 +2562,16 @@
   .hl-key-head { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
   .hl-key-row { display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hl-key-dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+  /* The note form of the key. The box itself stays click-through so it never eats a map drag; only
+     its two buttons take the pointer. */
+  .hl-key.hl-note { max-width: 230px; }
+  .hl-key-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+  .hl-key-names { text-transform: none; letter-spacing: 0; font-size: 0.68rem; color: var(--text); }
+  .hl-key-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+  .hl-key-count { color: var(--text-muted); }
+  .hl-key-x, .hl-key-clear { pointer-events: auto; cursor: pointer; font: inherit; }
+  .hl-key-x { background: none; border: none; color: var(--text-faint); padding: 0 2px; line-height: 1; font-size: 0.9rem; }
+  .hl-key-x:hover { color: var(--text); }
+  .hl-key-clear { background: var(--bg-control); border: 1px solid var(--border); border-radius: 3px; color: var(--text); padding: 1px 7px; flex: 0 0 auto; }
+  .hl-key-clear:hover { border-color: var(--accent, #ff5a1f); }
 </style>

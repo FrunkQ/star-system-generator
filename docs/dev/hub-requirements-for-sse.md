@@ -882,6 +882,14 @@ tag's definition cannot travel even though the tag on the node does. Recorded he
 paste into a fresh campaign, confirm the liquid arrived and the body's phase is right; paste the same clip again
 and confirm nothing is duplicated or renamed.
 
+**SSE-SIDE ADDENDUM, 2026-09-11 (stream AA job 4, [[G99]], beta v3.1.70): THE APP NOW PRODUCES RULES-ONLY CLIPS.**
+Settings' definition editors offer Copy on every definition a GM made; the clip is the hub's `buildRulesClip` envelope
+exactly (`nodes: []`, no `root`, `source.title` = the campaign). A copy carries the custom definitions the copied one
+names, and the merge now repoints a gas's condensate liquid and a mix's gases on a clash as well as an engine's fuel.
+**Two corrections to this section's own claims:** the app's body Copy did NOT carry the campaign's overrides until
+this push (`buildClip` took them; no call site passed them); and the starmap's "Paste Rules (...) here" was greyed for
+a rules clip until this push. **Nothing is asked of the hub**: a clip this app writes is one it could already read.
+
 ### R-19 SEAM REPORT (engine half) - hand this to the coordinator; the hub pastes it under R-19
 
 ```
@@ -919,3 +927,127 @@ ready for: STREAM N - the hub's own check, once the field name moves: copy a bod
            liquid, paste into a fresh campaign, confirm the liquid arrived AND the body's phase is
            right; then paste the same clip again and confirm nothing is duplicated or renamed
 ```
+
+## R-20 — the hub's map list, for a panel inside the app (received 2026-09-11)
+
+The hub side wrote the interface and it is live: `GET https://explorers.starsystemx.com/api/maps`, no
+credentials, CORS open, ten at a time by `sort=new|loved|discussed|detailed`. The full contract, the fields to
+read, and the one trap (`openUrl` is null for a single system because R-18 is still open) are on the board as
+[[G98]]; the source is `starsystemx-creator-hub/docs/prompt-for-sse-2026-09-11-map-list-api.md`. **BRIEFED AS STREAM AA, 2026-09-11**, the same day, on the owner's larger decision: *"the load/new map modals are
+going to link to those available on the Explorers site RATHER than default ones shipped - reduce hosting costs on
+Vercel."* So the hub DOES host the defaults, by its own suggested route (hub maps under a hub account, a tag to
+filter on), and the shipped example maps leave this bundle. The stream also carries R-18 (a single system through
+the wizard's door, so the hub can fill `openUrl`) and [[G99]] (Copy on non-default definitions, the other half of
+R-19). Prompt: `../stream-aa-prompt.md`.
+
+**SSE-SIDE STATUS, 2026-09-11 (stream AA job 1): THE PANEL SHIPPED on beta at v3.1.67.** Load Starmap and the New
+Starmap screen list Explorers maps from `GET /api/maps` - `kind=starmap`, `sort=detailed` first with the other three a
+click away, `limit=10`, `page` through, `credentials: 'omit'`. It reads ONLY `slug title blurb kind url downloadUrl
+coverUrl system_count body_count construct_count hearts_count comments_count download_count`, builds each card from
+those names, and never spreads the object; `openUrl` is not read at all, because a click opens `downloadUrl` through
+the same function `?open=` uses. Every address in the answer passes the R-17 allow-list before it becomes a fetch, a
+link or an image. SEEN against the live hub (0.59.2): both campaigns listed with covers, one click opened Local
+Neighbourhood. **Two things this side needs from the hub, written in
+`starsystemx-creator-hub/docs/note-from-sse-2026-09-11-map-list-creator-and-default-tag.md`:** (1) a creator on each map
+- the owner asked for it on the card and the list sends none; (2) the owner's `default` tag must be findable by `tag=` -
+measured, the filter matches `auto_tags` and not the cartographer's `tags`, so `tag=real-astronomy` returns nothing
+though Local Neighbourhood carries it. The New Starmap screen asks for `tag=default` first and says "No starter maps on
+Explorers yet" until that answers. **R-18 IS STILL OPEN**: Load System keeps its plain link to the library, and
+`openUrl` stays null for systems until job 3 gives a single system the wizard's door.
+
+**THE HUB'S REPLY, quoted whole as the seam protocol asks (relayed by the owner, 2026-09-11):**
+
+```
+SEAM REPLY | R-20 | hub | 0.61.2 (653cbc5) | live
+changed:   tag= matches auto_tags OR tags (same clause as /browse); tags must be [a-z0-9-], else dropped
+added:     creator: { name: string; url: string | null } | null on every map (url null - no public profiles yet)
+also:      maps with problems sort LAST in every sort and carry `needs-a-fix` in auto_tags (hub D-88/D-89);
+           a panel that only wants maps that open can leave those out
+verified:  live - tag=real-astronomy&kind=starmap returns local-neighbourhood [Frunk];
+           kind=starmap&sort=detailed&limit=10 returns local-neighbourhood, my-starmap (last, needs-a-fix)
+not done:  `default` - who may set it is the owner's decision, pending; tag=default returns [] until a map has it
+doc:       docs/prompt-for-sse-2026-09-11-map-list-api.md (interface updated)
+```
+
+**SSE-SIDE STATUS, v3.1.68: CONSUMED.** Each card reads `creator.name` (not `url`, which is null and has nowhere to
+go in a row that already carries an About link). A map whose `auto_tags` carry `needs-a-fix` is SHOWN, not left out,
+with the line "Explorers found a problem in this file, so it may not open." - the hub's own D-89 is "last, not
+hidden", and one of the faults it flags (two systems sharing an id) this engine repairs on open since v3.1.66. **One
+measurement the reply did not state:** a tag outside `[a-z0-9-]` is not refused, it is DROPPED, and a request whose only
+tag was dropped is unfiltered - `tag=Bad%20Tag&kind=starmap` returned every map. The starter tag is pinned to that shape
+on this side so a misspelling cannot turn "Starter maps" into "all maps" in silence. Seen in a browser against 0.61.2:
+"by Frunk", "by SONION", and My Starmap's warning line.
+
+**THE `default` TAG IS ADMIN-ONLY (hub D-91, 0.62.0; reply quoted under R-18):** `tag=default` returns exactly the
+admin's picks and nothing a cartographer can add. **Measured 2026-09-14: none are set yet**, so the New Starmap screen
+and the wizard say "No starter maps on Explorers yet", and Stream AA job 2 - the bundled examples leaving the app - is
+built and held until the hub carries them under that tag.
+
+## R-18 - a single system from the hub: ADDED where the GM chooses (engine half, 2026-09-11)
+
+The hub's ask (its `sse-requirements.md` R-18): *"`?open=` should take a single system too, not only a campaign"* -
+the refusal *"That link points at a single system rather than a campaign"* was being shown after a click on a
+promise, so the hub hid the button on every system. **THE OWNER'S DECISION, 2026-09-11:** a link may bring a system,
+*"but you pick the spot - BUT instead of it saying 'Open Map in SSE' - it would be 'Add System to SSE'"*.
+
+**SSE-SIDE STATUS: SHIPPED on beta at v3.1.69. NOT IN PRODUCTION** (production is v3.1.48 and still refuses).
+`?open=` (and `?hub=`) classify the bytes in the one door as before; a SYSTEM is now held, a banner says it is ready,
+and the starmap's right-click menu on empty space offers "Add <name> here". Nothing is placed until the GM chooses
+the spot. With no campaign open, the New Starmap screen stays up and the banner says to start or load one first. The
+generation wizard also lists `kind=system` maps from R-20 and places the picked one where the GM clicked. Either way
+the system is credited to its cartographer on the campaign (R-16) and its top node carries the `origin/hub` tag, as a
+pasted system does. The replace-or-keep question, `TRUSTED_OPEN_HOSTS` and `?hub=` are unchanged, as the ask said.
+
+**ONE NEW READ OF THE HUB, which the hub should treat as contract:** a link names a download and nothing else, so for
+the credit the app asks `GET /api/maps/<slug>` and reads `title` and `by`, and nothing else on that object. A failure
+credits the map's page and the system's own name and names nobody.
+
+**FOUND, NOT ASKED OF THE HUB:** a single-system save carries no `rulePackOverrides` - custom definitions live on the
+campaign - so a system uploaded to the hub cannot bring a custom liquid by any door. It is this engine's save format,
+on the board under [[G98]].
+
+### R-18 SEAM REPORT (engine half)
+
+```
+SEAM REPORT | R-18 | engine | beta v3.1.69 (the commit titled v3.1.69) | prod: NOT RELEASED (production is v3.1.48)
+sets:      nothing new - the parameter is still `open`, the prefix still the hub's open_in_sse_url row
+must know: a SYSTEM through ?open= is now ADDED, not refused: banner, then right-click empty space on the
+           starmap and "Add <name> here"; nothing is placed until the GM picks the spot (owner's word). The
+           button for a system should read "Add System to SSE" (owner's word). For the credit the app reads
+           `title` and `by` from GET /api/maps/<slug> - please hold those two as contract. PRODUCTION STILL
+           REFUSES A SYSTEM: the live openUrl prefix is https://starsystemx.com/?open= (measured), so filling
+           openUrl for systems today would hand every visitor the old refusal. Wait for the owner's release,
+           or point systems at the beta prefix meanwhile - the hub's call.
+verified:  in a browser against the live hub (0.61.2): ?open= with hip065-system-2 showed the banner and left a
+           42-system campaign at 42; the menu item placed it; the autosave held the campaign credit (SONION,
+           /s/hip065-system-2, 31 nodes) and the origin tag; the wizard listed seven systems and placed a
+           second copy as <id>-2, merged into the same credit row
+not done:  the kind gate in the hub's openInSse.ts and its label - the hub's; production release - the owner's
+ready for: STREAM N - on beta: an "Add System to SSE" link opens the app, the banner shows, right-click places it,
+           the credit is on the campaign
+```
+
+### R-18 SEAM REPLY (hub half) - quoted whole, relayed by the owner 2026-09-14
+
+```
+SEAM REPLY | R-18 + R-20 default | hub | 0.62.0 (22ee32a) | live
+R-18:      openUrl filled for kind=system on its own row add_system_in_sse_url (default https://beta.starsystemx.com/?open=);
+           campaigns unchanged on open_in_sse_url (production). Hub button label: "Add System to SSE". Copy kept.
+           Owner moves the system row to production at the R-18 release. "off" = null openUrl for systems - still handle null.
+contract:  GET /api/maps/<slug> `title` and `by` pinned by a test
+default:   admin-only (hub D-91): one admin switch on the map page; upload meta.tags, creator tag boxes,
+           tag proposals and tag review can neither add nor remove it. tag=default = exactly the admin's picks.
+verified:  live - 7 systems openUrl beta, 2 starmaps openUrl production; /s/sol shows Add System to SSE;
+           /api/maps/sol {"title":"Sol","by":"keizer"}
+doc:       docs/prompt-for-sse-2026-09-11-map-list-api.md updated
+```
+
+**SSE-SIDE, MEASURED 2026-09-14 against hub 0.62.0 and the deployed beta (v3.1.70):** every `kind=system` map's
+`openUrl` is `https://beta.starsystemx.com/?open=<download>` and every campaign's is `https://starsystemx.com/?open=...`;
+`/api/maps/sol` and `/api/maps/hip065-system-2` both carry `title` and `by`. **Nothing changes on this side.** The app
+never reads `openUrl` - the list opens `downloadUrl` - so a null one when the hub sets its system row to "off" costs
+nothing here; the link the hub builds is the exact shape v3.1.69 takes. **The R-18 release is two steps and neither is a
+stream's:** the owner releases beta to production, then moves the hub's `add_system_in_sse_url` row to the production
+prefix - in that order, or every visitor meets the old refusal. **READY FOR STREAM N** (owner-fired): open a system's
+page on Explorers, press "Add System to SSE", see the banner on beta, right-click empty space, "Add <name> here", and
+find the cartographer's credit on the campaign.

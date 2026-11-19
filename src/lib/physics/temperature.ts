@@ -1,7 +1,7 @@
 import type { CelestialBody, Barycenter, System, RulePack, Kepler } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG, STEFAN_BOLTZMANN_CONSTANT, G } from '../constants';
 import { receivedLuminosityWatts, SOLAR_TEFF_K } from './luminosity';
-import { starOccluders, starlightTransmission } from './starlightOcclusion';
+import { starOccluders, starlightTransmission, starlightBoost, deriveStarlightBoost } from './starlightOcclusion';
 import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
@@ -460,6 +460,9 @@ export function calculateSurfaceTemperature(
     const dimming = deriveStarlightDimming(body, allNodes);
     if (dimming) body.starlightDimming = dimming;
     else delete body.starlightDimming;
+    const boost = deriveStarlightBoost(body, allNodes);
+    if (boost) body.starlightBoost = boost;
+    else delete body.starlightBoost;
 }
 
 export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack, ageGyr = 4.6): number {
@@ -518,6 +521,9 @@ export function calculateEquilibriumTemperature(
     albedo: number = estimateBondAlbedo(body)
 ): number {
     const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
+    // Phase 6: a mirror stationed at this world ADDS light (the soletta). One ask per body, from
+    // the one who-lights-whom site; 1 for every world without a mirror.
+    const mirrorGain = starlightBoost(body, allNodes).gain;
     
     let totalLuminosityTimesArea = 0;
     
@@ -534,7 +540,7 @@ export function calculateEquilibriumTemperature(
             const frac = occluders.length
                 ? starlightTransmission(body.id, dist_au, heliocentricEdgeElements(body, star, allNodes), occluders).frac
                 : 1;
-            const starLuminosity = receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, frac);
+            const starLuminosity = receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, frac, mirrorGain);
             const dist_m = dist_au * AU_KM * 1000;
             totalLuminosityTimesArea += starLuminosity / (4 * Math.PI * Math.pow(dist_m, 2));
         }
@@ -560,6 +566,7 @@ export function calculateEquilibriumTemperatureRange(
     albedo: number = estimateBondAlbedo(body)
 ): { minK: number; maxK: number } {
     const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
+    const mirrorGain = starlightBoost(body, allNodes).gain;   // a mirror is aimed all orbit long: both ends
     let fluxMin = 0;
     let fluxMax = 0;
 
@@ -579,7 +586,7 @@ export function calculateEquilibriumTemperatureRange(
                 ? starlightTransmission(body.id, d.max, edge, occluders).worstFrac
                 : 1;
             const maxDistM = d.max * AU_KM * 1000;
-            fluxMin += receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, worst)
+            fluxMin += receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, worst, mirrorGain)
                 / (4 * Math.PI * Math.pow(maxDistM, 2));
         }
         if (d.min > 0) {
@@ -587,7 +594,7 @@ export function calculateEquilibriumTemperatureRange(
                 ? starlightTransmission(body.id, d.min, edge, occluders).bestFrac
                 : 1;
             const minDistM = d.min * AU_KM * 1000;
-            fluxMax += receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, best)
+            fluxMax += receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, best, mirrorGain)
                 / (4 * Math.PI * Math.pow(minDistM, 2));
         }
     }

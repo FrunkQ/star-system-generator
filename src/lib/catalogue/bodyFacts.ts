@@ -9,6 +9,7 @@ import { tagContextLabel } from '$lib/tags/tagPresentation';
 import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
 import { ascentBudgetApplies } from '$lib/physics/orbits';
 import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
+import { observedBody, genericTypeLabel, isVeilable, type BodyDisclosure } from './bodyDisclosure';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -100,6 +101,10 @@ export interface FactContext {
   // -work reading — what a ship can carry, not what is in it. Presentation only; the figures reach the
   // player either way, which is a known and accepted trade-off recorded in A29.
   liveReadings?: boolean;
+  // How much of a natural body this surface may print (bodyDisclosure.ts). Absent means `full`.
+  // `observed` keeps the orbital and bulk rows a ship could measure from a distance and nothing
+  // derived from them; the Type row becomes the generic one and only hand-added tags are listed.
+  disclosure?: BodyDisclosure;
   // G8: the clock the "Next eclipse" row is answered against. WITHOUT IT THE ROW IS OMITTED, which is
   // deliberate — the answer is a forward search and a caller that has no clock has not asked for one.
   nowMs?: number;
@@ -291,11 +296,22 @@ export function bodyFacts(b: CelestialBody, prefs: UnitPrefs = {}, ctx: FactCont
   if (b.kind === 'construct') return constructFacts(b, prefs, ctx);
 
   const out: Fact[] = [];
-  const any = b as any;
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
 
-  // Show the scientific CLASSIFICATION (spectral type / planet class), not the kind.
-  add('Type', classLabel(b) || titleCase(b.roleHint || 'body'));
+  // THE VEIL (bodyDisclosure.ts). At `observed` every row below is read from an allow-listed COPY
+  // of the body, so a derived field cannot reach a row by accident, and the block STOPS after the
+  // bulk rows - anything added beneath that line later is hidden without anyone remembering to.
+  // The one thing read before the copy is made is the spin-orbit resonance: it is a rotation fact
+  // a ship can time for itself, it only happens to be STORED as a derived tag, and without it
+  // Mercury's row would say "tidally locked" beside a day length that contradicts it (B7).
+  const observed = ctx.disclosure === 'observed' && isVeilable(b);
+  const resonance = b.tags?.find((t) => t.key === 'orbit/spin-orbit-resonance')?.value;
+  if (observed) b = observedBody(b);
+  const any = b as any;
+
+  // Show the scientific CLASSIFICATION (spectral type / planet class), not the kind - unless the
+  // class is exactly what is being withheld, when the row names only what is visibly true.
+  add('Type', observed ? genericTypeLabel(b) : (classLabel(b) || titleCase(b.roleHint || 'body')));
 
   // --- Orbit & rotation ---
   add('Orbit distance', orbitDist(b, prefs));
@@ -308,7 +324,6 @@ export function bodyFacts(b: CelestialBody, prefs: UnitPrefs = {}, ctx: FactCont
   // different words: "tidally locked" beside Mercury's 1,407 h day reads as a contradiction, because
   // Mercury turns 3 times per 2 orbits rather than keeping one face sunward (inbox B7). The day
   // length above is now the orbital period for a synchronous body, so the two rows agree either way.
-  const resonance = b.tags?.find((t) => t.key === 'orbit/spin-orbit-resonance')?.value;
   if (resonance) add('Rotation', `${resonance} spin–orbit resonance`);
   else if (b.tidallyLocked) add('Rotation', 'tidally locked');
   // NEXT ECLIPSE (G8). Sits with the orbital rows because that is what it is made of. It appears only
@@ -328,6 +343,13 @@ export function bodyFacts(b: CelestialBody, prefs: UnitPrefs = {}, ctx: FactCont
   if (b.massKg && b.radiusKm) {
     const vol = (4 / 3) * Math.PI * Math.pow(b.radiusKm * 1000, 3);
     add('Density', `${((b.massKg / vol) / EARTH_DENSITY).toFixed(2)} ×Earth`);
+  }
+
+  // END OF WHAT CAN BE MEASURED FROM A DISTANCE. Climate, air, liquids, hazards, interior and
+  // life are all derivations, and so is every tag the GM did not add by hand.
+  if (observed) {
+    addTags();
+    return out;
   }
 
   // --- Climate ---
@@ -443,11 +465,15 @@ export function bodyFacts(b: CelestialBody, prefs: UnitPrefs = {}, ctx: FactCont
 
   // --- GM-surfaced narrative/feature tags --- (contextual labels so "Oblate"/"Dynamo" keep their
   // category: "Shape · Oblate", "Magnetism · Intrinsic dynamo", "Brilliant aurora: 0.62".)
-  if (Array.isArray(b.tags) && b.tags.length) {
-    const tagLabels = b.tags.map((t: any) => tagContextLabel(String(t.key), t.value)).filter(Boolean);
-    if (tagLabels.length) add('Tags', Array.from(new Set(tagLabels)).join(', '));
-  }
+  addTags();
   return out;
+
+  function addTags() {
+    if (Array.isArray(b.tags) && b.tags.length) {
+      const tagLabels = b.tags.map((t: any) => tagContextLabel(String(t.key), t.value)).filter(Boolean);
+      if (tagLabels.length) add('Tags', Array.from(new Set(tagLabels)).join(', '));
+    }
+  }
 }
 
 export function bodyGlyph(b: CelestialBody): string {

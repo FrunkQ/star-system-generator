@@ -152,11 +152,57 @@ export function activeCalendarOf(
   return temporal.temporal_registry?.[temporal.activeCalendarKey];
 }
 
+/**
+ * NO CALENDAR A GM CAN TYPE MAY TAKE THE APP DOWN. This is called from the clock strip on every
+ * tick and from a dozen other surfaces, so a throw here is not one broken label - it is every
+ * frame, for ever, including on the next load of the campaign that carries the calendar (found
+ * live, 2026-09-12: a custom second of 1.62 Earth seconds "completely bricks sse"). The arithmetic
+ * below is written to be total over whatever the editor's number boxes can hold; this is the last
+ * line behind it, and it answers with the raw tick rather than nothing.
+ */
 export function resolveCalendar(masterSeconds: bigint, calendar: TemporalCalendarDefinition): ResolvedTemporal {
-  if (calendar.math_type === 'RATIO_LINEAR') {
-    return resolveRatioLinear(masterSeconds, calendar);
+  try {
+    if (calendar.math_type === 'RATIO_LINEAR') {
+      return resolveRatioLinear(masterSeconds, calendar);
+    }
+    return resolveBucketDrain(masterSeconds, calendar);
+  } catch (error) {
+    warnBrokenCalendar(calendar, error);
+    return {
+      formatted: FALLBACK_DISPLAY_FORMAT.replace('{master_t}', masterSeconds.toString()),
+      fields: { master_t: masterSeconds.toString() }
+    };
   }
-  return resolveBucketDrain(masterSeconds, calendar);
+}
+
+const warnedCalendars = new Set<string>();
+function warnBrokenCalendar(calendar: TemporalCalendarDefinition | undefined, error: unknown): void {
+  const key = String((calendar as { id?: string } | undefined)?.id ?? '?');
+  if (warnedCalendars.has(key)) return;
+  warnedCalendars.add(key);
+  console.warn(`[calendar] '${key}' could not be resolved - showing the raw clock instead.`, error);
+}
+
+// ── AUTHORED NUMBERS INTO EXACT ARITHMETIC ───────────────────────────────────────────────────────
+// The clock is a BigInt count of seconds and a calendar's unit lengths are whatever a GM typed into
+// a number box: 1.62 (a world whose second is not ours), 28422144.5, a blank (null), a minus sign.
+// `BigInt(1.62)` THROWS - that one call was the whole of the brick. So every authored length goes
+// through `ticks`, and the arithmetic runs in THOUSANDTHS of a second: a fractional unit is then
+// exact to the millisecond, and a whole-second calendar gives bit-for-bit the answer it always did
+// (every division is of two numbers scaled by the same thousand).
+const TICKS_PER_SECOND = 1000n;
+/** A unit LENGTH in ticks: finite and at least one tick, else the fallback (whole seconds). */
+function ticks(value: unknown, fallbackSeconds: number): bigint {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+  if (!Number.isFinite(n) || n <= 0) return BigInt(fallbackSeconds) * TICKS_PER_SECOND;
+  const t = BigInt(Math.round(Math.min(n, 1e18) * 1000));
+  return t > 0n ? t : 1n;
+}
+/** A SIGNED amount in ticks (a drift may be negative: a year shorter than its whole days). */
+function signedTicks(value: unknown): bigint {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+  if (!Number.isFinite(n)) return 0n;
+  return BigInt(Math.round(Math.max(-1e18, Math.min(1e18, n)) * 1000));
 }
 
 export function resolveTemporalDisplay(state: TemporalState): ResolvedTemporal {
@@ -174,23 +220,32 @@ export function resolveTemporalDisplay(state: TemporalState): ResolvedTemporal {
 function resolveRatioLinear(masterSeconds: bigint, calendar: Extract<TemporalCalendarDefinition, { math_type: 'RATIO_LINEAR' }>): ResolvedTemporal {
   const epochOffset = calendarEpochOffset(calendar);
   const local = Number(masterSeconds - epochOffset);
-  const unitsPerYear = calendar.parameters.units_per_earth_year;
-  const secPerYear = calendar.parameters.seconds_per_earth_year;
-  const precisionDigits = calendar.parameters.precision_digits ?? 1;
-  const value = (local / secPerYear) * unitsPerYear;
-  const rendered = value.toFixed(precisionDigits);
+  const unitsPerYear = Number(calendar.parameters?.units_per_earth_year);
+  const secPerYear = Number(calendar.parameters?.seconds_per_earth_year);
+  // toFixed THROWS outside 0..100 and a blanked box binds null: hold the digits to what the editor
+  // offers, and a year of zero or no seconds to a value that divides.
+  const digitsRaw = Number(calendar.parameters?.precision_digits ?? 1);
+  const precisionDigits = Number.isFinite(digitsRaw) ? Math.max(0, Math.min(6, Math.trunc(digitsRaw))) : 1;
+  const value = Number.isFinite(secPerYear) && secPerYear !== 0 && Number.isFinite(unitsPerYear)
+    ? (local / secPerYear) * unitsPerYear
+    : 0;
+  const rendered = (Number.isFinite(value) ? value : 0).toFixed(precisionDigits);
   return {
-    formatted: calendar.format.replace('{val}', rendered),
+    formatted: String(calendar.format ?? '').replace('{val}', rendered),
     fields: { val: rendered }
   };
 }
 
 function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendarDefinition): ResolvedTemporal {
   const epochOffset = calendarEpochOffset(calendar);
-  const localRaw = masterSeconds - epochOffset;
-  const local = localRaw;
+  // Everything below is in TICKS (thousandths of a second) - see `ticks` above.
+  const local = (masterSeconds - epochOffset) * TICKS_PER_SECOND;
 
-  const hierarchy = [...calendar.hierarchy].sort((a, b) => b.multiplier - a.multiplier);
+  const UNIT_FALLBACK_SECONDS: Record<string, number> = { year: 31536000, day: 86400, hour: 3600, min: 60, sec: 1 };
+  const hierarchy = (Array.isArray(calendar.hierarchy) ? calendar.hierarchy : [])
+    .filter((u) => u && typeof u.unit === 'string')
+    .map((u) => ({ unit: u.unit, multiplier: u.multiplier, len: ticks(u.multiplier, UNIT_FALLBACK_SECONDS[u.unit] ?? 1) }))
+    .sort((a, b) => (a.len === b.len ? 0 : a.len > b.len ? -1 : 1));
   const yearUnit = hierarchy.find((u) => u.unit === 'year');
   const dayUnit = hierarchy.find((u) => u.unit === 'day');
   const hourUnit = hierarchy.find((u) => u.unit === 'hour');
@@ -204,13 +259,19 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   // drains. So a year is a plain `yearUnit.multiplier` long, sometimes plus one leap unit - and the
   // CLOCK TIME never moves, which is the point. The previous model spread the surplus evenly across
   // every second of the year, which kept the mean right and made noon render as 06:33.
-  const yearLen = BigInt(yearUnit?.multiplier ?? 31536000);
+  const dayLen = dayUnit?.len ?? 86400n * TICKS_PER_SECOND;
+  const yearLen = yearUnit?.len ?? 31536000n * TICKS_PER_SECOND;
   const leap = calendar.leap_logic;
-  const driftPerYear = BigInt(leap?.drift_per_year_t ?? 0);
-  const thresholdT = BigInt(leap?.threshold_t ?? 0);
+  const driftPerYear = signedTicks(leap?.drift_per_year_t);
+  const thresholdT = signedTicks(leap?.threshold_t);
   const leapUnit = hierarchy.find((u) => u.unit === (leap?.apply_to ?? 'day'));
-  const leapUnitLen = BigInt(leapUnit?.multiplier ?? 86400);
-  const leapsRun = driftPerYear > 0n && thresholdT > 0n;
+  const leapUnitLen = leapUnit?.len ?? dayLen;
+  // A NEGATIVE drift is a real statement - a year a little SHORTER than its whole days, so now and
+  // then one unit is taken out rather than put in - and the bucket arithmetic below already says it
+  // (floor of a negative product). It was silently ignored. What cannot run is a drain with no
+  // threshold, or a correction so large the average year would have no length left.
+  const leapsRun = driftPerYear !== 0n && thresholdT > 0n
+    && yearLen * thresholdT + driftPerYear * leapUnitLen > 0n;
 
   // TWO WAYS TO SAY "SOMETIMES A YEAR IS LONGER", and a calendar picks the one it can state.
   // A CYCLE is exact and is what a real calendar has: [4, 100, 400] reads "every 4th year, except
@@ -219,7 +280,8 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   // The bucket CANNOT reproduce a cycle: measured over 1600-2400, a single accumulator lands a day
   // out in 224 of 801 years whatever starting fill it is given, because it is a straight line
   // through a staircase.
-  const leapCycle = (leap?.leap_cycle ?? []).filter((d) => Number.isFinite(d) && d > 0);
+  const leapCycle = (Array.isArray(leap?.leap_cycle) ? (leap?.leap_cycle ?? []) : [])
+    .map((d) => Math.trunc(Number(d))).filter((d) => Number.isFinite(d) && d >= 1).slice(0, 8);
   const cycleRuns = leapCycle.length > 0;
 
   /** Leap units inserted across the years BEFORE year n (n may be negative). */
@@ -227,23 +289,42 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
     if (cycleRuns) {
       let total = 0n;
       for (let i = 0; i < leapCycle.length; i++) {
-        const term = floorDiv(n, BigInt(Math.trunc(leapCycle[i])));
+        const term = floorDiv(n, BigInt(leapCycle[i]));
         total += i % 2 === 0 ? term : -term;
       }
       return total;
     }
-    return leapsRun ? floorDiv(n * driftPerYear, thresholdT) : 0n;
+    if (!leapsRun) return 0n;
+    // A negative bucket fills and drains exactly as a positive one does, and what drains is a unit
+    // taken OUT: the mirror image, so the short year is the one in which the deficit reaches the
+    // threshold (the 25th, for a year 0.04 of a day short) rather than the very first.
+    return driftPerYear > 0n
+      ? floorDiv(n * driftPerYear, thresholdT)
+      : -floorDiv(n * -driftPerYear, thresholdT);
   };
   /** Seconds consumed by every year before year n. */
   const secondsBefore = (n: bigint): bigint => n * yearLen + leapsBefore(n) * leapUnitLen;
 
-  // A first guess only - the search below is what settles it, so an approximate mean is fine.
-  const meanYear = cycleRuns
-    ? yearLen + (leapUnitLen * 97n) / 400n
-    : yearLen + (leapsRun ? (driftPerYear * leapUnitLen) / thresholdT : 0n);
-  let yearIndex = floorDiv(local, meanYear > 0n ? meanYear : yearLen);
-  // `meanYear` is exact, so this settles in a step or two; the bound is a guard against absurd
-  // authored data rather than an expected cost.
+  // THE FIRST GUESS IS THE EXACT MEAN YEAR, AS A FRACTION. It has to be: a new calendar's zero is
+  // the big bang, so the year index is ~1.4e10, and a mean that is a second out per year lands 437
+  // YEARS from the answer - far outside the eight steps below, which then left a negative remainder
+  // and a garbage date. (The cycle form assumed Gregorian's 97/400 whatever the cycle said; the
+  // bucket form truncated its division.) num/den is the mean year exactly: for a cycle, over the
+  // product of its divisors; for a bucket, over the threshold.
+  let meanNum = yearLen, meanDen = 1n;
+  if (cycleRuns) {
+    let span = 1n;
+    for (const d of leapCycle) span *= BigInt(d);
+    let leapsInSpan = 0n;
+    leapCycle.forEach((d, i) => { const per = span / BigInt(d); leapsInSpan += i % 2 === 0 ? per : -per; });
+    meanNum = yearLen * span + leapsInSpan * leapUnitLen; meanDen = span;
+  } else if (leapsRun) {
+    meanNum = yearLen * thresholdT + driftPerYear * leapUnitLen; meanDen = thresholdT;
+  }
+  let yearIndex = meanNum > 0n ? floorDiv(local * meanDen, meanNum) : floorDiv(local, yearLen);
+  // The guess is exact to within the calendar's own irregularity, so this settles in a step or two;
+  // the bound is a guard against absurd authored data rather than an expected cost, and it is what
+  // makes this loop impossible to hang whatever the numbers are.
   for (let guard = 0; guard < 8 && secondsBefore(yearIndex) > local; guard++) yearIndex -= 1n;
   for (let guard = 0; guard < 8 && secondsBefore(yearIndex + 1n) <= local; guard++) yearIndex += 1n;
 
@@ -253,13 +334,12 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
 
   for (const unit of hierarchy) {
     if (unit.unit === 'year') continue;
-    const divisor = BigInt(unit.multiplier);
-    fields[unit.unit] = Number(floorDiv(working, divisor));
-    working = floorMod(working, divisor);
+    fields[unit.unit] = Number(floorDiv(working, unit.len));
+    working = floorMod(working, unit.len);
   }
 
   const dayOfYear = typeof fields.day === 'number' ? fields.day : 0;
-  const months = calendar.lookup_tables?.months ?? [];
+  const months = Array.isArray(calendar.lookup_tables?.months) ? (calendar.lookup_tables?.months ?? []) : [];
   // The inserted unit lands in a NAMED month - February, for Earth - so every date after it keeps
   // its number. Appending it to the year instead would push 1 March to the 2nd and leave the extra
   // day hanging off the end of the month table with no name at all.
@@ -268,19 +348,21 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   let monthName = '';
   let dayInMonth = dayOfYear + 1;
   for (const month of months) {
-    const days = month.days + (isLeapYear && month.name === leapMonthName ? Number(leapUnitLen / BigInt(dayUnit?.multiplier ?? 86400)) : 0);
+    // A month may be any length a GM types, fractions and blanks included; a blank is no days.
+    const authoredDays = Number(month?.days);
+    const days = (Number.isFinite(authoredDays) && authoredDays > 0 ? authoredDays : 0)
+      + (isLeapYear && month?.name === leapMonthName ? Number(leapUnitLen / dayLen) : 0);
     if (remaining < days) {
-      monthName = month.name;
-      dayInMonth = remaining + 1;
+      monthName = String(month?.name ?? '');
+      dayInMonth = Math.floor(remaining) + 1;
       break;
     }
     remaining -= days;
   }
 
-  const dayMultiplier = BigInt(dayUnit?.multiplier ?? 86400);
-  const weekdayList = calendar.lookup_tables?.weekdays ?? [];
+  const weekdayList = Array.isArray(calendar.lookup_tables?.weekdays) ? (calendar.lookup_tables?.weekdays ?? []) : [];
   const weekdayCycle = weekdayList.length > 0 ? BigInt(weekdayList.length) : 7n;
-  const weekdayIndex = Number(floorMod(floorDiv(local, dayMultiplier), weekdayCycle));
+  const weekdayIndex = Number(floorMod(floorDiv(local, dayLen), weekdayCycle));
   const weekday = weekdayList[weekdayIndex] ?? '';
 
   const yearBase = Number.isFinite(calendar.year_offset) ? Number(calendar.year_offset) : 0;
@@ -290,12 +372,14 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   const sec = typeof fields.sec === 'number' ? fields.sec : 0;
   const suffix = ordinalSuffix(dayInMonth);
 
-  const rendered = calendar.format
+  const rendered = String(calendar.format ?? '')
     .replace('{hour:02}', pad2(hour))
     .replace('{min:02}', pad2(min))
     .replace('{sec:02}', pad2(sec))
     .replace('{weekday}', weekday)
     .replace('{mday}', String(dayInMonth))
+    // The editor's own template for a new calendar says "Day {day}", and nothing replaced it.
+    .replace('{day}', String(dayOfYear + 1))
     .replace('{suffix}', suffix)
     .replace('{month}', monthName)
     .replace('{year}', String(year));
@@ -319,6 +403,13 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
       sec_unit: secUnit?.multiplier ?? 1
     }
   };
+}
+
+/** An authored number as WHOLE clock seconds, for callers that shift the clock by a calendar's
+ *  unit (Settings' year control). Never throws: `BigInt(1.5)` and `BigInt(null)` both do. */
+export function wholeClockSeconds(value: unknown, fallback = 0n): bigint {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+  return Number.isFinite(n) ? BigInt(Math.round(Math.max(-1e18, Math.min(1e18, n)))) : fallback;
 }
 
 function pad2(value: number): string {

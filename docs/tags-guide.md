@@ -30,7 +30,10 @@ you can do about it.
 **Physics.** Derived from the body's properties every time the system is processed —
 `magnetic/dynamo`, `orbit/tidally-locked`, `hazard/radiation`, `stability/marginal`. Edit the world
 and they change with it. Open the Newton panel (the apple) on any body to see which layer produced
-each one, and from what.
+each one, and from what. One of them marks rather than describes: `structure/overdense` sits on a
+heavy giant or brown dwarf squeezed denser than hydrogen packs on its own at that mass. It is still
+a giant, not a rock - past about two Jupiter masses nothing is solid - and the tag only says its
+size is unusual.
 
 **Automated rules.** Seeded by rules you can read and change, which test a body's physics and roll
 against a chance — mineable resources, scientific draws, frontier logistics, plot hooks. The roll is
@@ -47,12 +50,25 @@ it has stopped being true.
 
 **Yours.** Anything you add by hand, for any purpose. It survives every re-process and every save.
 
+**Left behind.** A tag that an automated rule seeded, where neither the rule nor its category is in
+your settings any more — you deleted or renamed the category, or the map came from another GM whose
+rules you do not have. Nothing re-creates these and nothing clears them by itself, because the app
+cannot tell which of those it is and will not delete another GM's tagging. Click one on the Tags tab
+to remove it, or open **Edit tag categories**, which counts them across the starmap and offers to
+remove them all. Your hand-added tags are never touched.
+
 **Placement steers (`mega/…`).** Stamped when a mega-construct is placed somewhere the physics finds
 demanding — a ringworld outside the goldilocks zone, a space elevator whose counterweight rides near
 the edge of its world's gravity well. Each carries its explanation, numbers included, in the tag
 itself. They are advice, never vetoes: the placement went ahead, and the tag records why it is
 interesting. Written once at placement (nothing re-derives them yet), so like generated tags they
 stay deleted if you delete them.
+
+**What a megastructure does to a world's light (`mega/shadowed-by`, `mega/eclipsed`, `mega/lit-by`).**
+These three are the engine's own and are worked out afresh every time the system is processed: a
+world behind a swarm, shell or ring is *shadowed by* it; a ring's shadow is also an *eclipse* with a
+cadence; and a world with a soletta (an orbital mirror) stationed at it is *lit by* it, with the
+extra starlight stated. Remove the structure and the tag goes with it.
 
 ### One physics tag that is deliberately not deterministic
 
@@ -335,5 +351,14 @@ at?".
 ## Sharing
 
 A category — its tags, colours, applies-to list and rules — saves to a file and loads back, so you
-can flavour a starmap to your universe and hand the result to another GM. Categories also travel
-inside the starmap itself, so a shared map arrives already speaking its own language.
+can flavour a starmap to your universe and hand the result to another GM. A saved starmap carries
+the tags themselves on every world and ship, but not the whole category: tagging rules, world-only
+categories, per-tag colours and descriptions, and "hide from players" do not travel inside the
+starmap. To pass those on, export the category to a file and send it with the map.
+
+Importing a file whose namespace you already use asks first. **Replace mine with the file** makes
+your category exactly what the file says; **Keep both** brings the file in as a copy under its own
+namespace (`faction` becomes `faction-copy`), with its own tags and rules, which is the way to start
+a variant of a category you already have. Either way the tags your worlds already carry from other
+rules are not re-rolled, and neither are they when you add a rule: a new rule takes the last place
+in the order the rules are dealt.

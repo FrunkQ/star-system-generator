@@ -26,6 +26,9 @@ answers "what KIND of object is this", and a body has exactly one base class plu
 | `base` | competes — the best-scoring base wins and becomes the body's identity | `asteroid/c-type`, `planet/hycean` |
 | `modifier` | stacks — every modifier scoring **≥ 0.6** is added alongside the base | `asteroid/rubble-pile` |
 
+Both kinds are offered in the author's picker, but a modifier has to clear three extra hurdles to get there —
+see section 3e, and settle them before you choose `kind`.
+
 A base that overlaps an existing base steals bodies from it. A modifier that matches loosely appears on
 everything. `classification.audit.spec.ts` audits base overlap and will tell you about the first case; nothing
 tells you about the second, so check the second yourself against a generated system.
@@ -61,9 +64,11 @@ So if your class is about **shape, history or intent** — "it is two lobes stuc
 "the GM says it is a shipyard" — there is nothing to match on, and you must first publish a **body fact** into
 that feature map. That fact is authored by a GM or set by the generator, and it is an INPUT, not a derivation.
 
-The seam is pinned by `classifierSeam.spec.ts`; the no-reading-a-later-pass rule by
-`src/lib/system/idempotence.test.ts`. If your feature is computed from something a later pass writes, the
-second of those goes red and it is right.
+The seam is pinned by `classifierSeam.spec.ts` (what replaced the legacy rules) and, for an authored fact
+specifically, by `src/lib/system/lobeSeam.spec.ts` — which is the pattern to copy: it bands a THROWAWAY class on
+the new feature rather than the shipped fingerprint, so it goes on testing the seam after the pack's own bands
+are retuned. The no-reading-a-later-pass rule is `src/lib/system/idempotence.test.ts`. If your feature is
+computed from something a later pass writes, the second of those goes red and it is right.
 
 ---
 
@@ -91,10 +96,42 @@ scorer iterates `Object.entries(fp.match)` and an absent one throws.
 - **Viability gates** — `judgeTypesAt` / `ALL_GATES` in `src/lib/generation/generateBodyOfType.ts`. A type
   whose gates always reject it at every slot is a type nobody will ever see. Check yours can actually pass
   somewhere.
+- **Where it FORMS is not always where it can be FOUND.** The temperature gate reads `formation.Teq_K` when the
+  fingerprint declares one and the `match` band only when it does not (engine map CLASS-2). If your type forms
+  in a narrower range than it can later occupy - the ice giant forms cold and stays an ice giant on a warm
+  orbit - give it both bands. Widening `match.Teq_K` alone makes the generator build it across the whole
+  wider range and moves every saved seed; `warmIceGiant.spec.ts` is the pattern for proving it did not.
 
-**e. The author's picker.** `AddBodyTypeModal.svelte` builds its offer from
-`rulePack.classifier.fingerprints`, so **a fingerprint is automatically offered** — there is no separate list to
-update, and equally no way to be in one and not the other without new code.
+**e. The author's picker — and a modifier gets in only if it can be BUILT.**
+`AddBodyTypeModal.svelte` builds its offer from `rulePack.classifier.fingerprints`, so a BASE fingerprint is
+automatically offered and there is no separate list to update.
+
+**A MODIFIER IS OFFERED TOO, but it has three hurdles a base does not** (owner, 2026-09-08: *"We really SHOULD
+have rubble piles and binaries in the pick list alongside other asteroids - why not?"* — there was no reason, and
+until then `judgeTypesAt` skipped every modifier for both callers):
+
+1. **`judgeTypesAt` must be asked.** Its `includeModifiers` argument is OFF by default and only the picker turns
+   it on. The GENERATOR must never see modifiers: it draws an IDENTITY for a slot, and letting a property into
+   that draw would also shift every seed anyone has ever generated.
+2. **`canBuildTo(fp)` must be true** — every feature the fingerprint bands on has to be one `generateBodyOfType`
+   actually writes. This is the hurdle most modifiers fail: `planet/ringed` wants a ring CHILD,
+   `planet/toroidal` and `planet/ellipsoid` an oblateness the SPIN derives, `planet/ultra-short-period` an orbit
+   the GM has already chosen by clicking. A card for any of those would hand back an ordinary planet.
+3. **`basesFor(fp, viable)` must find something** — a modifier is a property, so it needs a base to be. The
+   picker draws one whose mass window overlaps, and `generateBodyOfType(fp, { stackOn })` lays the base's bands
+   down first.
+
+**A PICKED MODIFIER LEAVES `classes` EMPTY, deliberately**, so the processor names the body from the composition
+actually drawn rather than from the card that was clicked — a rubble pile comes back as `asteroid/c-type,
+asteroid/rubble-pile` and not as a modifier with no identity. A picked BASE still pins its class, unchanged.
+
+**SO: A DERIVED-FEATURE MODIFIER IS BUILT BY CHOOSING VALUES, NOT BY SETTING A FIELD.** `porosity` is the worked
+example: the builder swells the solid radius by `1/cbrt(1 - p)` AND caps the mass at
+`maxMassForPorosity(p)`, because `maxPorosity` is a real ceiling that self-gravity imposes and a body over it
+would carry a void fraction the engine then refuses. An AUTHORED-fact modifier (`lobes`) is simply written.
+
+`pickModifier.spec.ts` round-trips every modifier the picker offers through the real processor and requires the
+class to come back, so hurdle 2's feature list cannot quietly drift out of step with the builder.
 
 **f. The visuals.** Only if the class changes how it draws:
 - 2D silhouette for small bodies — `src/lib/catalogue/smallBodyShape.ts`, shared by `PlanetDisc.svelte` and
@@ -128,9 +165,14 @@ section rather than staying silent — silence is indistinguishable from forgett
 - a modifier stacks on everything it should and nothing it should not;
 - `idempotence.test.ts` stays green.
 
-**k. The baseline fixtures will move.** `tests/fixtures/solar-system-input.json` and
-`tests/output/solar-system-derived.json` are regenerated by `physics-baseline.test.ts`. A new class that touches
-any bundled body changes them: **commit them with your change and read the diff as the record of what moved.**
+**k. The baseline fixtures will move — but read the diff with `git diff`, not `git status`.**
+`tests/fixtures/solar-system-input.json` and `tests/output/solar-system-derived.json` are regenerated by
+`physics-baseline.test.ts` (it lives in `src/lib/system/`, not `src/lib/physics/`). A new class that touches any
+bundled body changes them: **commit them with your change and read the diff as the record of what moved.**
+**The trap is that they show as modified even when nothing moved:** the test writes LF and the checkout is CRLF,
+so `git status` marks them on every run. `git diff --numstat` normalises the endings and prints nothing when the
+content is identical — that empty answer is the honest "the physics did not move", and committing on the
+strength of `git status` alone puts a pure line-ending churn in the history.
 
 ---
 
@@ -144,7 +186,9 @@ any bundled body changes them: **commit them with your change and read the diff 
   entry: **comet + contact-binary is 67P/Churyumov-Gerasimenko**, and **rubble-pile + contact-binary is
   Arrokoth**. That answers "maybe a couple of types if that reflects reality" without a second type.
 - **Visual?** A bilobate branch in `smallBodyOutline`, seeded from the body id, one closed path.
-- **Image?** Held: the reworked Arrokoth composite is a derivative whose licence is the owner's to check.
+- **Image?** None. The reworked Arrokoth composite was held for a licence check and then ditched by the owner
+  (2026-09-11: *"we have another comet image"*), so the type ships with no image of its own, as `rubble-pile`
+  does - the supported state. A licence question ended by not needing the file is the cheapest kind.
 
 ---
 

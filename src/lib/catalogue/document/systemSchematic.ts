@@ -81,6 +81,75 @@ function diagramRow(system: System, hostId: string): Row {
   };
 }
 
+// --- A planet's name, and the room it needs ------------------------------------------------------
+// The name is written at 45 degrees, rising up and to the right of its marker. These are the numbers
+// that place it, in the diagram's virtual px, kept together because the EXTENT below has to agree
+// with the drawing to the pixel: a box that does not contain its own labels is the fault this fixes.
+const LABEL = {
+  /** Font size. The selected planet is drawn 600 weight, so that is the weight measured. */
+  fontPx: 10,
+  /** The label's origin sits this far above the orbital line... */
+  anchorUp: 9,
+  /** ...and the text starts this far along its own baseline, this far below it. */
+  startAlong: 5,
+  baselineDrop: 3,
+  /** Clear space kept between the top of the tallest label and the edge of its row. */
+  marginPx: 2
+} as const;
+
+/** Width of a planet label in virtual px. Without a canvas, a monospace-ish estimate that errs wide. */
+export type LabelMeasure = (label: string) => number;
+const estimateLabel: LabelMeasure = (label) => label.length * LABEL.fontPx * 0.62;
+
+/** The measurer a caller with a canvas should pass: the real width, in the font the label is drawn in. */
+export function schematicLabelMeasure(ctx: CanvasRenderingContext2D, theme: DocTheme): LabelMeasure {
+  return (label) => {
+    const was = ctx.font;
+    ctx.font = `600 ${LABEL.fontPx}px ${theme.font}`;
+    const w = ctx.measureText(label).width;
+    ctx.font = was;
+    return w;
+  };
+}
+
+/** How far a label of this width reaches from its marker: the same distance up and to the right. */
+const labelReach = (lw: number) => (lw + LABEL.startAlong + LABEL.fontPx - LABEL.baselineDrop) * Math.SQRT1_2;
+
+/**
+ * THE DIAGRAM'S BOX, INCLUDING ITS LABELS.
+ *
+ * It was `VB_W` wide and one `ROW_H` per star, full stop - sized for the lines and the markers and
+ * never for the names. A row has 35 px above its line; a name longer than about seven characters
+ * rises further than that, so on the first row it left the top of the block and was cut off by the
+ * window ("Proxima Centauri b" lost most of itself), on any later row it was written across the star
+ * above, and the outermost planet's name ran off the right-hand edge the same way.
+ *
+ * So each row is given the HEADROOM its own longest name needs, and the box is as wide as its
+ * furthest-reaching name. A system whose names already fitted gets exactly the old box, to the pixel.
+ */
+export function schematicExtent(
+  system: System, opts: { labels?: boolean; measure?: LabelMeasure } = {}
+): { headroom: number[]; rowTop: number[]; virtW: number; virtH: number } {
+  const measure = opts.measure ?? estimateLabel;
+  const stars = starsOf(system);
+  const headroom: number[] = [], rowTop: number[] = [];
+  let virtW = VB_W, cursor = 0;
+  for (const star of stars) {
+    let need = 0;
+    if (opts.labels !== false) {
+      for (const p of diagramRow(system, (star as any).id).planets) {
+        const reach = labelReach(measure(p.label));
+        need = Math.max(need, reach + LABEL.anchorUp + LABEL.marginPx - ROW_H / 2);
+        virtW = Math.max(virtW, p.x + reach + LABEL.marginPx);
+      }
+    }
+    rowTop.push(cursor);
+    headroom.push(Math.max(0, need));
+    cursor += ROW_H + Math.max(0, need);
+  }
+  return { headroom, rowTop, virtW, virtH: cursor };
+}
+
 export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: SchematicOpts): SchematicHit[] {
   const { system, x, y, w, h, theme, selectedId, colorful } = opts;
   const labels = opts.labels !== false;
@@ -100,10 +169,12 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
   const markerCol = (id: string, bodyColor: string | undefined, fallback: string) =>
     colorfulEff ? hue(hueIndex.get(id) ?? 0) : (theme.mono ? fallback : (bodyColor || fallback));
 
-  // Fit the virtual VB_W × (rows·ROW_H) diagram into the rect, centred horizontally, top-aligned.
-  const virtH = stars.length * ROW_H;
-  const scale = Math.min(w / VB_W, h / virtH);
-  const drawW = VB_W * scale, drawH = virtH * scale;
+  // Fit the virtual diagram - its rows AND the names that rise out of them (`schematicExtent`) - into
+  // the rect, centred horizontally, top-aligned.
+  const ext = schematicExtent(system, { labels, measure: schematicLabelMeasure(ctx, theme) });
+  const virtW = ext.virtW, virtH = ext.virtH;
+  const scale = Math.min(w / virtW, h / virtH);
+  const drawW = virtW * scale, drawH = virtH * scale;
   const offX = x + (w - drawW) / 2, offY = y + (h - drawH) / 2;
   const toView = (vx: number, vy: number) => [offX + vx * scale, offY + vy * scale] as const;
   const pushHit = (id: string, vx0: number, vy0: number, vx1: number, vy1: number) => {
@@ -123,7 +194,7 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
 
   for (let si = 0; si < stars.length; si++) {
     const star = stars[si] as any;
-    const cy = si * ROW_H + ROW_H / 2;
+    const cy = ext.rowTop[si] + ext.headroom[si] + ROW_H / 2;
     const row = diagramRow(system, star.id);
     const starCol = markerCol(star.id, star.apparentColorHex, c.heading);
 
@@ -139,7 +210,10 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
     ctx.fillStyle = colorfulEff ? starCol : c.body;
     if (labels) {
       ctx.font = `600 13px ${font}`; ctx.textAlign = 'center';
-      ctx.fillText(star.name, 42, cy + 27);
+      // Centred under the star, unless the name is wider than the room to the star's left - then it
+      // starts at the edge instead of running off it.
+      const nameW = ctx.measureText(star.name).width;
+      ctx.fillText(star.name, Math.max(42, nameW / 2 + LABEL.marginPx), cy + 27);
     }
     pushHit(star.id, 42 - 15, cy - 15, 42 + 15, cy + 30);
 
@@ -166,15 +240,15 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
       ctx.fillStyle = col; ctx.fill();
       if (sel) { ctx.strokeStyle = c.value; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1.5; }
       if (e.hasMoons) { ctx.beginPath(); ctx.arc(e.x + 10, cy - 9, 2.4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
-      ctx.font = `${sel ? '600 ' : ''}10px ${font}`;
+      ctx.font = `${sel ? '600 ' : ''}${LABEL.fontPx}px ${font}`;
       const lw = labels ? ctx.measureText(e.label).width : 0;
       if (labels) {
         ctx.save();
-        ctx.translate(e.x, cy - 9);
+        ctx.translate(e.x, cy - LABEL.anchorUp);
         ctx.rotate(-Math.PI / 4); // up to the right
         ctx.textAlign = 'left';
         ctx.fillStyle = colorfulEff ? col : (sel ? c.value : c.body);
-        ctx.fillText(e.label, 5, 3);
+        ctx.fillText(e.label, LABEL.startAlong, LABEL.baselineDrop);
         ctx.restore();
       }
       // Axis-aligned box over the marker + the diagonal label (extends up-right by (5+lw)/√2 each axis).
@@ -188,12 +262,16 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
   return hits;
 }
 
-// The natural height (view px) the diagram wants at a given column width — one ROW_H per star, fitted
-// width-first. The document reserves this (capped) so the schematic doesn't leave a band of black space.
-export function schematicHeight(system: System, w: number): number {
-  const rows = starsOf(system).length;
-  if (!rows) return 0;
-  return rows * ROW_H * (w / VB_W);
+// The natural height (view px) the diagram wants at a given column width — one ROW_H per star plus the
+// headroom its names need (`schematicExtent`), fitted width-first. The document reserves this (capped)
+// so the schematic doesn't leave a band of black space. Pass the SAME `labels` and `measure` the draw
+// will use, or the reserved box and the drawn one are two answers to one question.
+export function schematicHeight(
+  system: System, w: number, opts: { labels?: boolean; measure?: LabelMeasure } = {}
+): number {
+  if (!starsOf(system).length) return 0;
+  const ext = schematicExtent(system, opts);
+  return ext.virtH * (w / ext.virtW);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

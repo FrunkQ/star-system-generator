@@ -66,6 +66,8 @@ export interface MegaHardClauses {
   hostIsStar?: true;
   /** A REAL geostationary altitude — not OrbitalBoundaries' fallback. */
   needsGeostationary?: true;
+  /** The object is built round a black hole (a Birch shell); any other host has none to enclose. */
+  hostIsBlackHole?: true;
 }
 
 /** PLAUSIBILITY — tags and explains, never refuses. Published numbers, not walls. */
@@ -712,6 +714,21 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   tidallyLocked?: boolean;      // one face permanently toward its primary (planet or star)
   starTidallyLocked?: boolean;  // locked specifically to its STAR → a permanent substellar face (eyeball)
   oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
+  /** HOW MANY LOBES THIS BODY IS MADE OF — an AUTHORED FACT, and the counterpart to the derived
+   *  `oblateness` beside it. 1 (or absent) is an ordinary single body; 2 is a contact binary such as
+   *  Arrokoth or comet 67P; more is allowed and costs no new code.
+   *
+   *  IT HAS TO BE A STORED FACT RATHER THAN A DERIVATION, and that is the whole reason it exists.
+   *  The classifier re-derives every class on every pass from the feature map in `SystemProcessor`,
+   *  so a class it cannot express as a band over a feature is LOST on the next reprocess. Being two
+   *  lobes is shape and HISTORY — a gentle low-velocity merger that happened once — and no derived
+   *  quantity carries it. So the GM (or the generator) states it, the feature map publishes it, and
+   *  `asteroid/contact-binary` follows from it. Nothing in the physics chain writes this field, and
+   *  nothing may: `idempotence.test.ts` is what enforces that.
+   *
+   *  The SHAPE follows the count in one place — `catalogue/smallBodyShape.ts`, which both the 2D
+   *  silhouette and the 3D mesh read (engine map RENDER-S60). */
+  lobes?: number;
   /** Axial tilt in degrees — the angle between the spin axis and the orbit normal. Drives the
    *  seasonal temperature swing, the moon-orbit reference plane (`satelliteFrame`) and how the
    *  renderers tip the body. THIS IS THE ONLY NAME FOR IT.
@@ -725,6 +742,18 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   /** @deprecated A second name for `axial_tilt_deg`, kept only so `importFixup` can recover it from
    *  older saves and delete it. Nothing reads it. Write `axial_tilt_deg`. */
   obliquity_deg?: number;
+  /** WHEN THIS BODY FORMED (G94): cosmic time in Gyr AFTER THE BIG BANG, on the master clock's own
+   *  axis (G62). ABSENT MEANS INHERIT - a body without one is as old as its system, and the
+   *  system's age is NEVER stamped onto bodies on save, or a GM who later ages the system would
+   *  find the change reaches nothing.
+   *
+   *  It is a PROPERTY, not an override: a body older than its system is a history (captured, a
+   *  second generation, rebuilt after a collision), not a cheat, so it raises no anomaly.
+   *
+   *  NEVER READ THIS FIELD DIRECTLY. The age is `ageOf(body, system)` in `physics/bodyAge.ts`,
+   *  which is also the only place that knows what "now" is (the system's reference epoch, never
+   *  the scrub position of the campaign clock). Write it with `setBodyAge` / `clearBodyAge`. */
+  formationTimeGyr?: number;
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
   // F-OVR: GM overrides for otherwise-derived scalars. A key being PRESENT means the GM pinned that
   // value — it is saved and fed into the derivation instead of the computed default, with a reset that
@@ -765,6 +794,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     // instead of being quietly turned into a gas ball. Gravity and escape velocity stay derived.
     densityGcm3?: number;
     densityHold?: 'radius' | 'mass';
+    // A STAR'S effective (photosphere) temperature in K, pinned (G96). Not `surfaceTempK`, which is a
+    // planet's mean-surface pin banded on equilibrium: a star's brightness follows from this and its
+    // radius, and everything it lights follows from that. Offered on a star with a photosphere that
+    // nothing else derives - not a brown dwarf (its age is its handle) and not a black hole or a
+    // neutron star. Applied by `physics/stellarTempPin.ts`.
+    effectiveTempK?: number;
     // THE STATED REASON for each pin, keyed by the override it explains — an `anomaly/*` tag from
     // the Anomaly category. Several overrides may share one reason. LIFECYCLE-BOUND: resetting an
     // override deletes its entry here too (see `clearOverride`), because a reason with nothing left
@@ -780,6 +815,17 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // Evolution opt-in. Hand-authored, imported and picker-placed bodies carry END-STATE values
   // the GM chose — absent flags mean the processor derives AROUND them but never rewrites them.
   // The generator opts its own creations in.
+  // What a pinned stellar temperature DISPLACED (G96, the `atmosphere0` pattern): the star's own
+  // temperature and brightness from before `overrides.effectiveTempK` was set. Present only while
+  // that pin is, written and removed by `physics/stellarTempPin.ts` and by nothing else. It is what
+  // makes resetting the pin return the star exactly as it was.
+  temperature0K?: number;
+  radiationOutput0?: number;
+  /** A luminous body's output in solar luminosities - what the radiation and temperature models
+   *  read for a source. Written by the star editor (Stefan-Boltzmann over radius and temperature),
+   *  by the substellar pass, and by the stellar temperature pin. It was read and written across the
+   *  engine for years without being declared here; this is only the declaration. */
+  radiationOutput?: number;
   evolveAtmosphere?: boolean;  // erode the atmosphere over the system age (from the atmosphere0 baseline)
   atmosphere0?: Atmosphere;    // primordial baseline escape derives from — keeps re-processing idempotent
   autoClassify?: boolean;      // let the classifier overwrite `classes` (and the type image)
@@ -895,6 +941,16 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
        *  not an event. */
       eclipse?: { permanent: true } | { crossingsPerOrbit: 2; hoursEach: number } }[];
   }[];
+  /** Phase 6 (the soletta): the EXTRA starlight orbital mirrors turn onto this body - DERIVED every
+   *  pass by `physics/starlightOcclusion.ts starlightBoost`, commit-or-delete exactly as
+   *  `starlightDimming` (absent when no mirror lights the body). `gain` multiplies the received
+   *  light from every luminous source (1.2 = a fifth more than inverse-square); `mirrors` says
+   *  who added what, each as a fraction of the light the body's own disc intercepts. The trace
+   *  and the `mega/lit-by` tag read it; nothing else may re-derive who lights whom. */
+  starlightBoost?: {
+    gain: number;
+    mirrors: { name: string; addedFrac: number }[];
+  };
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)
@@ -1012,7 +1068,9 @@ export interface Fingerprint {
   // generator), NEVER by the classifier. The classifier works on what it sees: a hand-authored
   // chthonian in a million-year-old system still classifies as a chthonian, however implausible its
   // presence, and the tags say so. `formation` is the one-way half of that bargain — it decides
-  // what a slot may be GIVEN, not what a body IS. Bands: age_Gyr (early / late formers).
+  // what a slot may be GIVEN, not what a body IS. Bands: age_Gyr (early / late formers) and Teq_K
+  // (a type that forms cold but is still itself once moved somewhere warm — the ice giant; where
+  // it is declared the temperature gate reads it INSTEAD of the match band, engine map CLASS-2).
   formation?: Record<string, FingerprintBand>;
   weight?: number;                       // optional score multiplier (default 1)
   note?: string;                         // human note on the type's defining traits
@@ -1029,6 +1087,19 @@ export interface ClassifierSpec {
   fingerprints?: Fingerprint[];          // per-type fingerprints — the only classifier
   maxClasses: number;
   planetImages?: Record<string, string>;
+  /**
+   * WHEN A CLASS'S STOCK PICTURE SAYS MORE THAN THE CLASS DOES. A type is defined by its fingerprint
+   * bands, and its one illustration is drawn in a particular STATE: `planet/super-earth` is three
+   * bands of mass, radius and density, and its picture is a world wrapped in cloud. An airless body
+   * that is a super-earth by every band was therefore pictured with weather it does not have.
+   *
+   * Each entry lists, per class, the conditions under which that class borrows ANOTHER class's
+   * picture: the first variant whose every band the body sits inside wins (hard edges - a picture
+   * is a yes or a no), else the class's own. `use` names a key of `planetImages`. Same band language
+   * and the same feature map as the fingerprints, so nothing here is a second classifier - the
+   * class does not change, only which of the pack's existing files illustrates it.
+   */
+  planetImageVariants?: Record<string, Array<{ match: Record<string, FingerprintBand>; use: string; note?: string }>>;
   starImages?: Record<string, string>;
 }
 
@@ -1234,6 +1305,9 @@ export interface RulePack {
    */
   playerStrings?: { incoming?: string };
   climateModel?: ClimateModelConfig;
+  // G94: the bands of the `age/` tag family, in Gyr. Read ONLY through `physics/ageTags.ts
+  // deepTimeConfig`, which supplies a default for anything a pack leaves out.
+  deepTime?: { accretionGyr?: number; generationGyr?: number; ancientGenerations?: number; primordialBeforeGyr?: number };
   gasMolarMassesKg?: Record<string, number>; // Legacy support (optional)
   gasShielding?: Record<string, number>; // Legacy support (optional)
   liquids?: LiquidDef[];

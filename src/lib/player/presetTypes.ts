@@ -241,6 +241,15 @@ export interface PlayerPreset {
   // now. Off = capacity alone, on = current-of-capacity. Presentation only, and deliberately so: the
   // figures still cross the wire either way (see A29 — do not turn this into a snapshot strip).
   liveReadings: boolean;
+  // How much of a natural body's file the players are shown. ABSENT means `full`, so every preset
+  // and save that predates the field behaves exactly as before - it is deliberately not in
+  // DEFAULT_PRESET. `observed` keeps what a ship could measure from a distance (orbit, period,
+  // rotation, size, mass) and withholds everything derived from it: the class, climate, air,
+  // hazards, life, the derived tags and the type picture. Stored as a LEVEL rather than a boolean
+  // because V4's per-body "scanned" state will drive the same ladder (catalogue/bodyDisclosure.ts,
+  // which is also the only reader - go through `bodyDisclosureFor`, never this field directly).
+  // Presentation only, like `liveReadings`: the full body still crosses the wire.
+  bodyDisclosure?: import('$lib/catalogue/bodyDisclosure').BodyDisclosure;
   bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat' | 'none'; // body picture: 3D sphere / photo / procedural disc / flat shape / none (a new option honoured across every info surface — 2D document, 3D holo, …)
   // Belts AND rings: tumbling textured rubble, plain vector dots, or the GM orrery's flat grey band.
   // `points` was previously a side effect of picking a wireframe RENDER; it is its own choice now.

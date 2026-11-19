@@ -82,10 +82,19 @@ export function luminosityWattsFromRT(radiusKm: number, tempK: number): number {
  * WHAT A PARTICULAR BODY RECEIVES, in watts: the intrinsic output through a transmission factor -
  * the header's "second quantity", derived FROM the primitive so a dimmed star cannot disagree with
  * its own brightness. The factor comes from `physics/starlightOcclusion.ts` (megastructure
- * shading, G53 phase 4) and is clamped here so a malformed factor can only darken, never amplify:
- * nothing between a star and a world manufactures light.
+ * shading, G53 phase 4) and is clamped here so a malformed factor can only darken: nothing BETWEEN
+ * a star and a world manufactures light.
+ *
+ * THE AMPLIFY CASE (phase 6, the soletta) IS A SECOND, TYPED ARGUMENT, NOT A LOOSER CLAMP. A mirror
+ * stationed at a world does deliver more than inverse-square, and `mirrorGain` (from
+ * `starlightOcclusion.starlightBoost`, 1 + the mirrors' added share) says so. Keeping it apart
+ * from the transmission is what lets both guards stand: a transmission above 1 is still a fault
+ * and still clamps, and a gain below 1 - or anything not a number - is ignored, so the gain can
+ * only brighten. There is no ceiling on it: a mirror vast enough to cook its world is a GM's to
+ * build, and the registry's own bands say when one stops being plausible (steer, never stop).
  */
-export function receivedLuminosityWatts(radiusKm: number, tempK: number, transmissionFrac: number): number {
+export function receivedLuminosityWatts(radiusKm: number, tempK: number, transmissionFrac: number, mirrorGain = 1): number {
 	const t = Number.isFinite(transmissionFrac) ? Math.min(1, Math.max(0, transmissionFrac)) : 1;
-	return luminosityWattsFromRT(radiusKm, tempK) * t;
+	const g = Number.isFinite(mirrorGain) && mirrorGain > 1 ? mirrorGain : 1;
+	return luminosityWattsFromRT(radiusKm, tempK) * t * g;
 }

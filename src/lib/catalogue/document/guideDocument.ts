@@ -8,6 +8,7 @@
 import type { System, CelestialBody } from '$lib/types';
 import type { UnitPrefs } from '$lib/units';
 import { bodyFacts, bodyGlyph } from '../bodyFacts';
+import { discloseBody, genericTypeLabel, graphicModeFor, isVeilable, type BodyDisclosure } from '../bodyDisclosure';
 import { describeTag, tagContextLabel } from '$lib/tags/tagPresentation';
 import { markersFor } from '$lib/tags/mapHighlights';
 import type { DocBlock, TagItem, TagStyle } from './blocks';
@@ -40,6 +41,10 @@ export interface GuideDocOpts {
   // map already IS the schematic/body/navigator. One builder → the document AND the 2D/3D info block.
   noHeading?: boolean;                   // panel hosted in a DOM aside that already shows the title bar
   liveReadings?: boolean;                // A29: a construct's CURRENT fuel/cargo/crew as well as capacity
+  // How much of a natural body this document may print (bodyDisclosure.ts); absent means `full`.
+  // At `observed` the heading, the facts, both tag blocks and the picture are all built from the
+  // veiled copy of the subject, so no caller has to remember to withhold anything.
+  disclosure?: BodyDisclosure;
   rulePack?: import('$lib/types').RulePack | null; // names a construct's engines and fuels, and gives them
   // an Isp and a density — without it a construct's mass, Δv and acceleration cannot be derived and
   // those rows are simply left out. Optional everywhere: a caller without a pack still gets the rest.
@@ -105,14 +110,28 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
 
   // The subject we pull facts/imagery from: a barycentre is shown AS its dominant member (e.g. Pluto).
   const bary = isBary(selected);
-  const subject = (bary ? dominantOf(system, selected) : selected) as CelestialBody | null;
+  const rawSubject = (bary ? dominantOf(system, selected) : selected) as CelestialBody | null;
+  // THE VEIL. Everything below reads `subject`, and at `observed` that is the allow-listed copy -
+  // the class, the derived tags, the type picture and the makeup are simply not on it. `rawSubject`
+  // is kept for exactly one caller: `bodyFacts`, which makes its own copy and needs the real node
+  // for the one rotation fact stored as a tag.
+  const veiled = opts.disclosure === 'observed' && isVeilable(rawSubject);
+  const subject = discloseBody(rawSubject, opts.disclosure);
+  // A picture the caller loaded is the body's TYPE picture unless the GM uploaded it, and a type
+  // picture is the derived class in another form. `subject.image` survives the veil only when it
+  // is custom, so that is the test - made here so a caller that loads first cannot leak it.
+  const image = veiled && !(subject as any)?.image?.custom ? null : opts.image;
+  // The globe in the reserved gap is drawn by the live renderers from the body's own data. A veiled
+  // body gets the plain disc instead - the generic picture this panel already has - whatever the
+  // preset's choice between sphere, gallery disc and plain disc.
+  const gfxMode = graphicModeFor(opts.imagery ?? 'none', veiled);
   const title = bary
     ? `${dominantOf(system, selected)?.name ?? '?'} (${selected.name})`
     : (selected.name ?? '');
   // The singular `class` is a CONSTRUCT field (bodies carry `classes`), and the construct block now
   // prints it as a properly separated Type row — so appending it here just gave the panel a subtitle
   // reading "Ship · Ship/Interstellar/Eridian", the raw slashes and the word twice.
-  const sub = ((subject as any)?.roleHint || 'body')
+  const sub = veiled ? genericTypeLabel(subject) : ((subject as any)?.roleHint || 'body')
     + ((subject as any)?.class && (subject as any)?.kind !== 'construct' ? ' · ' + (subject as any).class : '');
 
   if (!panel) blocks.push({ kind: 'rule' }); // the panel's frame is its own separator
@@ -141,7 +160,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // 3) Imagery — driven by the preset's Body-graphics choice. 'photo' shows a GM/stock picture (only
   // if one loaded); 'disc'/'sphere'/'flat' reserve a gap the view overlays the real renderer into.
   // The 'sliver' photo frame is special: it becomes a LEFT column beside the facts (handled in 4).
-  const sliver = opts.imagery === 'photo' && !!opts.image && opts.photoFrame === 'sliver';
+  const sliver = opts.imagery === 'photo' && !!image && opts.photoFrame === 'sliver';
   // The body graphic beside the facts rather than above them, when the page has the room for it. Only
   // for a real body's globe: a photo already has the sliver frame for this, a construct's MODEL wants
   // its full-width band (a hull is long and thin, and a side column would make it a speck), and the
@@ -166,15 +185,15 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
         .filter(Boolean).join(' ');
       blocks.push({ kind: 'text', text: line, italic: true });
     }
-  } else if (opts.imagery === 'photo' && opts.image && !sliver) {
-    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox', focus: opts.imageFocus });
+  } else if (opts.imagery === 'photo' && image && !sliver) {
+    blocks.push({ kind: 'image', img: image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox', focus: opts.imageFocus });
     // A GM photo still wins for a MODEL-LESS construct; a model outranks it (branch above).
   } else if (gfxIsGlobe && !gfxBeside) {
     // A CONSTRUCT gets no body graphic. The body-graphics setting drew whatever was selected, so a
     // 110 m ship was illustrated with the same featureless sphere a rocky world gets — a picture that
     // is not merely plain but wrong about what the thing is (A28). It gets its OWN glyph below (A30).
     // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
-    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
+    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: gfxMode as 'sphere' | 'disc' | 'flat', heightFrac: gfxMode === 'sphere' ? 0.32 : 0.24 });
   } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
     && subject && subject.kind === 'construct') {
     // A30: the construct's authored icon, at info-block size — the picture that already exists in its
@@ -190,7 +209,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
 
   // 4) Facts + description. For the sliver frame these flow in a RIGHT column beside the left photo
   // strip. The 'Tags' fact is pulled out and rendered as a styled tags block below (full width).
-  if (sliver && opts.image) blocks.push({ kind: 'columnStart', img: opts.image, aspect: opts.imageAspect || 1.6, focus: opts.imageFocus });
+  if (sliver && image) blocks.push({ kind: 'columnStart', img: image, aspect: opts.imageAspect || 1.6, focus: opts.imageFocus });
   // The globe as a RESERVED left column — the same '__bodygfx' id the full-width band uses, so a
   // consumer overlays the live renderer identically and never has to know which layout it got.
   else if (gfxBeside) blocks.push({ kind: 'columnStart', reserveId: '__bodygfx', aspect: 1, stripWFrac: docGraphicStripFrac(opts.pageWidth ?? 0) });
@@ -199,8 +218,8 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     // same way the parent-nav row above does, so the two cannot name different parents.
     const hostId = (subject as any).parentId || (subject as any).orbit?.hostId;
     const host = hostId ? (nodeById(system, hostId) as CelestialBody | null) : null;
-    const facts = bodyFacts(subject, opts.prefs ?? {},
-      { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings, system, nowMs: opts.nowMs, formatDate: opts.formatDate });
+    const facts = bodyFacts(rawSubject!, opts.prefs ?? {},
+      { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings, disclosure: opts.disclosure, system, nowMs: opts.nowMs, formatDate: opts.formatDate });
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');
     if (rows.length) blocks.push({ kind: 'spacer', h: 4 });
     for (const f of rows) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });

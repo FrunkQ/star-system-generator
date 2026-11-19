@@ -255,6 +255,22 @@ export function mergeStarmapCoIs(cats: CoICategory[] | undefined): void {
     for (const c of cats) {
       if (!c || !c.id || !Array.isArray(c.tags)) continue;
       const existing = byId.get(c.id);
+      // ...AND THE TAG-SIDE FACTS IT CANNOT KNOW ABOUT EITHER. The saved shape is the old CoI one,
+      // which has no field for a tag's own colour, its hover description or its hidden-by-default
+      // flag - so replacing the tag list with the file's WIPED all three on every category the file
+      // carried. A GM who gave each faction its own flag colour lost them the next time they opened
+      // their own saved starmap. A fact the file does not state is not a fact the file changed.
+      const had = new Map((existing?.tags ?? []).map((t) => [t.key, t]));
+      const keptFor = (key: string) => {
+        const mine = had.get(key);
+        if (!mine) return {};
+        const kept: Partial<TagCategory['tags'][number]> = {};
+        if (mine.color !== undefined) kept.color = mine.color;
+        if (mine.textColor !== undefined) kept.textColor = mine.textColor;
+        if (mine.description !== undefined) kept.description = mine.description;
+        if (mine.secretDefault !== undefined) kept.secretDefault = mine.secretDefault;
+        return kept;
+      };
       byId.set(c.id, {
         // Keep the world-side facts (rules, roles beyond constructs) a CoI file cannot know about.
         ...(existing ?? { appliesTo: [] as TagRole[], rules: [], shortName: c.label, longName: c.label, color: '#888888' }),
@@ -266,7 +282,7 @@ export function mergeStarmapCoIs(cats: CoICategory[] | undefined): void {
         single: c.single,
         enabled: c.enabled !== false,
         appliesTo: [...new Set([...(existing?.appliesTo ?? []), 'construct' as TagRole])],
-        tags: c.tags.map((t) => ({ ...t })),
+        tags: c.tags.map((t) => ({ ...keptFor(t.key), ...t })),
         rules: existing?.rules ?? []
       } as TagCategory);
     }

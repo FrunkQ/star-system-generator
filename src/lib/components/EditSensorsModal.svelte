@@ -8,6 +8,7 @@
   import FieldHelp from './FieldHelp.svelte';
   import { SENSOR_FIELD_HELP } from '$lib/packs/fieldHelp';
   import { foreground } from '$lib/ui/foreground';
+  import CopyDefinitionButton from './CopyDefinitionButton.svelte';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -107,7 +108,9 @@
         const def = rulePack.sensorDefinitions?.entries.find(d => d.id === s.id);
         return JSON.stringify(def) !== JSON.stringify(s);
     });
-    if (sensorOverrides.length > 0) overrides.sensorDefinitions = sensorOverrides;
+    // `undefined` is "no override at all" and the page removes the key. Leaving the key OUT meant
+    // "keep whatever was stored", so deleting your LAST custom sensor saved nothing and it came back.
+    overrides.sensorDefinitions = sensorOverrides.length > 0 ? sensorOverrides : undefined;
 
     dispatch('save', overrides);
     dispatch('close');
@@ -127,6 +130,8 @@
                 <div class="item-card">
                     <div class="item-header">
                         <input type="text" class="name-input" bind:value={sensor.name} placeholder="Sensor Name" />
+                        <CopyDefinitionButton section="sensorDefinitions" id={sensor.id} definition={sensor} pack={rulePack}
+                            overrides={starmap.rulePackOverrides} campaignName={starmap.name} />
                         <button class="delete-btn" on:click={() => deleteItem(sensor.id)}>✕</button>
                     </div>
                     <div class="item-body">

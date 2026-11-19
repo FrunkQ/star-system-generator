@@ -2,9 +2,218 @@
 
 All notable changes are listed here:
 
-## v3.1.49 - 23rd Sep 2026
+## v3.2.0 - 19th Nov 2026
 
-- Production hotfix, config only, no engine change. Everything under `static/` was served with `max-age=0, must-revalidate`, so every browser revalidated all 245 of those files on every page load - each one a billable edge request returning a 304 and almost no bytes. `vercel.json` now sets real cache lifetimes: 30 days for images, models, draco and PWA icons; one hour for rule packs, examples, starmaps and shipped content. `sw.js` keeps `max-age=0` so the in-app update prompt still fires.
+**Version 3.2.** Nothing new in the engine since v3.1.80 - this is the release stamp. The mark in the corner reads SSE3.2, and the What's New panel behind it now describes this release: custom gases, liquids and drives that stay put, reloads that do not lose your work, an age for every body, more megastructures (and tilted ones), small bodies, a player view that shows only what could be observed from a distance, and two months of reported bugs closed. It opens once for everybody on their first visit after the update, and the mark brings it back.
+
+## v3.1.80 - 13th Nov 2026
+
+Five things that were waiting on a yes, and got one.
+
+- **Reloading the page puts you back in the star system you were working in**, not on the starmap. If a system did not finish opening last time, the app stays on the starmap and says so, so a system that crashes your browser cannot trap you in a loop. Each browser tab remembers its own place.
+- **A player view can show worlds as observed from a distance only.** A new tick box on a player view ("Observed from a distance only", in the Info block settings under Live readings). When ticked, a world's file shows only what a ship could measure from far off - its orbit, its day, its size and mass - and a plain type such as Planet, Moon or Gas giant. Atmosphere, climate, hazards, life, the engine's own tags and the type picture are hidden; your description and the tags you added by hand still show. Off unless ticked, so existing views are unchanged. The maps still draw the world as it looks.
+- **A Neptune- or Uranus-sized world on a warm orbit now reads as an ice giant** instead of a gas giant. Generated systems still only form ice giants out in the cold. Four bundled worlds change label with it: GJ 674 b, GJ 687 b, and Conquestor and Mors in the e Eridani example.
+- **The density box makes room for brown dwarfs.** Its ceiling now follows the mass: still 30 g/cc up to about six Jupiter masses, then about 72 at thirteen, 116 at twenty and 400 at sixty. A body saved above the limit opens unchanged.
+- **In the report's system chart a binary's second world is drawn above the line** (Charon beside Pluto); moons stay below. Long names that the printed report used to cut off now fit, because the chart grows taller instead.
+- The Shkadov thruster's notes explain why the thrust it shows is half the figure usually quoted for the Sun.
+
+## v3.1.79 - 13th Nov 2026
+
+Finishing what was half-built before the pause: the age model, the editor tabs, and more megastructures.
+
+**Every body has an age of its own**
+- Every planet, moon and brown dwarf can be given an age of its own. On a planet or moon it is the new **Age** control on the Temp tab; leave it alone and the body is as old as its system.
+- A brown dwarf's temperature no longer snaps back, because it no longer has a temperature box: it has an Age control in its place - age is what sets how far a brown dwarf has cooled. Type a temperature there and you are offered the age that gives it.
+- A system's age can be changed after it is made, on any star's System Info tab.
+- A star's temperature can be pinned on the Overrides tab, like any other figure. (A fusing star still has its temperature box; ageing a star through its life is next.)
+- Bodies given their own age are tagged Young, Old, Ancient or Primordial, and a giant's internal heat, a world's lost air and a star's flaring now follow that body's own age.
+
+**The body editor**
+- A world's spin controls - day length, retrograde spin, lobes and axial tilt - have moved from the Composition tab to the Orbit tab, where there is room for them.
+- Inclination and the longitude of the ascending node are always shown now; the "Show Advanced Orbital Elements" tick box is gone. Re-homing a body is behind a "Re-home..." button at the foot of the tab.
+- The Orbit tab says which plane an inclination is measured from: the parent's equator for a moon, the system plane for everything else.
+- Fixed: two worlds given identical orbital elements at different times ended up in different places. The mean anomaly is now shown and typed at the system's reference epoch, and says so.
+
+**Megastructures**
+- Megastructures can be tilted. A ringworld, Dyson sphere, swarm, orbital ring or battle station now has Inclination and Ascending Node on its Orbit tab, and the 3D view draws it in that plane.
+- **New: the Soletta**, an orbital mirror that adds starlight to the world it is stationed at. The world warms, and its weather and habitability follow.
+- **New: the Birch Planet** (a shell round a black hole), **the Shkadov Thruster** and **the Caplan Thruster**. The two stellar engines state the push on their star; they do not move it yet.
+- A station created at the middle orbit band no longer shows a blank Zone on its Orbit tab, a construct with no stated zone is described as Low, Medium or High Orbit from its altitude instead of always "Far Orbit", and selecting a hand-written construct with no dimensions no longer crashes its Basics tab.
+
+**Map and clock**
+- The starmap now says when a tag highlight is fading systems - what is highlighted and how many systems have faded - with a Clear. It used to fade the whole map without a word.
+- The time transport can step by an exact amount: so many of the calendar's own seconds, minutes, hours, days, months or years, forwards or back. One month from the 31st lands on the month's last day.
+- A highlighted tag is named and coloured the same way in Find by tag, Player Views and on the map.
+
+## v3.1.78 - 13th Nov 2026
+
+The bug-squash run: everything reported on Discord since 3.1 went live, worked through in one pass. No new systems - fixes, and a few small things that were asked for and agreed.
+
+**Your work stays yours**
+- Custom gases no longer vanish. Making a second custom gas used to delete the first, along with any tweak to a built-in gas - the gas editor was comparing against the wrong rule pack. Saved custom gases and mixes can now be deleted and copied, and deleting your last custom gas, mix, fuel, drive or sensor stays deleted.
+- **Save System** now carries your campaign's custom gases, liquids, mixes, fuels, drives, sensors and biospheres, and loading it into another map brings them along without overwriting that map's own. An exported construct brings its custom drives, fuels and sensors too - and a construct with a 3D model can be exported at all, which it could not.
+- Worlds that use your own liquids and gases are drawn with them as soon as a map loads, not only once the system is opened - a custom liquid's colour now survives a refresh.
+- A reload, asked for or not, brings back your last edit. Fixed a case where the browser's storage had a bad moment (most often on a phone after switching apps) and the next reload returned an OLDER campaign and threw the newer one away. If the browser cannot save at all, a banner now says so.
+- **Cancel** on "A new version is available" now cancels. The app no longer reloads itself when you said no, no longer asks again in the same tab, and no longer asks a page that has only just loaded.
+- "The last load didn't finish" no longer appears just because you reloaded, closed the tab or switched apps while a map was loading. It still appears for a map that really hangs.
+- "Start empty" starts empty: the random star system that used to appear on every new map is gone, and a bare map tells you how to place your first one.
+- Opening a saved starmap no longer strips the colours, descriptions and hidden-by-default settings you gave individual tags.
+
+**Worlds and stars**
+- New planets and moons no longer arrive with a 90 degree axial tilt, and opening a world's editor no longer changes its tilt.
+- A magnetosphere override now counts towards habitability: giving a world with no dynamo a field removes the "no magnetosphere" deduction.
+- Super-Jupiters and brown dwarfs no longer turn into giant rocky planets when you raise their density or import them without a composition. Above about two Jupiter masses the body stays a giant and a density change resizes it; one squeezed past its own envelope is tagged "Overdense giant" rather than refused.
+- Typing a density no longer strips the carbon out of a carbon-rich world.
+- A black hole heavier than the stellar-mass range is no longer tagged "Physically implausible", and is named intermediate-mass or supermassive.
+- A small asteroid's interior cutaway shows a mixed mass rather than a metal core and a rock mantle.
+- The star editor now says why a brown dwarf's temperature goes back when you change it (it follows mass and age; the age control that replaces it is next).
+- An airless super-earth is no longer pictured under cloud, nor a deep-atmosphere ocean world as a bare ice ball.
+
+**Orbits, structures and time**
+- A space elevator can no longer be sent to a Lagrange point or onto a world it cannot stand on, and a system already holding one in that state loads instead of freezing. Choosing a Lagrange point for any station now takes effect on that pick rather than the next.
+- A companion can be placed as far out as its system really reaches - millions of AU around a massive black hole, or as far as the System edge you set - and the 2D map zooms out far enough to show it on any screen.
+- A custom calendar with a non-standard second, a fractional number of days in the year or a negative leap value no longer locks up the app, and a campaign saved with one loads again. The calendar editor says when the calendar you are editing is a built-in one and can restore it in one press, shows whether your months add up to your year, and scrolls to a month you have just added.
+
+**Tags and the sky**
+- Importing a tag category that shares a namespace with one of yours now asks first: replace yours, or keep both and bring the file in as a copy. Tags seeded by a tagging rule no longer pile up or linger after the rule changes, and ones left behind by a rule that is gone can be cleared. Adding a tagging rule no longer quietly re-rolls every other rule's tags across your starmap.
+- A planet whose mass is only known as an upper limit (Kepler-32 f) no longer imports from the sky AT that limit. GJ 667 C and its five planets, previously skipped, now import. Filling out a sky import: the generator's dials now apply on a new map, generated moons are named after the world they orbit, and the dialogue warns when the planet archive could not be reached.
+
+**On screen**
+- An overlay image under a CRT or night-vision preset no longer washes the whole player screen in the filter's colour, and the starmap size comparison shows its overlay image, which it never had.
+- In the size comparison's Orbit order a planet's and its moons' names no longer overlap, and every moon with room gets a name.
+- The Tags guide and the Autopilot guide open in front of the window you opened them from.
+- In the system document view, long planet names are no longer cut off by the top or right edge of the window. The system report no longer prints a belt's or a small moon's mass as "0.000 M⊕".
+- **New:** lunar masses (M☾) and lunar radii (R☾) are selectable units.
+
+## v3.1.77 - 23rd Sep 2026
+
+- Rule packs are now fetched with the build version as a cache key (`?v=3.1.77`), which lets them be cached as `immutable` instead of revalidated every load - they were 11 of the ~15 repeat requests per page load. Nothing can go stale: the URL changes the instant the version does, and on beta the patch bumps on every push, so testers always get the latest. Also fixes four tests that v3.1.73-76 had broken by bumping the version without running `npm run manifest` - beta's service worker still said v3.1.72, so those four pushes never fired the update prompt.
+
+## v3.1.76 - 23rd Sep 2026
+
+- Fix: `example-starmaps/manifest.json` was getting the 30-day rule instead of the one-hour one, so a newly added starmap would have stayed invisible for up to a month. MEASURED on beta: where two rules in `vercel.json` match the same path, the LAST one wins, not the most specific. The carve-out now sits after the directory wildcard.
+
+## v3.1.75 - 23rd Sep 2026
+
+- On-demand static content moves from a one-hour cache to 30 days: `examples`, `example-starmaps` (the starmap files), `realsky`, `space-quotes.txt`. Two carve-outs stay short because they are INDEXES that grow when content is added, and pinning them would hide the very thing that was added: `example-starmaps/manifest.json` and `shipped-content.json`. `temporal/calendars.json` also stays at an hour - it is fetched on every load and carries the temporal anchor, so a month of staleness buys one request per hour. `rulepacks` unchanged pending a decision: it is 11 files fetched on EVERY app load and is now the largest repeat cost.
+
+## v3.1.74 - 23rd Sep 2026
+
+- Docs only. `docs/dev/cloudflare-migration.md`: why the edge-request bill was what it was, measured; the cache-header fix that v3.1.73 shipped; and a phased Cloudflare Workers runbook with the parallel-run traps (test hostnames are a different origin so saved campaigns do not appear; the hub and `relay-ice` origin allow-lists both need the test hostname) and a rollback.
+
+## v3.1.73 - 23rd Sep 2026
+
+- Everything under `static/` was served with `max-age=0, must-revalidate`, so every browser revalidated all 245 of those files - 62 MB, 50 MB of it planet images - on every page load. Each revalidation is a billable edge request returning a 304 and almost no bytes, which is why request count sat at 91% of the monthly cap while data transfer sat at 25%. `vercel.json` now sets real cache lifetimes: 30 days for images, models, draco and PWA icons; one hour for rule packs, examples, starmaps and shipped content. `sw.js` deliberately keeps `max-age=0` - the in-app update prompt only fires when its bytes change.
+
+## v3.1.72 - 16th Sep 2026
+
+- Board only. The project pauses with its state written down: where each piece of work stopped, the one change built but held until the starter maps are on Explorers, the decisions waiting on the owner, and how to pick it all up again.
+
+## v3.1.71 - 14th Sep 2026
+
+- Board only. Explorers now shows "Add System to SSE" on shared single systems, pointing at the beta for now, and only the site's admin can mark a map as one of the starter maps the app lists first. Nothing in the app needed changing for either.
+
+## v3.1.70 - 11th Sep 2026
+
+- **Copy your own liquids, gases, atmosphere mixes, fuels, engines, sensors, life forms and pigments.** In Settings, every one you made (not the ones the app ships) has a Copy button. Paste it into another campaign and it is added there, bringing anything it needs with it: an engine brings its fuel, a gas the liquid it condenses into. If that campaign already has one by the same name it is kept, and the pasted one arrives renamed.
+- Fixed: copying a planet or a whole system and pasting it into a different campaign did not bring that campaign's custom liquids and other rules with it, so the pasted world quietly fell back to the defaults. It does now.
+- Fixed: right-clicking empty space on the starmap showed "Paste Rules here" greyed out when you had copied a rule. It works now.
+
+## v3.1.69 - 11th Sep 2026
+
+- **Single star systems shared on Explorers can now come into your campaign.** When you add a system to the starmap, the wizard lists the systems people have shared; pick one and it lands where you clicked. And a link to a shared system no longer says it cannot be opened: the app tells you it is ready, and you right-click an empty spot on your map and choose where it goes. Either way the system's creator is credited in your campaign, just as when you paste something from Explorers.
+
+## v3.1.68 - 11th Sep 2026
+
+- Each map in the Explorers list now says who made it. A map Explorers has found a problem in still appears, at the end of the list, with a line saying it may not open, so you know before you click.
+
+## v3.1.67 - 11th Sep 2026
+
+- **Load Starmap and the New Starmap screen now list maps shared on Explorers.** Ten at a time, best written-up first, or newest, most starred or most discussed; each shows its cover, what is in it and how many people have taken it. Click one and it opens, asking first if you already have a campaign open, exactly as an "Open in Star System Explorer" link does. If the app cannot reach Explorers it says so and offers to try again. The New Starmap screen starts on the starter maps, and says there are none yet until they are published there.
+
+## v3.1.66 - 11th Sep 2026
+
+- Fixed: placing the same bundled example system twice, or both Sol examples, gave two systems one id; the save went out and the next load refused the whole map with "Duplicate System ID". A new system now takes the first free id at the door, and a map already carrying the clash is repaired on load, both systems kept, with a banner saying what was renamed.
+- Board only. The Explorers hub becomes where maps and presets come from: the Load and New map lists will show the hub's maps in place of the ones shipped with the app, and custom liquids, gases, drives and tech settings will get a Copy that travels the same road a pasted body does. Briefed as a stream.
+- Board only. The contact binary ships without an image of its own; the Arrokoth picture is dropped.
+
+## v3.1.65 - 11th Sep 2026
+
+- Fixed: opening the Tags tab on a body that carried the same tag twice crashed the whole app. It now shows the tag once and stays up.
+- Board only. Where the new age controls will live: on a planet's Temperature tab; on a star in place of its temperature control, with a direct temperature pin moving to Overrides. Day Length, Retrograde, Lobes and Axial Tilt move to the Orbit tab, and the advanced orbital elements come out from behind their toggle.
+- Board only. Whether a star can be aged live through its life, into a giant and then a remnant: the engine already does this when a system is created, and the plan to do it from the editor is written down for the owner's decision.
+- Board only. The Explorers hub now publishes a list of its maps that the app can read, ten at a time; captured for a panel inside the app.
+
+## v3.1.64 - 8th Sep 2026
+
+- **A contact binary you pick is now the size of one.** Picking it could hand you a 451 km moon, which is far too big to be two lobes — anything past about 300 km has been pulled round by its own gravity. Sizes now run from under a kilometre to about 130 km, where the real ones are, and the type will no longer attach itself to a body big enough to be round.
+- The placeholder on a type with no picture used to read "AS" for every asteroid. It now shows the type's own initials.
+
+## v3.1.63 - 8th Sep 2026
+
+- **Five pictures that ship with the app had never once been shown.** A world's photo was chosen from what it fundamentally IS and ignored everything else true about it — so a ringed planet showed the picture for whatever it was underneath, and the ringed picture in the box was never used. Nor were the ones for a world spun into an ellipsoid, one spun apart into a ring, one that has been smashed, or one hugging its star. All five now appear, which is what the other two views of a body have always done. One to look at: the ringed picture is of a gas giant, so a small ringed world now shows a giant — tell me if you would rather have a better picture there or none at all.
+## v3.1.62 - 8th Sep 2026
+
+- Board only. The temperature box disappearing applies to brown dwarfs only: a real fusing star keeps its editable temperature, and the physics uses whatever you set even where it is unlikely. Recorded as a guard, because removing it from stars too would be an easy mistake to make.
+
+## v3.1.61 - 8th Sep 2026
+
+- Board only. The age slider gains its shape and its limit: the host star's formation in red, its accretion phase in orange, its lifetime in green to the present day, and beyond that a limit set by what the body is made of. A gas body reaches back to the first stars, an icy one nearly as far, a rocky one only as far as there was enough rock in the universe to build it, and a black hole all the way, which is what a primordial black hole is. Pushing past the limit is allowed and flagged rather than forbidden.
+- Board only. On a brown dwarf the temperature box will be removed rather than explained, and the age slider takes its place, because the age is what actually moves the temperature.
+- A new developer document, deep-time-design, is the home for this: how old a thing is and where it came from, kept as two separate facts, which is what will let galactic mergers and stellar collisions be added later without reopening any of it.
+
+
+## v3.1.60 - 8th Sep 2026
+
+- **Rubble piles and contact binaries are in the Add-body list now**, alongside the asteroid types, marked with a dashed border because they are a property rather than a type: pick one and you get a real asteroid — carbonaceous, stony, metallic or icy, chosen for you — that happens to be rubbly, or happens to be two lobes joined at a neck. Types the app could not honestly build this way (a ringed world, a body flung into a ring by its own spin) stay out of the list rather than handing you an ordinary planet.
+- **Both reference galleries now have a shelf of small bodies and a shelf of contact binaries**, so you can see the lumpy rocks in 2D and in 3D side by side without making one first. The 2D gallery had a row of asteroids that the 3D gallery never had — which is why nobody noticed for so long that the 3D views drew every one of them as a smooth ball. Both pages now draw from one list and cannot drift apart again.
+
+## v3.1.59 - 8th Sep 2026
+
+- Board only. The age work grows a scale and a set of tags: every body will get an age slider running back to the big bang, marked with its host star's age, and four new tags saying whether it is younger than its star, older, ancient enough to predate two stellar generations, or primordial - early-universe material this system happened to pick up. Where a body came from and when it formed stay separate facts, which is what will let galactic mergers and stellar collisions be added later without reopening any of it.
+
+## v3.1.58 - 8th Sep 2026
+
+- Board only. Every object will carry its own age, decided today. A campaign has exactly one age at the moment, on the system, and a body cannot be told it is older or younger - which is why a brown dwarf refuses to keep a temperature you type, since its temperature is nothing but its age. Giving a body its own age fixes that by driving the physics rather than overruling it, and it is the groundwork for tracking when things formed, which bodies were captured, and which were smashed and rebuilt.
+
+## v3.1.57 - 8th Sep 2026
+
+- Board only. The brown-dwarf temperature question is answered: the object in the report sits in the middle of the brown-dwarf mass range, not at the edge where one would start fusing, so nothing about that boundary is involved. Its temperature comes from a cooling track, which means the lever that actually moves it is the system's age rather than the temperature box.
+
+## v3.1.56 - 8th Sep 2026
+
+- **The solvents a world cannot have are now shown but cannot be picked.** They still list the reason each is ruled out, so you can see what the physics decided, but choosing one would have corrupted the atmosphere alongside it, since the two are connected. A way to set one deliberately, and have it flagged as the anomaly it is, belongs in Overrides and is recorded as the next step.
+- Board only. The temperature that would not stick is confirmed as a brown-dwarf issue only, so there is no second problem hiding behind it. What a brown dwarf's temperature should do when you type one is the owner's decision, and it is recorded waiting for him.
+
+## v3.1.55 - 8th Sep 2026
+
+- **The solvent list on a world now shows every liquid, not just the ones that work there.** The ones that can be liquid somewhere on the world come first, and below them every other solvent with the reason it is ruled out - frozen and what it melts at, boiling here, or below its triple point and never liquid at this pressure. They stay pickable: the app tells you what the physics says and then lets you decide, as it does everywhere else.
+- Board only. A brown dwarf refusing to keep a temperature you type is diagnosed. Its temperature is worked out from its mass, age and radius on every pass, which is right for an object that does not fuse, but the editor offers a box, takes your number and quietly discards it - and there is no way to pin one. The fix needs a decision about what that box should be, so it is recorded rather than guessed at.
+
+## v3.1.54 - 8th Sep 2026
+
+- Board only, no behaviour change: the contact-binary work is written up, with the short list of things worth a look in a real window - all of them 3D, because the browser used for checking cannot draw a 3D view. The type ships without a picture, as the rubble pile does, because the obvious one is somebody else's artwork and its licence has not been checked.
+
+## v3.1.53 - 8th Sep 2026
+
+- **The generator now makes the occasional contact binary.** About one small moon in eight comes out as two lobes joined at a neck, which is roughly the fraction radar surveys find among real near-Earth asteroids. It changes nothing else: a seed you have generated before produces exactly the same system it always did, apart from those bodies now having a shape. You can turn it off, or change how often it happens, in the rule pack.
+
+## v3.1.52 - 8th Sep 2026
+
+- **Asteroids are rocks in 3D at last.** Every body in the holo, the reference gallery and the size comparison was drawn as a perfectly smooth ball, while the same asteroid had been a convincing lumpy rock on its info card all along. It is now the same rock in both, because both are drawn from one shape: a card and a 3D view of the same body can no longer disagree about what it looks like. Round worlds are unchanged, and so is every asteroid silhouette you have already seen.
+- **A contact binary now looks like one.** Set a small body's lobes to 2 in its Basics tab and it draws as two lobes joined at a neck, on the map, on its card, through a composition cutaway and in 3D - with the lobe sizes, the neck and the angle all varying from body to body, so no two look like the same sticker. More than two is allowed and draws as a chain.
+
+## v3.1.51 - 8th Sep 2026
+
+- **Contact binaries are a thing the app knows about.** Tell a small body it is made of two lobes and it is now recognised as a contact binary - the shape of Arrokoth, and of comet 67P that Rosetta photographed. It sits alongside what the rock is made of rather than replacing it, so a bilobate comet is still a comet and a bilobate rubble pile is still a rubble pile; both are true of real ones. Nothing is drawn differently yet - that is next.
+
+## v3.1.50 - 8th Sep 2026
+
+- Groundwork for contact binaries - the two-lobed rocks like Arrokoth and comet 67P. A body can now be told how many lobes it is made of, and that fact travels with the map and survives every recalculation, which is what a shape has to do before anything can be made of it. Nothing looks different yet; the type and the two-lobed drawing follow.
+
+## v3.1.49 - 8th Sep 2026
+
+- Board only. Version 3.1.48 is live on production: the bug-fix release, taking beta exactly. The record of what it carries, and of the sweep that ran before it, is on the board.
 
 ## v3.1.48 - 8th Sep 2026
 
