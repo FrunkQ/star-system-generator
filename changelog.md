@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.2.0 - 19th Nov 2026
+
+**Version 3.2.** Nothing new in the engine since v3.1.80 - this is the release stamp. The mark in the corner reads SSE3.2, and the What's New panel behind it now describes this release: custom gases, liquids and drives that stay put, reloads that do not lose your work, an age for every body, more megastructures (and tilted ones), small bodies, a player view that shows only what could be observed from a distance, and two months of reported bugs closed. It opens once for everybody on their first visit after the update, and the mark brings it back.
+
 ## v3.1.80 - 13th Nov 2026
 
 Five things that were waiting on a yes, and got one.

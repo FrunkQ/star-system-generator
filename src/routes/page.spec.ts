@@ -130,7 +130,7 @@ describe('+page.svelte', () => {
   it('"Start empty" starts empty: no system is generated, and the map says how to add the first (B4)', async () => {
     const { generateSystem } = await import('$lib/api');
     vi.mocked(generateSystem).mockClear();
-    localStorage.setItem('sse_welcome_v3_1_seen', '1'); // the hint waits for the first-run welcome to go
+    localStorage.setItem('sse_welcome_v3_2_seen', '1'); // the hint waits for the first-run welcome to go
     const { findByText, getByText, container } = renderPage();
     await findByText('Start empty');
     await fireEvent.click(getByText('Create Vast Nothingness'));
@@ -151,7 +151,7 @@ describe('+page.svelte', () => {
     vi.mocked(hasSavedStarmap).mockResolvedValue(true);
     vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    localStorage.setItem('sse_welcome_v3_1_seen', '1');
+    localStorage.setItem('sse_welcome_v3_2_seen', '1');
     try {
       const { container, findByText, queryByText } = renderPage();
       await findByText('Test Starmap', {}, { timeout: 8000 });

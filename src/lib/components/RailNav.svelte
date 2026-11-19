@@ -102,20 +102,20 @@ ${playerConnSummary}`
     <button class="brand rail-label brand-copy" title={brandTitle} on:click={() => dispatch('whatsnew')}
       aria-label="What’s new in this version"
     ><!--
-      SSE 3.1, SET IN THE HUB'S OWN LETTERFORMS (its ROUND alphabet, at scale 3). The two
+      SSE 3.2 (it read 3.1 until the 3.2 release of 2026-11-19), SET IN THE HUB'S OWN LETTERFORMS (its ROUND alphabet, at scale 3). The two
       products share a face now, which is the point: a map card on the hub and the app it opens
       in should not be lettered differently by accident.
 
       THE REAL TEXT STAYS IN THE DOM and the pixels are its picture. A wordmark made of
       rectangles is invisible to Ctrl-F and to a screen reader, and this one is also a BUTTON -
-      its accessible name comes from aria-label, but the string "SSE3.1" itself would vanish from
+      its accessible name comes from aria-label, but the string "SSE3.2" itself would vanish from
       the page entirely. So the span carries it, hidden to the eye only, and the SVG is marked
       decorative.
 
       The colour is deliberately not set here: fill="currentColor" means the glyphs take the
       .brand rule's var(--accent), so the wordmark follows the theme like every other accent.
-    --><span class="brand-text">SSE3.1</span
-      ><PixelText text="SSE3.1" scale={3} decorative /></button>
+    --><span class="brand-text">SSE3.2</span
+      ><PixelText text="SSE3.2" scale={3} decorative /></button>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
