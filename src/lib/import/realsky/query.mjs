@@ -24,6 +24,25 @@ export const TAP_SERVICES = {
   gaia: 'https://gea.esac.esa.int/tap-server/tap/sync'
 };
 
+// MIRRORS: the same service on another host, tried when the primary cannot be reached.
+// SIMBAD's official mirror is run by the CfA at Harvard: the same database, the same TAP endpoint,
+// the same JSON envelope, and it answers a browser on starsystemx.com without a CORS complaint.
+// Measured 2026-11-26, when CDS Strasbourg was down after a security incident (from 18 Nov 2026)
+// and every real-sky import failed with ERR_NAME_NOT_RESOLVED: the mirror returned the identical
+// Polaris row in about half a second. The archive and Gaia have no mirror listed here.
+export const TAP_MIRRORS = {
+  simbad: ['https://simbad.cfa.harvard.edu/simbad/sim-tap/sync']
+};
+
+// Which host last answered, per service, for the rest of this page's life. Once the primary has
+// failed and a mirror has worked, later queries go to the mirror first rather than paying a failed
+// attempt each time - an import makes several SIMBAD calls. Nothing is persisted: a reload tries the
+// primary again.
+const preferredHost = {};
+export function resetTapHostPreference() {
+  for (const k of Object.keys(preferredHost)) delete preferredHost[k];
+}
+
 // The archive columns the converter consumes (kept in step with convert.mjs).
 export const ARCHIVE_COLUMNS = [
   'pl_name', 'hostname', 'sy_dist', 'ra', 'dec',
@@ -300,8 +319,8 @@ export function gaiaConeAdql(region, { magLimit = null, count = false } = {}) {
 }
 
 // ---------------------------------------------------------------- transport
-export function tapUrl(service, adql, { format = 'json' } = {}) {
-  const base = TAP_SERVICES[service];
+export function tapUrl(service, adql, { format = 'json', base: baseOverride } = {}) {
+  const base = baseOverride ?? TAP_SERVICES[service];
   if (!base) throw new Error(`Unknown TAP service "${service}"`);
   const params = new URLSearchParams(
     service === 'simbad' || service === 'gaia'
@@ -320,10 +339,56 @@ export function tapUrl(service, adql, { format = 'json' } = {}) {
 // `Access-Control-Allow-Headers`, so the preflight fails and every query dies as a bare
 // "Failed to fetch" with nothing useful reaching the app. Measured against the live service, and it
 // is the only mechanism found that produces exactly the message D24 reports.
+//
+// A HOST THAT CANNOT BE REACHED IS NOT A CATALOGUE THAT SAID NO. When a service has mirrors
+// (TAP_MIRRORS), runTap moves to the next host only when the current one could not answer: the
+// request never completed (DNS failure, refused connection, CORS-less error page), the host
+// answered 5xx, or it answered 200 with something that is not JSON (a degraded service's HTML
+// page). It does NOT move on a 4xx - that is the catalogue rejecting the query, and a mirror
+// would only say the same - and it never moves on an abort: a cancelled count or a timed-out
+// suggestion is the caller's decision, not an outage.
+const isAbort = (e, signal) =>
+  signal?.aborted || (e && (e.name === 'AbortError' || e.name === 'TimeoutError'));
+
 export async function runTap(service, adql, { fetchImpl = fetch, signal, format = 'json' } = {}) {
-  const res = await fetchImpl(tapUrl(service, adql, { format }), { signal });
-  if (!res.ok) throw new Error(`${service} TAP: HTTP ${res.status} ${await res.text()}`);
-  const body = await res.json();
+  const primary = TAP_SERVICES[service];
+  if (!primary) throw new Error(`Unknown TAP service "${service}"`);
+  const hosts = [primary, ...(TAP_MIRRORS[service] ?? [])];
+  const start = Math.max(0, hosts.indexOf(preferredHost[service]));
+  const order = [...hosts.slice(start), ...hosts.slice(0, start)];
+  let lastError;
+  for (let i = 0; i < order.length; i++) {
+    const base = order[i];
+    const isLast = i === order.length - 1;
+    let res;
+    try {
+      res = await fetchImpl(tapUrl(service, adql, { format, base }), { signal });
+    } catch (e) {
+      if (isAbort(e, signal) || isLast) throw e;
+      lastError = e;
+      continue;
+    }
+    if (!res.ok) {
+      const err = new Error(`${service} TAP: HTTP ${res.status} ${await res.text()}`);
+      if (res.status < 500 || isLast) throw err;
+      lastError = err;
+      continue;
+    }
+    let body;
+    try {
+      body = await res.json();
+    } catch (e) {
+      if (isAbort(e, signal) || isLast) throw e;
+      lastError = e;
+      continue;
+    }
+    preferredHost[service] = base;
+    return normaliseTapBody(body);
+  }
+  throw lastError;
+}
+
+function normaliseTapBody(body) {
   // The archive returns a plain array of row objects; SIMBAD and Gaia return
   // the VOTable-JSON envelope { metadata|columns, data: [[...]] }. Normalise
   // to an array of objects keyed by column name.

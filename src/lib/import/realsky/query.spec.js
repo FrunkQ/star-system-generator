@@ -1,12 +1,13 @@
 // Real-sky import — query-layer tests: the sphere→cone+shell translation and
 // the TAP transport normalisation. The geometry claims here mirror design doc
 // §1b; if they change, change the doc.
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { LY_PER_PC } from './constants.mjs';
 import { inSphere, radecToXyzLy } from './positions.mjs';
 import {
   SOL_CENTRE, archiveCountAdql, archivePlanetsAdql, gaiaConeAdql,
-  regionBounds, runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT, tapUrl
+  regionBounds, runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT, tapUrl,
+  TAP_SERVICES, TAP_MIRRORS, resetTapHostPreference
 } from './query.mjs';
 
 describe('regionBounds', () => {
@@ -116,6 +117,110 @@ describe('tapUrl + runTap', () => {
   it('throws on HTTP failure with the service named', async () => {
     const fail = async () => ({ ok: false, status: 503, text: async () => 'busy' });
     await expect(runTap('gaia', 'q', { fetchImpl: fail })).rejects.toThrow(/gaia TAP: HTTP 503/);
+  });
+});
+
+// A HOST THAT CANNOT BE REACHED IS NOT A CATALOGUE THAT SAID NO (v3.2.1). CDS Strasbourg went down
+// in November 2026 and every real-sky import failed with ERR_NAME_NOT_RESOLVED, while SIMBAD's CfA
+// mirror answered the same query with the same row. These pin when runTap moves to the mirror and,
+// as importantly, when it must not.
+describe('runTap falls back to a mirror only when the host could not answer', () => {
+  beforeEach(() => resetTapHostPreference());
+
+  const PRIMARY = TAP_SERVICES.simbad;
+  const MIRROR = TAP_MIRRORS.simbad[0];
+  const POLARIS = { metadata: [{ name: 'main_id' }], data: [['* alf UMi']] };
+  const ok = (payload) => ({ ok: true, status: 200, json: async () => payload });
+  const status = (code, text = 'err') => ({ ok: false, status: code, text: async () => text });
+  // A fetch stub that answers per host and records which hosts were asked, in order.
+  function hosts(byHost) {
+    const asked = [];
+    const fetchImpl = async (url) => {
+      const host = Object.keys(byHost).find((h) => url.startsWith(h + '?'));
+      asked.push(host === PRIMARY ? 'primary' : host === MIRROR ? 'mirror' : url);
+      const answer = byHost[host];
+      return typeof answer === 'function' ? answer() : answer;
+    };
+    return { fetchImpl, asked };
+  }
+  const unreachable = () => { throw new TypeError('Failed to fetch'); };
+
+  it('the mirror is a different host serving the same TAP path', () => {
+    expect(MIRROR).not.toBe(PRIMARY);
+    expect(MIRROR).toMatch(/^https:\/\/[^/]+\/simbad\/sim-tap\/sync$/);
+  });
+
+  it('an unreachable primary (DNS failure, refused, CORS-less error) goes to the mirror', async () => {
+    const { fetchImpl, asked } = hosts({ [PRIMARY]: unreachable, [MIRROR]: ok(POLARIS) });
+    const rows = await runTap('simbad', 'q', { fetchImpl });
+    expect(rows).toEqual([{ main_id: '* alf UMi' }]);
+    expect(asked).toEqual(['primary', 'mirror']);
+  });
+
+  it('a primary answering 5xx goes to the mirror', async () => {
+    const { fetchImpl, asked } = hosts({ [PRIMARY]: status(503, 'busy'), [MIRROR]: ok(POLARIS) });
+    expect(await runTap('simbad', 'q', { fetchImpl })).toHaveLength(1);
+    expect(asked).toEqual(['primary', 'mirror']);
+  });
+
+  it('a primary answering 200 with a page that is not JSON goes to the mirror', async () => {
+    const html = { ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected token <'); } };
+    const { fetchImpl, asked } = hosts({ [PRIMARY]: html, [MIRROR]: ok(POLARIS) });
+    expect(await runTap('simbad', 'q', { fetchImpl })).toHaveLength(1);
+    expect(asked).toEqual(['primary', 'mirror']);
+  });
+
+  it('a 4xx is the catalogue rejecting the query: no mirror, the error comes through as before', async () => {
+    const { fetchImpl, asked } = hosts({ [PRIMARY]: status(400, 'Incorrect ADQL query'), [MIRROR]: ok(POLARIS) });
+    await expect(runTap('simbad', 'q', { fetchImpl })).rejects.toThrow(/simbad TAP: HTTP 400/);
+    expect(asked).toEqual(['primary']);
+  });
+
+  it('a cancelled or timed-out request is the caller\'s decision: no mirror', async () => {
+    const ctl = new AbortController();
+    ctl.abort();
+    const aborted = () => { throw new DOMException('The operation was aborted.', 'AbortError'); };
+    const a = hosts({ [PRIMARY]: aborted, [MIRROR]: ok(POLARIS) });
+    await expect(runTap('simbad', 'q', { fetchImpl: a.fetchImpl, signal: ctl.signal })).rejects.toThrow(/aborted/);
+    expect(a.asked).toEqual(['primary']);
+    const timedOut = () => { throw new DOMException('signal timed out', 'TimeoutError'); };
+    const b = hosts({ [PRIMARY]: timedOut, [MIRROR]: ok(POLARIS) });
+    await expect(runTap('simbad', 'q', { fetchImpl: b.fetchImpl })).rejects.toThrow(/timed out/);
+    expect(b.asked).toEqual(['primary']);
+  });
+
+  it('once the mirror has answered, later queries go to it first and do not retry the dead host', async () => {
+    const { fetchImpl, asked } = hosts({ [PRIMARY]: unreachable, [MIRROR]: ok(POLARIS) });
+    await runTap('simbad', 'q1', { fetchImpl });
+    await runTap('simbad', 'q2', { fetchImpl });
+    await runTap('simbad', 'q3', { fetchImpl });
+    expect(asked).toEqual(['primary', 'mirror', 'mirror', 'mirror']);
+  });
+
+  it('if the preferred mirror later fails, the primary is tried again', async () => {
+    let mirrorUp = true;
+    const { fetchImpl, asked } = hosts({
+      [PRIMARY]: () => (mirrorUp ? unreachable() : ok(POLARIS)),
+      [MIRROR]: () => (mirrorUp ? ok(POLARIS) : unreachable())
+    });
+    await runTap('simbad', 'q1', { fetchImpl });
+    mirrorUp = false;
+    expect(await runTap('simbad', 'q2', { fetchImpl })).toHaveLength(1);
+    expect(asked).toEqual(['primary', 'mirror', 'mirror', 'primary']);
+  });
+
+  it('when every host is unreachable the network error reaches the caller unchanged', async () => {
+    const { fetchImpl, asked } = hosts({ [PRIMARY]: unreachable, [MIRROR]: unreachable });
+    await expect(runTap('simbad', 'q', { fetchImpl })).rejects.toThrow(/Failed to fetch/);
+    expect(asked).toEqual(['primary', 'mirror']);
+  });
+
+  it('a service with no mirror behaves exactly as before', async () => {
+    const asked = [];
+    const fetchImpl = async (url) => { asked.push(url); throw new TypeError('Failed to fetch'); };
+    await expect(runTap('archive', 'q', { fetchImpl })).rejects.toThrow(/Failed to fetch/);
+    expect(asked).toHaveLength(1);
+    expect(asked[0].startsWith(TAP_SERVICES.archive + '?')).toBe(true);
   });
 });
 
