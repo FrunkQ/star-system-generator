@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.2.1 - 26th Nov 2026
+
+**Import from the Real Sky works again.** The star catalogue it asks (SIMBAD, run by the CDS in Strasbourg) has been down since 18 November after a security incident at the CDS, and every search failed. The app now falls back to SIMBAD's official mirror at Harvard - the same catalogue, the same answers - whenever Strasbourg cannot be reached, and stays with the mirror for the rest of the session. Nothing changes when Strasbourg is up.
+
 ## v3.2.0 - 19th Nov 2026
 
 **Version 3.2.** Nothing new in the engine since v3.1.80 - this is the release stamp. The mark in the corner reads SSE3.2, and the What's New panel behind it now describes this release: custom gases, liquids and drives that stay put, reloads that do not lose your work, an age for every body, more megastructures (and tilted ones), small bodies, a player view that shows only what could be observed from a distance, and two months of reported bugs closed. It opens once for everybody on their first visit after the update, and the mark brings it back.

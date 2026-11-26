@@ -8228,6 +8228,24 @@ own estimate from the radius - and is still printed as plain "Mass"; relabelling
 shipped map (LHS 475 b). Past ~12 Earth radii the relation cannot be inverted and answers with the
 mass at which its plateau begins. THE FIXTURE ROW IS SYNTHESISED from published figures; the live
 composite row for Kepler-32 f has not been seen from a browser.
+### DATA-R56 A HOST THAT CANNOT BE REACHED IS NOT A CATALOGUE THAT SAID NO
+BUCKET: PLATFORM (a named external service and its mirror) - the hosts and their behaviour are a
+snapshot of third parties and will go stale.
+WHERE: `src/lib/import/realsky/query.mjs` (`TAP_MIRRORS`, `runTap`, `resetTapHostPreference`); pinned
+by `query.spec.js` "runTap falls back to a mirror only when the host could not answer".
+RULE: a service with mirrors moves to the next host ONLY when the current one could not answer - the
+request never completed, it answered 5xx, or it answered 200 with a body that is not JSON. NEVER on a
+4xx (the catalogue rejecting the query; a mirror says the same) and NEVER on an abort or timeout (the
+caller's decision). The host that last answered is tried first for the rest of the page's life;
+nothing is persisted, so a reload tries the primary again.
+WHY: CDS Strasbourg went down after a security incident (from 18 Nov 2026) and every real-sky import
+failed with ERR_NAME_NOT_RESOLVED, while SIMBAD's CfA mirror (`simbad.cfa.harvard.edu`) answered the
+same query with the same Polaris row in ~0.5 s and allows a browser on starsystemx.com. v3.2.1.
+BLAST: a mirror is only safe if it serves the SAME TAP PATH, the SAME JSON envelope and allows
+CORS from the app's origin - measure all three from the live site before adding one. The map build
+kit (`scripts/starmap-build/fetch-sources.mjs`) has its own hard-coded Strasbourg URLs and NO
+fallback; it runs on the owner's machine, not in the app.
+
 ### PHY-43 A BODY'S AGE HAS ONE ANSWER, AND ITS "NOW" IS THE SYSTEM'S REFERENCE EPOCH, NEVER THE SCRUB
 BUCKET: ARCHITECTURE + DOMAIN - architecture: one function answers "how old is this body" and
 nothing else may read the stored field or the system's age in its place. Domain: an age is a
