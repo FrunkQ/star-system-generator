@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.2.2 - 26th Nov 2026
+
+**Real-sky imports centred on another star get their live planets back.** NASA's Exoplanet Archive has started refusing the way the importer asked for a patch of sky, so any import not centred on Sol quietly fell back to the bundled snapshot, which only reaches 41 light years - "Live archive unreachable", and known planets missing beyond that (Chalawan was one). The importer now asks in a form the archive accepts and trims the answer to your sphere itself, as it always did. Imports centred on Sol were never affected.
+
 ## v3.2.1 - 26th Nov 2026
 
 **Import from the Real Sky works again.** The star catalogue it asks (SIMBAD, run by the CDS in Strasbourg) has been down since 18 November after a security incident at the CDS, and every search failed. The app now falls back to SIMBAD's official mirror at Harvard - the same catalogue, the same answers - whenever Strasbourg cannot be reached, and stays with the mirror for the rest of the session. Nothing changes when Strasbourg is up.

@@ -7,7 +7,7 @@ import { inSphere, radecToXyzLy } from './positions.mjs';
 import {
   SOL_CENTRE, archiveCountAdql, archivePlanetsAdql, gaiaConeAdql,
   regionBounds, runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT, tapUrl,
-  TAP_SERVICES, TAP_MIRRORS, resetTapHostPreference
+  TAP_SERVICES, TAP_MIRRORS, resetTapHostPreference, skyBoxForCone, inSkyBox, simbadStarsAdql
 } from './query.mjs';
 
 describe('regionBounds', () => {
@@ -74,9 +74,14 @@ describe('ADQL builders', () => {
     expect(archiveCountAdql(region)).toContain('count(distinct hostname)');
   });
 
-  it('off-Sol regions add an ICRS circle', () => {
-    const q = archivePlanetsAdql({ centre: { raDeg: 44.8, decDeg: -55.05, distLy: 39.3 }, radiusLy: 5 });
-    expect(q).toContain("CIRCLE('ICRS', 44.8");
+  // v3.2.2: the archive now 403s any WHERE with a parenthesis, so its cone is a box. SIMBAD's
+  // region queries keep the real ICRS circle.
+  it('off-Sol regions add a sky limit: a box for the archive, an ICRS circle for SIMBAD', () => {
+    const region = { centre: { raDeg: 44.8, decDeg: -55.05, distLy: 39.3 }, radiusLy: 5 };
+    const q = archivePlanetsAdql(region);
+    expect(q).toContain('dec >= -63.433021 AND dec <= -46.666979 AND ra >= 30.056387 AND ra <= 59.543613');
+    expect(q).not.toContain('CIRCLE');
+    expect(simbadStarsAdql(region)).toContain("CIRCLE('ICRS', 44.8");
   });
 
   it('gaia queries guard the parallax and honour the magnitude cut', () => {
@@ -117,6 +122,80 @@ describe('tapUrl + runTap', () => {
   it('throws on HTTP failure with the service named', async () => {
     const fail = async () => ({ ok: false, status: 503, text: async () => 'busy' });
     await expect(runTap('gaia', 'q', { fetchImpl: fail })).rejects.toThrow(/gaia TAP: HTTP 503/);
+  });
+});
+
+// THE NASA ARCHIVE REFUSES A PARENTHESIS IN A WHERE CLAUSE (v3.2.2). Measured 2026-11-26: a cone,
+// a DISTANCE() test or `(ra - x) * (ra - x)` all came back 403 from the archive's firewall, while
+// plain comparisons, BETWEEN and NOT BETWEEN passed. These pin the two halves of the fix: the
+// archive's WHERE has no parenthesis at all, and the box that replaces the cone never loses a point
+// the cone held - near the poles, across RA 0, and for wide cones.
+describe('the archive gets the cone as a box it will accept', () => {
+  const where = (q) => q.slice(q.indexOf(' where ') + 7).replace(/ order by .*$/, '');
+  const centres = [
+    { raDeg: 37.95, decDeg: 89.26 },   // Polaris: the cone reaches the pole
+    { raDeg: 219.9, decDeg: -60.83 },  // Alpha Centauri
+    { raDeg: 0.5, decDeg: 10 },        // crosses RA 0 on the low side
+    { raDeg: 359.5, decDeg: -20 },     // crosses RA 0 on the high side
+    { raDeg: 180, decDeg: 0 },         // the equator
+    { raDeg: 90, decDeg: -85 }         // near the south pole
+  ];
+
+  it('no WHERE the archive receives contains a parenthesis', () => {
+    for (const c of centres) {
+      for (const radiusLy of [2, 5, 16.5]) {
+        const region = { centre: { ...c, distLy: 40 }, radiusLy };
+        expect(where(archivePlanetsAdql(region))).not.toMatch(/[()]/);
+        expect(where(archiveCountAdql(region))).not.toMatch(/[()]/);
+      }
+    }
+    // A Sol-centred region has no sky limit at all, as before.
+    expect(where(archivePlanetsAdql({ centre: SOL_CENTRE, radiusLy: 16.5 }))).not.toMatch(/ra|dec/);
+  });
+
+  it('every point inside the cone is inside the box', () => {
+    const rad = Math.PI / 180;
+    const ang = (ra1, d1, ra2, d2) => Math.acos(Math.min(1,
+      Math.sin(d1 * rad) * Math.sin(d2 * rad) + Math.cos(d1 * rad) * Math.cos(d2 * rad) * Math.cos((ra1 - ra2) * rad))) / rad;
+    let checked = 0;
+    for (const c of centres) {
+      for (const r of [0.5, 6, 25, 60]) {
+        const box = skyBoxForCone(c.raDeg, c.decDeg, r);
+        for (let i = 0; i < 720; i++) {
+          // Points on and just inside the cone's edge, all the way round, plus the centre.
+          const bearing = (i / 720) * 2 * Math.PI;
+          for (const f of [0, 0.5, 0.999]) {
+            const d = r * f * rad;
+            const lat = Math.asin(Math.sin(c.decDeg * rad) * Math.cos(d) + Math.cos(c.decDeg * rad) * Math.sin(d) * Math.cos(bearing));
+            const lon = c.raDeg * rad + Math.atan2(Math.sin(bearing) * Math.sin(d) * Math.cos(c.decDeg * rad), Math.cos(d) - Math.sin(c.decDeg * rad) * Math.sin(lat));
+            const ra = (((lon / rad) % 360) + 360) % 360;
+            const dec = lat / rad;
+            expect(ang(ra, dec, c.raDeg, c.decDeg)).toBeLessThanOrEqual(r + 1e-6);
+            if (!inSkyBox(box, ra, dec)) throw new Error(`lost (${ra.toFixed(4)}, ${dec.toFixed(4)}) from the ${r} deg cone at (${c.raDeg}, ${c.decDeg})`);
+            checked++;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(50000);
+  });
+
+  it('a range across RA 0 is written as the RA it excludes, and a cone over a pole leaves RA open', () => {
+    const wrap = skyBoxForCone(0.5, 10, 5);
+    expect(wrap.ra.wraps).toBe(true);
+    expect(inSkyBox(wrap, 359, 10)).toBe(true);
+    expect(inSkyBox(wrap, 180, 10)).toBe(false);
+    expect(archivePlanetsAdql({ centre: { raDeg: 0.5, decDeg: 10, distLy: 40 }, radiusLy: 2 })).toContain('ra NOT BETWEEN');
+    const pole = skyBoxForCone(37.95, 89.26, 6);
+    expect(pole.ra).toBeNull();
+    expect(pole.decHi).toBe(90);
+  });
+
+  it('the box is not wildly bigger than the cone it replaces', () => {
+    // Away from the poles a box over-fetches its corners: about 4/pi of the cone's area.
+    const box = skyBoxForCone(180, 0, 5);
+    expect(box.decHi - box.decLo).toBeLessThan(10.01);
+    expect(box.ra.hi - box.ra.lo).toBeLessThan(10.02);
   });
 });
 

@@ -8246,6 +8246,25 @@ CORS from the app's origin - measure all three from the live site before adding 
 kit (`scripts/starmap-build/fetch-sources.mjs`) has its own hard-coded Strasbourg URLs and NO
 fallback; it runs on the owner's machine, not in the app.
 
+### DATA-R57 THE NASA ARCHIVE REFUSES A PARENTHESIS IN A WHERE CLAUSE - ITS CONE IS A BOX
+BUCKET: PLATFORM (a third party's firewall) - measured, and will go stale if NASA changes the rule.
+WHERE: `src/lib/import/realsky/query.mjs` (`skyBoxForCone`, `inSkyBox`, `regionWhere`'s `skyBox`
+option, `archivePlanetsAdql`, `archiveCountAdql`); pinned by `query.spec.js` "the archive gets the
+cone as a box it will accept".
+RULE: nothing sent to the Exoplanet Archive may carry a parenthesis in its WHERE clause. The sky
+cone goes as the RA/Dec box that encloses it, in comparisons, BETWEEN and NOT BETWEEN only (a range
+across RA 0 is written as the RA it excludes, so no OR is needed). SIMBAD keeps the real
+`CONTAINS(POINT, CIRCLE)` cone - its mirror and primary both accept it.
+WHY: from 2026-11-26 at the latest, every off-Sol real-sky import got HTTP 403 from the archive in
+under 0.2 s and fell back to the bundled snapshot ("Live archive unreachable"). Bisected through
+the app's own proxy: CONTAINS/POINT/CIRCLE, DISTANCE(), and even `(ra - x) * (ra - x) < 36` are all
+403 - a firewall, not ADQL (a genuine ADQL error is a 400 after about a second). A Sol-centred
+import has no cone and was never affected, which is why it went unnoticed. It is the likeliest
+cause of the Chalawan report (known planets missing; bug run, ideas B16). v3.2.2.
+BLAST: the box over-fetches (the corners; a full RA ring when the cone reaches a pole), which is
+safe only because convert.mjs makes the exact 3D cut (`inSphere`) on every archive row - keep it.
+A parenthesis in the SELECT list (`count(distinct hostname)`) is accepted.
+
 ### PHY-43 A BODY'S AGE HAS ONE ANSWER, AND ITS "NOW" IS THE SYSTEM'S REFERENCE EPOCH, NEVER THE SCRUB
 BUCKET: ARCHITECTURE + DOMAIN - architecture: one function answers "how old is this body" and
 nothing else may read the stored field or the system's age in its place. Domain: an age is a
