@@ -93,8 +93,9 @@ export function regionBounds(region) {
 
 // Shared WHERE clause for a region against a table exposing ra/dec (deg) and
 // a distance in PARSECS via `distExprPc` (archive: sy_dist; Gaia/SIMBAD:
-// 1000/parallax). ADQL's CONTAINS/CIRCLE does the sky cone.
-function regionWhere(region, distExprPc, prefix = '') {
+// 1000/parallax). ADQL's CONTAINS/CIRCLE does the sky cone - except where
+// `skyBox` asks for the cone as a plain RA/Dec box (see skyBoxForCone).
+function regionWhere(region, distExprPc, prefix = '', { skyBox = false } = {}) {
   const b = regionBounds(region);
   const clauses = [
     `${distExprPc} >= ${b.shellMinPc.toFixed(6)}`,
@@ -102,20 +103,76 @@ function regionWhere(region, distExprPc, prefix = '') {
   ];
   if (b.coneHalfAngleDeg != null) {
     const { centre } = region;
-    clauses.push(
-      `CONTAINS(POINT('ICRS', ${prefix}ra, ${prefix}dec), CIRCLE('ICRS', ${centre.raDeg.toFixed(6)}, ${centre.decDeg.toFixed(6)}, ${b.coneHalfAngleDeg.toFixed(6)})) = 1`
-    );
+    if (skyBox) {
+      const box = skyBoxForCone(centre.raDeg, centre.decDeg, b.coneHalfAngleDeg);
+      if (box.decLo > -90) clauses.push(`${prefix}dec >= ${box.decLo.toFixed(6)}`);
+      if (box.decHi < 90) clauses.push(`${prefix}dec <= ${box.decHi.toFixed(6)}`);
+      if (box.ra) {
+        clauses.push(
+          box.ra.wraps
+            ? `${prefix}ra NOT BETWEEN ${box.ra.hi.toFixed(6)} AND ${box.ra.lo.toFixed(6)}`
+            : `${prefix}ra >= ${box.ra.lo.toFixed(6)} AND ${prefix}ra <= ${box.ra.hi.toFixed(6)}`
+        );
+      }
+    } else {
+      clauses.push(
+        `CONTAINS(POINT('ICRS', ${prefix}ra, ${prefix}dec), CIRCLE('ICRS', ${centre.raDeg.toFixed(6)}, ${centre.decDeg.toFixed(6)}, ${b.coneHalfAngleDeg.toFixed(6)})) = 1`
+      );
+    }
   }
   return clauses.join(' AND ');
 }
 
+// THE NASA ARCHIVE REFUSES A PARENTHESIS IN A WHERE CLAUSE. Measured 2026-11-26 through the app's
+// own proxy: any CONTAINS/POINT/CIRCLE cone, a DISTANCE(...) test, even `(ra - x) * (ra - x) < 36`
+// comes back HTTP 403 in under 0.2 s - a firewall in front of the service, not an ADQL error (a
+// real ADQL error is a 400 after a second). Plain comparisons, BETWEEN and NOT BETWEEN pass. So the
+// archive gets the cone as the RA/Dec box that encloses it, written with comparisons only. The box
+// over-fetches a little (at most the corners, or a full RA ring near a pole) and the importer
+// already makes the exact 3D cut afterwards (positions.inSphere in convert.mjs). SIMBAD keeps the
+// real cone.
+//
+// The box of a small circle of angular radius r centred at (ra0, dec0): declination dec0 +- r;
+// right ascension ra0 +- asin(sin r / cos dec0), the circle's exact widest RA extent. When the
+// circle reaches a pole, or that ratio reaches 1, every RA is inside. A range that crosses RA 0
+// is expressed as the RA it EXCLUDES - `ra NOT BETWEEN hi AND lo` - so no OR, and no parentheses.
+// A small pad keeps a point on the boundary inside after rounding to six decimals.
+const BOX_PAD_DEG = 1e-3;
+export function skyBoxForCone(raDeg, decDeg, radiusDeg) {
+  const r = radiusDeg + BOX_PAD_DEG;
+  const decLo = Math.max(-90, decDeg - r);
+  const decHi = Math.min(90, decDeg + r);
+  if (decLo <= -90 || decHi >= 90 || r >= 90) return { decLo, decHi, ra: null };
+  const rad = Math.PI / 180;
+  const s = Math.sin(r * rad) / Math.cos(decDeg * rad);
+  if (!(s < 1)) return { decLo, decHi, ra: null };
+  const w = Math.asin(s) / rad;
+  if (w >= 180) return { decLo, decHi, ra: null };
+  const ra0 = ((raDeg % 360) + 360) % 360;
+  const lo = ra0 - w;
+  const hi = ra0 + w;
+  if (lo < 0) return { decLo, decHi, ra: { lo: lo + 360, hi, wraps: true } };
+  if (hi > 360) return { decLo, decHi, ra: { lo, hi: hi - 360, wraps: true } };
+  return { decLo, decHi, ra: { lo, hi, wraps: false } };
+}
+
+// Does a point fall inside a box from skyBoxForCone? The same rule the ADQL above states, in JS,
+// so the gate tests what the query asks for.
+export function inSkyBox(box, raDeg, decDeg) {
+  if (decDeg < box.decLo || decDeg > box.decHi) return false;
+  if (!box.ra) return true;
+  const ra = ((raDeg % 360) + 360) % 360;
+  return box.ra.wraps ? !(ra >= box.ra.hi && ra <= box.ra.lo) : ra >= box.ra.lo && ra <= box.ra.hi;
+}
+
 // ---------------------------------------------------------------- archive
+// The archive's WHERE carries no parenthesis - see skyBoxForCone for why.
 export function archivePlanetsAdql(region) {
-  return `select ${ARCHIVE_COLUMNS.join(',')} from pscomppars where ${regionWhere(region, 'sy_dist')} order by sy_dist, pl_orbsmax`;
+  return `select ${ARCHIVE_COLUMNS.join(',')} from pscomppars where ${regionWhere(region, 'sy_dist', '', { skyBox: true })} order by sy_dist, pl_orbsmax`;
 }
 export function archiveCountAdql(region) {
   // Distinct hosts = systems; pl_name rows = planets. Both in one query.
-  return `select count(distinct hostname) as systems, count(*) as planets from pscomppars where ${regionWhere(region, 'sy_dist')}`;
+  return `select count(distinct hostname) as systems, count(*) as planets from pscomppars where ${regionWhere(region, 'sy_dist', '', { skyBox: true })}`;
 }
 
 // ---------------------------------------------------------------- SIMBAD
